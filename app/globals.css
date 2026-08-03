@@ -1,26 +1,247 @@
-@import "tailwindcss";
+@import 'tailwindcss';
+
+/*
+  Hisaab design tokens.
+
+  The thesis, from DESIGN.md: colour is data, chrome is ink. The interface is
+  achromatic graphite. Every coloured token below names a specific money
+  meaning, and nothing is tinted for decoration.
+*/
+
+@custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* neutrals, cooled toward hue 265 so greys read as graphite, never as paper */
+  --bg: oklch(0.985 0.001 265);
+  --surface: oklch(1 0 0);
+  --surface-2: oklch(0.965 0.002 265);
+  --surface-3: oklch(0.94 0.003 265);
+  --line: oklch(0.912 0.004 265);
+  --line-strong: oklch(0.855 0.005 265);
+  --ink: oklch(0.22 0.012 265);
+  --ink-2: oklch(0.44 0.01 265);
+  --ink-3: oklch(0.545 0.009 265);
+  --ink-invert: oklch(0.99 0 0);
+
+  /* money semantics. validated for colour-vision separation, see DESIGN.md */
+  --in: oklch(0.6 0.102 190);
+  --out: oklch(0.6 0.137 62);
+  --owed-me: oklch(0.6 0.17 292);
+  --i-owe: oklch(0.6 0.17 18);
+  --parked: oklch(0.6 0.17 262);
+
+  /* text-weight variants of the same roles, dark enough to clear 4.5:1 */
+  --in-text: oklch(0.5 0.09 190);
+  --out-text: oklch(0.5 0.12 55);
+  --owed-me-text: oklch(0.5 0.16 292);
+  --i-owe-text: oklch(0.52 0.17 18);
+  --parked-text: oklch(0.5 0.15 262);
+
+  /* soft washes for chips and rows, never for large areas */
+  --in-wash: oklch(0.6 0.102 190 / 0.1);
+  --out-wash: oklch(0.6 0.137 62 / 0.1);
+  --owed-me-wash: oklch(0.6 0.17 292 / 0.1);
+  --i-owe-wash: oklch(0.6 0.17 18 / 0.1);
+  --parked-wash: oklch(0.6 0.17 262 / 0.1);
+
+  --radius-1: 6px;
+  --radius-2: 10px;
+  --radius-3: 14px;
+
+  --shadow-pop: 0 1px 2px oklch(0.22 0.012 265 / 0.06), 0 8px 24px oklch(0.22 0.012 265 / 0.08);
+
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --t-state: 120ms;
+  --t-move: 180ms;
+  --t-layout: 260ms;
+}
+
+.dark {
+  --bg: oklch(0.165 0.008 265);
+  --surface: oklch(0.196 0.009 265);
+  --surface-2: oklch(0.232 0.01 265);
+  --surface-3: oklch(0.268 0.011 265);
+  --line: oklch(0.285 0.01 265);
+  --line-strong: oklch(0.35 0.012 265);
+  --ink: oklch(0.96 0.003 265);
+  --ink-2: oklch(0.76 0.008 265);
+  --ink-3: oklch(0.64 0.01 265);
+  --ink-invert: oklch(0.17 0.008 265);
+
+  --in: oklch(0.65 0.112 190);
+  --out: oklch(0.65 0.15 62);
+  --owed-me: oklch(0.65 0.17 292);
+  --i-owe: oklch(0.65 0.17 18);
+  --parked: oklch(0.65 0.17 262);
+
+  --in-text: oklch(0.78 0.11 190);
+  --out-text: oklch(0.8 0.13 65);
+  --owed-me-text: oklch(0.76 0.14 292);
+  --i-owe-text: oklch(0.74 0.15 18);
+  --parked-text: oklch(0.75 0.13 262);
+
+  --in-wash: oklch(0.65 0.112 190 / 0.16);
+  --out-wash: oklch(0.65 0.15 62 / 0.16);
+  --owed-me-wash: oklch(0.65 0.17 292 / 0.16);
+  --i-owe-wash: oklch(0.65 0.17 18 / 0.16);
+  --parked-wash: oklch(0.65 0.17 262 / 0.16);
+
+  /* shadows do not read on near-black, so separation is carried by --line */
+  --shadow-pop: 0 0 0 1px oklch(0.35 0.012 265), 0 16px 40px oklch(0 0 0 / 0.5);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-ink-invert: var(--ink-invert);
+
+  --color-in: var(--in);
+  --color-out: var(--out);
+  --color-owed-me: var(--owed-me);
+  --color-i-owe: var(--i-owe);
+  --color-parked: var(--parked);
+
+  --color-in-text: var(--in-text);
+  --color-out-text: var(--out-text);
+  --color-owed-me-text: var(--owed-me-text);
+  --color-i-owe-text: var(--i-owe-text);
+  --color-parked-text: var(--parked-text);
+
+  --color-in-wash: var(--in-wash);
+  --color-out-wash: var(--out-wash);
+  --color-owed-me-wash: var(--owed-me-wash);
+  --color-i-owe-wash: var(--i-owe-wash);
+  --color-parked-wash: var(--parked-wash);
+
+  --radius-sm: var(--radius-1);
+  --radius-md: var(--radius-2);
+  --radius-lg: var(--radius-3);
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@layer base {
+  * {
+    border-color: var(--line);
+  }
+
+  html {
+    -webkit-tap-highlight-color: transparent;
+    scrollbar-gutter: stable;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-size: 0.9375rem;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  /*
+    Every number here is money or a date, and neither may reflow as values
+    change, or the whole ledger jitters while you are reading it.
+  */
+  .tnum,
+  input[inputmode='decimal'] {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum';
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--ink);
+    outline-offset: 2px;
+    border-radius: 3px;
+  }
+
+  ::selection {
+    background: color-mix(in oklch, var(--ink) 18%, transparent);
+  }
+
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+    letter-spacing: -0.015em;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  input[type='number']::-webkit-outer-spin-button,
+  input[type='number']::-webkit-inner-spin-button {
+    appearance: none;
+    margin: 0;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer utilities {
+  .money {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum';
+    letter-spacing: -0.01em;
+  }
+
+  .hero-figure {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    font-size: clamp(2.25rem, 6vw, 3.25rem);
+    line-height: 1;
+    letter-spacing: -0.03em;
+    font-weight: 500;
+  }
+
+  .label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    letter-spacing: 0.01em;
+    color: var(--ink-3);
+  }
+
+  /* Wide content scrolls inside itself; the page body never scrolls sideways. */
+  .scroll-x {
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: thin;
+  }
+
+  .z-sticky {
+    z-index: 10;
+  }
+  .z-dropdown {
+    z-index: 30;
+  }
+  .z-overlay {
+    z-index: 40;
+  }
+  .z-modal {
+    z-index: 50;
+  }
+  .z-toast {
+    z-index: 60;
+  }
+}
+
+/* Reduced motion is not optional. Everything collapses to an instant swap. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

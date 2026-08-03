@@ -1,6 +1,3 @@
-import { existsSync, mkdirSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
-
 import { createClient, type Client } from '@libsql/client';
 import { drizzle } from 'drizzle-orm/libsql';
 
@@ -15,21 +12,17 @@ import * as schema from './schema';
 
 export const DATABASE_URL = process.env.DATABASE_URL ?? 'file:./data/hisaab.db';
 
-function ensureDirectory(url: string): void {
-  if (!url.startsWith('file:')) return;
-  const filePath = resolve(process.cwd(), url.slice('file:'.length));
-  const dir = dirname(filePath);
-  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-}
+type Drizzle = ReturnType<typeof drizzle<typeof schema>>;
 
 declare global {
   // eslint-disable-next-line no-var
   var __hisaabClient: Client | undefined;
+  // eslint-disable-next-line no-var
+  var __hisaabDb: Drizzle | undefined;
 }
 
 function getClient(): Client {
   if (!globalThis.__hisaabClient) {
-    ensureDirectory(DATABASE_URL);
     globalThis.__hisaabClient = createClient({ url: DATABASE_URL });
     // Foreign keys are off by default in SQLite, which would silently allow
     // orphaned transactions pointing at deleted debts.
@@ -38,7 +31,26 @@ function getClient(): Client {
   return globalThis.__hisaabClient;
 }
 
-export const db = drizzle(getClient(), { schema });
+function getDb(): Drizzle {
+  if (!globalThis.__hisaabDb) globalThis.__hisaabDb = drizzle(getClient(), { schema });
+  return globalThis.__hisaabDb;
+}
 
-export type Database = typeof db;
+/**
+ * Lazily connected.
+ *
+ * Opening the database at module scope means Next's build workers load the
+ * native libsql binding just to collect page metadata, which crashes the
+ * worker outright. The proxy defers the connection until a query is actually
+ * run, so importing a page stays free.
+ */
+export const db = new Proxy({} as Drizzle, {
+  get(_target, property, receiver) {
+    const instance = getDb();
+    const value = Reflect.get(instance, property, receiver);
+    return typeof value === 'function' ? value.bind(instance) : value;
+  },
+});
+
+export type Database = Drizzle;
 export { schema };
