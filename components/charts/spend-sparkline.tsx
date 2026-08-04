@@ -17,9 +17,13 @@ interface DayPoint {
 /**
  * Daily spend over the window.
  *
- * One series, so no legend: the panel title names it. Bars are thin with
- * rounded data-ends anchored to the baseline, separated by a surface gap, and
- * every bar is hoverable with a hit target wider than the mark itself.
+ * Laid out with flex rather than SVG: a fixed viewBox will not stretch to an
+ * arbitrary container width without either distorting the rounded bar ends or
+ * leaving the chart floating in the middle of the panel. Bars are thin, share a
+ * common baseline, and every column is hoverable across its full height so a
+ * two-pixel bar is still an easy target.
+ *
+ * One series, so no legend: the panel title names it.
  */
 export function SpendSparkline({ days }: { days: DayPoint[] }) {
   const [active, setActive] = useState<number | null>(null);
@@ -28,12 +32,6 @@ export function SpendSparkline({ days }: { days: DayPoint[] }) {
   const total = days.reduce((n, d) => n + d.out, 0);
   const spentDays = days.filter((d) => d.out > 0).length;
   const point = active === null ? null : days[active];
-
-  const height = 96;
-  const gap = 2;
-  const width = 320;
-  const slot = width / days.length;
-  const barWidth = Math.max(2, slot - gap);
 
   return (
     <div>
@@ -51,63 +49,40 @@ export function SpendSparkline({ days }: { days: DayPoint[] }) {
         <span className="money text-[0.75rem] text-ink-3">peak ₹{formatCompact(max)}</span>
       </div>
 
-      <svg
-        viewBox={`0 0 ${width} ${height}`}
-        className="mt-3 w-full"
-        style={{ height }}
+      <div
+        className="mt-3 flex h-24 items-end gap-px border-b border-line"
         role="img"
         aria-label={`Daily spending for the last ${days.length} days, totalling ${formatMoney(total)}`}
         onMouseLeave={() => setActive(null)}
       >
-        {/* A single recessive baseline. No gridlines: the values are read from
-            the tooltip, and lines would only add ink. */}
-        <line
-          x1={0}
-          y1={height - 0.5}
-          x2={width}
-          y2={height - 0.5}
-          stroke="var(--line)"
-          strokeWidth={1}
-        />
-
         {days.map((day, i) => {
-          const barHeight = day.out === 0 ? 0 : Math.max(2, (day.out / max) * (height - 8));
-          const x = i * slot;
           const isActive = active === i;
+          // A day with nothing spent still gets a 2px tick, so the baseline
+          // reads as a continuous timeline rather than a gap in the data.
+          const height = day.out === 0 ? 2 : Math.max(3, (day.out / max) * 96);
 
           return (
-            <g key={day.day}>
-              {barHeight > 0 ? (
-                <rect
-                  x={x}
-                  y={height - barHeight}
-                  width={barWidth}
-                  height={barHeight}
-                  rx={Math.min(2, barWidth / 2)}
-                  className={cn(
-                    'transition-opacity duration-[var(--t-state)]',
-                    active !== null && !isActive ? 'opacity-35' : 'opacity-100',
-                  )}
-                  fill="var(--out)"
-                />
-              ) : (
-                <rect x={x} y={height - 2} width={barWidth} height={2} rx={1} fill="var(--line)" />
-              )}
-
-              {/* Hit target spans the full column height so a 2px bar is still
-                  easy to hover on a trackpad. */}
-              <rect
-                x={x - gap / 2}
-                y={0}
-                width={slot}
-                height={height}
-                fill="transparent"
-                onMouseEnter={() => setActive(i)}
+            <button
+              key={day.day}
+              type="button"
+              tabIndex={-1}
+              aria-hidden
+              onMouseEnter={() => setActive(i)}
+              onFocus={() => setActive(i)}
+              className="flex h-full flex-1 cursor-default items-end"
+            >
+              <span
+                className={cn(
+                  'w-full rounded-t-[2px] transition-opacity duration-[var(--t-state)]',
+                  day.out === 0 ? 'bg-line' : 'bg-[var(--out)]',
+                  active !== null && !isActive ? 'opacity-35' : 'opacity-100',
+                )}
+                style={{ height: `${height}px` }}
               />
-            </g>
+            </button>
           );
         })}
-      </svg>
+      </div>
     </div>
   );
 }

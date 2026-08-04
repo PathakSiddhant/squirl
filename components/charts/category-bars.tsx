@@ -13,15 +13,27 @@ import { Icon } from '../shell/icon';
 export function CategoryBars({
   rows,
   total,
+  tone = 'out',
 }: {
   rows: Array<{ categoryId: string; name: string; icon: string; total: number; count: number }>;
   total: number;
+  /** Money direction. Income must never be drawn in the spending colour. */
+  tone?: 'out' | 'in';
 }) {
   if (rows.length === 0) {
-    return <p className="px-4 pb-5 text-[0.875rem] text-ink-3">Nothing spent in this window.</p>;
+    return (
+      <p className="px-4 pb-5 text-[0.875rem] text-ink-3">
+        Nothing {tone === 'out' ? 'spent' : 'received'} in this window.
+      </p>
+    );
   }
 
   const max = Math.max(...rows.map((r) => r.total), 1);
+  const bar = tone === 'out' ? 'bg-[var(--out)]' : 'bg-[var(--in)]';
+  const chip =
+    tone === 'out'
+      ? 'bg-[var(--out-wash)] text-[var(--out-text)]'
+      : 'bg-[var(--in-wash)] text-[var(--in-text)]';
 
   return (
     <ul className="divide-y divide-line border-t border-line">
@@ -30,7 +42,7 @@ export function CategoryBars({
         return (
           <li key={row.categoryId} className="px-4 py-2.5">
             <div className="flex items-center gap-2.5">
-              <span className="flex size-6 shrink-0 items-center justify-center rounded-sm bg-[var(--out-wash)] text-[var(--out-text)]">
+              <span className={cn('flex size-6 shrink-0 items-center justify-center rounded-sm', chip)}>
                 <Icon name={row.icon} size={13} />
               </span>
               <span className="min-w-0 flex-1 truncate text-[0.875rem] text-ink">{row.name}</span>
@@ -43,7 +55,7 @@ export function CategoryBars({
             <div className="mt-1.5 flex items-center gap-2 pl-8.5">
               <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-2">
                 <div
-                  className={cn('h-full rounded-full bg-[var(--out)]')}
+                  className={cn('h-full rounded-full', bar)}
                   style={{ width: `${(row.total / max) * 100}%` }}
                 />
               </div>

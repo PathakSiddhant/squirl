@@ -89,7 +89,11 @@ function describeDetails(entry: LedgerEntry): string {
   else if (entry.kind === 'borrow') parts.push('Has to go back');
 
   if (entry.accountName && entry.kind !== 'transfer') parts.push(entry.accountName);
-  parts.push(METHOD_LABEL[entry.method] ?? entry.method);
+
+  // "Bank · Bank" reads like a bug. Drop the method when it just repeats the
+  // account it came out of.
+  const method = METHOD_LABEL[entry.method] ?? entry.method;
+  if (method.toLowerCase() !== entry.accountName?.toLowerCase()) parts.push(method);
 
   return parts.join(' · ');
 }

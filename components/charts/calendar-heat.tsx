@@ -40,9 +40,11 @@ export function CalendarHeat({
   return (
     <div className="px-4 pb-4">
       <div className="scroll-x">
+        {/* w-max stops the columns stretching to fill the panel, which would
+            spread twelve weeks across the full width as isolated dots. */}
         <div
-          className="grid grid-flow-col gap-1"
-          style={{ gridTemplateRows: 'repeat(7, minmax(0, 1fr))' }}
+          className="grid w-max grid-flow-col gap-1"
+          style={{ gridTemplateRows: 'repeat(7, 12px)' }}
           role="img"
           aria-label="Daily spending over the last twelve weeks"
         >
