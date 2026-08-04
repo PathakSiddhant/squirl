@@ -106,8 +106,10 @@ export interface Position {
   asOf: DayString;
   /** Spendable right now: bank, cash and wallet. */
   inHand: Paise;
-  /** Sent to parents. Yours, recallable, but deliberately out of reach. */
+  /** Moved to savings or held by family. Yours, but deliberately out of reach. */
   parked: Paise;
+  /** In stocks, funds and the like. Yours, but its value moves on its own. */
+  invested: Paise;
   owedToMe: Paise;
   iOwe: Paise;
   netWorth: Paise;
@@ -131,9 +133,11 @@ export function computePosition(input: PositionInput): Position {
 
   let inHand = 0;
   let parked = 0;
+  let invested = 0;
   for (const account of input.accounts) {
     const balance = balances.get(account.id) ?? 0;
     if (account.kind === 'parked') parked += balance;
+    else if (account.kind === 'invest') invested += balance;
     else if (SPENDABLE_KINDS.includes(account.kind)) inHand += balance;
   }
 
@@ -150,9 +154,10 @@ export function computePosition(input: PositionInput): Position {
     asOf: input.asOf,
     inHand,
     parked,
+    invested,
     owedToMe: input.owedToMe,
     iOwe,
-    netWorth: inHand + parked + input.owedToMe - iOwe,
+    netWorth: inHand + parked + invested + input.owedToMe - iOwe,
     committed,
     buffer: input.buffer,
     safeToSpend: atLeastZero(headroom),

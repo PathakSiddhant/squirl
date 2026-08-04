@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import { isDayString } from './date';
 import {
+  ACCOUNT_KINDS,
   DEBT_DIRECTIONS,
   INTEREST_KINDS,
   LOAN_INTEREST_MODELS,
@@ -100,7 +101,7 @@ export const loanInput = z
 
 export const accountInput = z.object({
   name: z.string().trim().min(1, 'Give it a name').max(40),
-  kind: z.enum(['bank', 'cash', 'wallet', 'parked']),
+  kind: z.enum(ACCOUNT_KINDS),
   openingBalance: z.number().int().default(0),
   note: z.string().max(160).nullable().optional(),
 });

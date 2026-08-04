@@ -15,11 +15,18 @@ const now = () => Date.now();
 // ---------------------------------------------------------------- accounts
 
 /**
- * `parked` is the load-bearing account kind. Money sent to parents is not
- * spent, it is moved somewhere deliberately hard to reach. It still counts
- * toward net worth but never toward what is safe to spend today.
+ * `parked` and `invest` are the load-bearing kinds.
+ *
+ * Money moved to savings or handed to family is not spent, it is moved
+ * somewhere deliberately hard to reach. Money put into stocks or a fund is
+ * likewise still yours. Both count toward net worth and neither counts toward
+ * what is safe to spend today.
+ *
+ * `invest` is separate from `parked` because its value moves on its own. A
+ * parked balance only changes when you move money; an investment changes when
+ * the market does, which is recorded as a gain or loss against the account.
  */
-export const ACCOUNT_KINDS = ['bank', 'cash', 'wallet', 'parked'] as const;
+export const ACCOUNT_KINDS = ['bank', 'cash', 'wallet', 'parked', 'invest'] as const;
 export type AccountKind = (typeof ACCOUNT_KINDS)[number];
 
 export const accounts = sqliteTable(

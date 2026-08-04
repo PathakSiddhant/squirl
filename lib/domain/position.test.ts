@@ -19,6 +19,7 @@ const accounts: AccountSeed[] = [
   { id: 'bank', kind: 'bank', openingBalance: 0 },
   { id: 'cash', kind: 'cash', openingBalance: 0 },
   { id: 'parents', kind: 'parked', openingBalance: 0 },
+  { id: 'stocks', kind: 'invest', openingBalance: 0 },
 ];
 
 const move = (
@@ -114,6 +115,40 @@ test('parked money counts toward net worth but never toward safe to spend', () =
   assert.equal(position.inHand, 473000);
   assert.equal(position.netWorth, 1973000);
   assert.equal(position.safeToSpend, 473000, 'the 15k with parents is not spendable');
+});
+
+test('investing is a move, not a spend, and gains are not income', () => {
+  const base = { asOf: '2026-08-10', accounts, owedToMe: 0, owedByMeToPeople: 0,
+    loanPrincipalOutstanding: 0, commitments: [], buffer: 0, horizonDays: 30 } as const;
+
+  const before = computePosition({ ...base, movements: brief });
+
+  // Move 1,500 from the bank into stocks.
+  const invested = [...brief, move('2026-08-05', 'transfer', 150000, 'bank', 'stocks')];
+  const after = computePosition({ ...base, movements: invested });
+
+  assert.equal(after.netWorth, before.netWorth, 'investing does not change what you are worth');
+  assert.equal(after.inHand, before.inHand - 150000, 'it does leave your pocket');
+  assert.equal(after.invested, 150000);
+  assert.equal(after.safeToSpend, before.safeToSpend - 150000, 'and is no longer spendable');
+
+  // The holding is now worth 1,800. That is a gain, recorded against the account.
+  const grown = [...invested, move('2026-08-09', 'adjust_up', 30000, 'stocks')];
+  const withGain = computePosition({ ...base, movements: grown });
+
+  assert.equal(withGain.invested, 180000);
+  assert.equal(withGain.netWorth, before.netWorth + 30000, 'the gain raises net worth');
+  assert.equal(withGain.inHand, after.inHand, 'without touching what is in hand');
+});
+
+test('a gain on an investment is not counted as burn', () => {
+  const movements = [
+    move('2026-08-01', 'expense', 70000),
+    move('2026-08-02', 'transfer', 150000, 'bank', 'stocks'),
+    move('2026-08-03', 'adjust_up', 30000, 'stocks'),
+  ];
+  // Only the 700 spend counts across the 7 day window.
+  assert.equal(burnRate(movements, '2026-08-07', 7), 10000);
 });
 
 test('commitments inside the horizon reduce what is safe to spend', () => {

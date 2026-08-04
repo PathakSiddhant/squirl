@@ -92,7 +92,7 @@ async function seedDemo(accountIds: Map<string, string>, categoryIds: Map<string
   const now = istToday();
   const bank = accountIds.get('bank')!;
   const cash = accountIds.get('cash')!;
-  const parents = accountIds.get('parents')!;
+  const savings = accountIds.get('savings')!;
   const cat = (key: string) => categoryIds.get(key)!;
 
   const rows: Array<typeof transactions.$inferInsert> = [];
@@ -136,9 +136,9 @@ async function seedDemo(accountIds: Map<string, string>, categoryIds: Map<string
         kind: 'transfer',
         amount: 1500000,
         accountId: bank,
-        counterAccountId: parents,
+        counterAccountId: savings,
         method: 'upi',
-        note: 'Sent home so it does not get spent',
+        note: 'Set aside so it does not get spent',
       });
     }
   }
@@ -223,10 +223,10 @@ async function seedDemo(accountIds: Map<string, string>, categoryIds: Map<string
     day: topUpDay,
     kind: 'transfer',
     amount: 300000,
-    accountId: parents,
+    accountId: savings,
     counterAccountId: bank,
     method: 'upi',
-    note: 'Asked papa for a bit back',
+    note: 'Pulled a bit back from savings',
   });
 
   // ---- lending and borrowing ---------------------------------------------
@@ -389,11 +389,11 @@ async function seedDemo(accountIds: Map<string, string>, categoryIds: Map<string
     },
     {
       id: newId('rec'),
-      name: 'Send home',
+      name: 'Set aside',
       kind: 'transfer',
       amount: 1500000,
       accountId: bank,
-      counterAccountId: parents,
+      counterAccountId: savings,
       cadence: 'monthly',
       anchor: 4,
       nextDueOn: nextAnchor(now, 4),

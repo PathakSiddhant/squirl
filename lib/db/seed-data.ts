@@ -22,11 +22,18 @@ export const SEED_ACCOUNTS: SeedAccount[] = [
   { key: 'cash', name: 'Cash', kind: 'cash', note: 'Notes in your pocket', sortOrder: 1 },
   { key: 'wallet', name: 'Wallet', kind: 'wallet', note: 'Paytm, PhonePe and the rest', sortOrder: 2 },
   {
-    key: 'parents',
-    name: 'Parents',
+    key: 'savings',
+    name: 'Savings',
     kind: 'parked',
-    note: 'Money you sent home. Still yours, deliberately out of reach.',
+    note: 'Set aside on purpose. Still yours, deliberately out of reach.',
     sortOrder: 3,
+  },
+  {
+    key: 'investments',
+    name: 'Investments',
+    kind: 'invest',
+    note: 'Stocks, funds, gold. Yours, and the value moves on its own.',
+    sortOrder: 4,
   },
 ];
 
