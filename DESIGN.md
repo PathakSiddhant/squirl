@@ -1,58 +1,67 @@
-# Hisaab, design system
+# Squirl, design system
 
 Register: **product**. Design serves the product. The bar is earned familiarity:
 someone fluent in Linear, Raycast or Stripe should trust it on first glance.
 
 Dials: `VARIANCE 5` · `MOTION 4` · `DENSITY 6`.
-Density is high on purpose. The user asked to see everything at once.
 
 ## The thesis
 
-> **Color is data. Chrome is ink.**
+> **Colour is data. Chrome is ink.**
 
-The interface itself is achromatic: graphite ink on paper, or ink on near-black.
-There is no brand accent, no purple button, no gradient. Every coloured pixel in
-the app carries a specific meaning about money. If something is teal, money came
-in. If something is rose, you owe it. Nothing is coloured for decoration.
+The interface is achromatic: graphite ink on paper, or ink on near-black. No
+gradients, no glass, no decorative tint. Every coloured pixel carries a specific
+meaning about money. If something is teal, money came in. If something is rose,
+you owe it. Nothing is coloured to look nice.
 
-This is the load-bearing decision. It makes the ledger scannable at a glance
-(color is signal, so color is rare), and it is the reason the app does not look
-like every other finance dashboard.
+This is the load-bearing decision. It keeps the ledger scannable (colour is
+rare, so colour is signal), and it is why the app does not look like every other
+finance dashboard.
 
 Consequences, enforced:
 
 - Primary buttons are solid ink, not a colour.
 - Focus rings are ink with a 2px offset, never a colour.
-- Active navigation is weight and an ink rule, never a coloured pill.
+- Active navigation is weight plus a surface fill, never a coloured pill.
 - No element is tinted "to look nice".
+
+The one exception is the brand layer: the mark, the streak, and milestones use
+the acorn caramel. That layer is chrome about the product rather than data about
+money, and it is deliberately confined to those places.
 
 ## Scene
 
-Checked on a phone at 11pm in a dim room, and on a laptop under office light at
-3pm. Six to ten visits a day, five seconds each. Both themes are first-class and
-both are designed, not flipped. Dark is not a filter over light.
+Checked on a phone late at night, and on a laptop under office light. Six to ten
+visits a day, five seconds each. Both themes are first-class and both are
+designed, not flipped. Dark is not a filter over light.
 
-## Color
+## Colour
 
-Authored in OKLCH. Neutrals are cooled toward hue 265 at very low chroma, so the
-greys read as graphite rather than warm paper. The warm cream/sand band is
-deliberately avoided.
+Derived from the logo, not chosen beside it. The mark samples at
+`oklch(0.36 0.007 235)` for its charcoal and `oklch(0.68 0.087 66)` for the
+acorn, so the neutrals carry hue 235 and the brand warm sits at hue 66.
+
+### Brand
+
+| Token | Light | Dark |
+|---|---|---|
+| `--acorn` | `oklch(0.68 0.087 66)` | `oklch(0.75 0.095 68)` |
+| `--acorn-deep` | `oklch(0.52 0.09 62)` | `oklch(0.62 0.095 64)` |
 
 ### Neutrals
 
 | Token | Light | Dark |
 |---|---|---|
-| `--bg` | `oklch(0.985 0.001 265)` | `oklch(0.165 0.008 265)` |
-| `--surface` | `oklch(1 0 0)` | `oklch(0.196 0.009 265)` |
-| `--surface-2` | `oklch(0.965 0.002 265)` | `oklch(0.232 0.010 265)` |
-| `--line` | `oklch(0.912 0.004 265)` | `oklch(0.285 0.010 265)` |
-| `--line-strong` | `oklch(0.855 0.005 265)` | `oklch(0.350 0.012 265)` |
-| `--ink` | `oklch(0.22 0.012 265)` | `oklch(0.96 0.003 265)` |
-| `--ink-2` | `oklch(0.44 0.010 265)` | `oklch(0.76 0.008 265)` |
-| `--ink-3` | `oklch(0.545 0.009 265)` | `oklch(0.64 0.010 265)` |
+| `--bg` | `oklch(0.986 0.002 235)` | `oklch(0.17 0.008 235)` |
+| `--surface` | `oklch(1 0 0)` | `oklch(0.202 0.009 235)` |
+| `--surface-2` | `oklch(0.966 0.003 235)` | `oklch(0.238 0.010 235)` |
+| `--line` | `oklch(0.913 0.005 235)` | `oklch(0.292 0.011 235)` |
+| `--line-strong` | `oklch(0.856 0.006 235)` | `oklch(0.356 0.013 235)` |
+| `--ink` | `oklch(0.24 0.008 235)` | `oklch(0.96 0.003 235)` |
+| `--ink-2` | `oklch(0.44 0.008 235)` | `oklch(0.76 0.008 235)` |
+| `--ink-3` | `oklch(0.545 0.008 235)` | `oklch(0.64 0.010 235)` |
 
-Measured contrast against `--bg`: ink 16.6:1 / 17.2:1, ink-2 7.4:1 / 9.0:1,
-ink-3 4.76:1 / 5.72:1. Every ink token clears 4.5:1 as body text in both themes.
+Every ink token clears 4.5:1 as body text against its background in both themes.
 
 ### Semantic money palette
 

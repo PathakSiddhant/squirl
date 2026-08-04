@@ -1,60 +1,60 @@
-# Hisaab, product brief
+# Squirl, product brief
 
-**Hisaab** (हिसाब: the reckoning) is a single-user personal money ledger. It runs
-on your own machine, against a local SQLite file. Nothing leaves the device.
+**Squirl** is a single-user personal money ledger. It runs on your own machine
+against a local SQLite file. Nothing leaves the device.
 
-## The person it is built for
+## Who it is for
 
-One person: a 22-year-old intern in India.
+Someone whose money does not fit the shape a budgeting app expects:
 
-- Stipend of about 20,000 a month, on a date that moves around.
-- Roughly 15,000 of it goes straight to their parents, deliberately, so it is out
-  of reach and does not get burned. That money is **not spent**. It is parked.
-- About 5,000 stays in hand for the month.
-- Extra money arrives unpredictably: freelance work, a gift, a friend paying back.
-- Almost every payment is UPI or card, so nothing is written down anywhere.
-- Money moves between friends constantly. Lending, borrowing, sometimes with
-  interest, sometimes settled three months later.
-- Sometimes a small app loan: borrow 1,500, repay 550 a month for 3 months.
+- Income that arrives irregularly, or in amounts that change month to month.
+- A deliberate habit of moving a large chunk somewhere hard to reach, so it does
+  not get spent.
+- Almost every payment made by tapping a phone, so nothing is written down.
+- Constant small lending and borrowing with friends, sometimes with interest,
+  often settled months later.
+- The occasional small instalment loan, quoted as a monthly figure rather than
+  a rate.
 
-## The actual problem
+They are not overspending on anything dramatic. They simply have no idea where
+they stand, because the one number their bank shows them cannot answer the
+question.
 
-They do not know where they stand. Not roughly, not at all. Some weeks end with
-1,000 left, some end with 0, and the difference is invisible because the spending
-happened in fifty untracked UPI taps.
+## The problem, precisely
 
 Three failures compound:
 
-1. **Capture failure.** Logging a 10 rupee chai has to cost less effort than the
-   chai did, or it will not happen.
-2. **Model failure.** A normal expense tracker calls money sent to parents an
-   "expense" and money lent to a friend a "loss". Both are wrong. Net worth did
-   not change; *access* to the money did. No ordinary tracker separates those.
-3. **Horizon failure.** A debt opens in month 1 and closes in month 5. An EMI
-   commits future money that is already gone but still shows in the balance.
+1. **Capture failure.** Logging a small payment has to cost less effort than the
+   payment did, or it will not happen. A six-field form guarantees an empty app.
+2. **Model failure.** Ordinary trackers call money moved into savings an
+   *expense* and money lent a *loss*. Both are wrong. Net worth did not change;
+   *access* did. No mainstream tracker separates those.
+3. **Horizon failure.** A debt opens in one month and closes five months later.
+   An instalment commits money that is already gone but still shows in the
+   balance. Today's number has to know about tomorrow's obligations.
 
-## What the product must answer
+## The question the product exists to answer
 
-The whole product exists to answer one question, correctly, at any moment:
+> **How much can I spend right now, without breaking a promise I already made?**
 
-> **How much can I actually spend right now, without breaking a promise I already made?**
-
-Everything else is in service of that number.
+Everything else is in service of that one number.
 
 ## Principles
 
-1. **Day precision, never time.** The user asked for the day, not the clock. A
-   transaction belongs to a date. No timestamps in the UI.
-2. **Capture must be nearly free.** One text field, natural language, no forms
+1. **Day precision, never a clock.** A transaction belongs to a date. No
+   timestamps appear anywhere in the interface or the model.
+2. **Capture must be nearly free.** One text field, natural language, no form
    unless the user wants one. `chai 20` is a complete transaction.
 3. **Lending is not spending.** Money lent leaves your pocket but stays in your
-   net worth. The two numbers must never be conflated.
-4. **The future is part of the present.** A committed EMI is spent money that has
-   not left yet. It reduces what is safe to spend today.
-5. **Never lecture.** No budget shaming, no "you overspent on food" nags. It
-   reports, it does not moralise.
-6. **Truth beats tidiness.** If the app's number and the bank's number disagree,
-   the app must make it trivial to say so and reconcile, not hide it.
+   net worth. The two must never be conflated.
+4. **The future is part of the present.** A committed instalment is money
+   already spent that has not left yet. It reduces what is safe to spend today.
+5. **Never lecture.** No budget shaming, no nagging about categories. It
+   reports; it does not moralise.
+6. **Truth beats tidiness.** When the app's number and the bank's number
+   disagree, it must be trivial to say so and reconcile, not hide it.
+7. **Progress is earned, never granted.** Milestones mark real change in
+   position. Nothing is awarded for opening the app.
 
 ## Money model
 
@@ -62,25 +62,35 @@ Five positions, always visible, never merged:
 
 | Position | Meaning | Affects net worth | Spendable today |
 |---|---|---|---|
-| **In hand** | bank + cash + wallet | yes | yes |
-| **Parked** | sent to parents, recallable | yes | no, but reachable |
-| **Owed to me** | money lent out, plus accrued interest | yes | no |
-| **I owe** | borrowed from people, plus loan principal outstanding | negative | no |
-| **Committed** | installments and repayments due inside the horizon | already counted | subtracted |
+| **In hand** | bank, cash, wallet | yes | yes |
+| **Stashed** | moved somewhere deliberately hard to reach | yes | no |
+| **Owed to me** | lent out, plus accrued interest | yes | no |
+| **I owe** | borrowed money plus loan principal outstanding | negative | no |
+| **Promised** | obligations due inside the horizon | already counted | subtracted |
 
 Derived:
 
-- `Net worth = In hand + Parked + Owed to me - I owe`
-- `Safe to spend = In hand - Committed (next 30 days) - buffer`
-- `Daily allowance = Safe to spend / days remaining in horizon`
-- `Runway = days until In hand hits zero at the trailing 7-day burn rate`
+- `Net worth = In hand + Stashed + Owed to me - I owe`
+- `Safe to spend = In hand - Promised (next 30 days) - buffer`
+- `Daily allowance = Safe to spend / days until money next arrives`
+- `Runway = days until In hand hits zero at the trailing burn rate`
+
+Burn rate counts spending only. Lending, stashing and repaying a loan are not
+burn, and counting them would make the runway lie.
+
+## Naming
+
+The squirrel is not decoration. It is the model: a squirrel gathers, stashes,
+and lives off what it can reach without touching the hoard. The app's central
+distinction, between money you hold and money you have deliberately put beyond
+easy reach, is the same behaviour.
 
 ## Scope
 
-**In scope:** accounts and transfers, day ledger, natural-language capture,
-people and interpersonal debt with interest, app loans with installment
-schedules, recurring commitments, reconciliation against real balances,
-forecasting, insights, export and backup, installable on a phone.
+**In scope:** accounts and transfers, a day-grouped ledger, natural-language
+capture, people and interpersonal debt with interest, formal loans with
+instalment schedules, recurring commitments, reconciliation against real
+balances, insights, milestones, export and backup, installable on a phone.
 
-**Out of scope:** multi-user, bank sync, cloud accounts, budgets as hard limits,
+**Out of scope:** multi-user, bank sync, cloud accounts, hard budget limits,
 receipt OCR, investment tracking, multi-currency.

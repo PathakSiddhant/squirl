@@ -1,27 +1,36 @@
 @import 'tailwindcss';
 
 /*
-  Hisaab design tokens.
+  Squirl design tokens.
+
+  Derived from the logo, not chosen next to it. The mark's charcoal samples at
+  oklch(0.36 0.007 235) and its acorn caramel at oklch(0.68 0.087 66), so the
+  neutrals below carry hue 235 and the warm accent sits at hue 62.
 
   The thesis, from DESIGN.md: colour is data, chrome is ink. The interface is
-  achromatic graphite. Every coloured token below names a specific money
-  meaning, and nothing is tinted for decoration.
+  achromatic graphite. Every coloured token names a specific money meaning, and
+  nothing is tinted for decoration.
 */
 
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  /* neutrals, cooled toward hue 265 so greys read as graphite, never as paper */
-  --bg: oklch(0.985 0.001 265);
+  /* neutrals on the logo's own charcoal hue, so greys read as graphite */
+  --bg: oklch(0.986 0.002 235);
   --surface: oklch(1 0 0);
-  --surface-2: oklch(0.965 0.002 265);
-  --surface-3: oklch(0.94 0.003 265);
-  --line: oklch(0.912 0.004 265);
-  --line-strong: oklch(0.855 0.005 265);
-  --ink: oklch(0.22 0.012 265);
-  --ink-2: oklch(0.44 0.01 265);
-  --ink-3: oklch(0.545 0.009 265);
+  --surface-2: oklch(0.966 0.003 235);
+  --surface-3: oklch(0.941 0.004 235);
+  --line: oklch(0.913 0.005 235);
+  --line-strong: oklch(0.856 0.006 235);
+  --ink: oklch(0.24 0.008 235);
+  --ink-2: oklch(0.44 0.008 235);
+  --ink-3: oklch(0.545 0.008 235);
   --ink-invert: oklch(0.99 0 0);
+
+  /* the acorn, sampled from the mark. brand chrome and the gamified layer. */
+  --acorn: oklch(0.68 0.087 66);
+  --acorn-deep: oklch(0.52 0.09 62);
+  --acorn-wash: oklch(0.68 0.087 66 / 0.14);
 
   /* money semantics. validated for colour-vision separation, see DESIGN.md */
   --in: oklch(0.6 0.102 190);
@@ -57,16 +66,20 @@
 }
 
 .dark {
-  --bg: oklch(0.165 0.008 265);
-  --surface: oklch(0.196 0.009 265);
-  --surface-2: oklch(0.232 0.01 265);
-  --surface-3: oklch(0.268 0.011 265);
-  --line: oklch(0.285 0.01 265);
-  --line-strong: oklch(0.35 0.012 265);
-  --ink: oklch(0.96 0.003 265);
-  --ink-2: oklch(0.76 0.008 265);
-  --ink-3: oklch(0.64 0.01 265);
-  --ink-invert: oklch(0.17 0.008 265);
+  --bg: oklch(0.17 0.008 235);
+  --surface: oklch(0.202 0.009 235);
+  --surface-2: oklch(0.238 0.01 235);
+  --surface-3: oklch(0.274 0.011 235);
+  --line: oklch(0.292 0.011 235);
+  --line-strong: oklch(0.356 0.013 235);
+  --ink: oklch(0.96 0.003 235);
+  --ink-2: oklch(0.76 0.008 235);
+  --ink-3: oklch(0.64 0.01 235);
+  --ink-invert: oklch(0.17 0.008 235);
+
+  --acorn: oklch(0.75 0.095 68);
+  --acorn-deep: oklch(0.62 0.095 64);
+  --acorn-wash: oklch(0.75 0.095 68 / 0.18);
 
   --in: oklch(0.65 0.112 190);
   --out: oklch(0.65 0.15 62);
@@ -102,6 +115,10 @@
   --color-ink-3: var(--ink-3);
   --color-ink-invert: var(--ink-invert);
 
+  --color-acorn: var(--acorn);
+  --color-acorn-deep: var(--acorn-deep);
+  --color-acorn-wash: var(--acorn-wash);
+
   --color-in: var(--in);
   --color-out: var(--out);
   --color-owed-me: var(--owed-me);
@@ -135,7 +152,15 @@
 
   html {
     -webkit-tap-highlight-color: transparent;
-    scrollbar-gutter: stable;
+  }
+
+  /* Reserving the scrollbar gutter stops desktop layout shift, but on a phone
+     it steals 15px the fixed tab bar still spans, which makes the page scroll
+     sideways. Only reserve it where a scrollbar actually takes up space. */
+  @media (min-width: 1024px) {
+    html {
+      scrollbar-gutter: stable;
+    }
   }
 
   body {
