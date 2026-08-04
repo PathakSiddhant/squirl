@@ -2,6 +2,7 @@ import { ListDashes } from '@phosphor-icons/react/dist/ssr/ListDashes';
 
 import { QuickCapture } from '@/components/capture/quick-capture';
 import { DayGroup, groupByDay } from '@/components/ledger/day-group';
+import { AddEntryButton } from '@/components/ledger/entry-list';
 import { LedgerFilters } from '@/components/ledger/filters';
 import { Empty, PageHeader } from '@/components/ui/primitives';
 import { addDays, today as istToday } from '@/lib/date';
@@ -35,6 +36,12 @@ export default async function LedgerPage(props: PageProps<'/ledger'>) {
     getCaptureContext(),
   ]);
 
+  const editorContext = {
+    accounts: captureContext.accounts,
+    categories: categories.map((c) => ({ id: c.id, name: c.name, flow: c.flow })),
+    people: captureContext.people,
+  };
+
   const groups = groupByDay(entries);
   const spent = entries
     .filter((e) => e.kind === 'expense')
@@ -51,7 +58,10 @@ export default async function LedgerPage(props: PageProps<'/ledger'>) {
         }
       />
 
-      <QuickCapture context={{ today: asOf, ...captureContext }} />
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
+        <QuickCapture context={{ today: asOf, ...captureContext }} className="flex-1" />
+        <AddEntryButton context={editorContext} />
+      </div>
 
       <LedgerFilters categories={categories.map((c) => ({ id: c.id, name: c.name }))} />
 
@@ -66,7 +76,13 @@ export default async function LedgerPage(props: PageProps<'/ledger'>) {
       ) : (
         <div className="space-y-3">
           {groups.map((group) => (
-            <DayGroup key={group.day} day={group.day} entries={group.entries} today={asOf} />
+            <DayGroup
+              key={group.day}
+              day={group.day}
+              entries={group.entries}
+              today={asOf}
+              context={editorContext}
+            />
           ))}
         </div>
       )}

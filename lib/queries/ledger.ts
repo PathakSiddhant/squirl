@@ -46,9 +46,14 @@ export interface LedgerEntry {
   accountName: string | null;
   counterAccountName: string | null;
   personName: string | null;
+  /** Raw ids too, so a row can be opened in the editor without a second query. */
+  accountId: string | null;
+  counterAccountId: string | null;
+  categoryId: string | null;
   personId: string | null;
   debtId: string | null;
   loanId: string | null;
+  installmentId: string | null;
   lenderName: string | null;
   installmentSeq: number | null;
 }
@@ -113,9 +118,13 @@ export async function getLedgerEntries(filters: LedgerFilters = {}): Promise<Led
       accountName: accounts.name,
       counterAccountName: counterAccounts.name,
       personName: people.name,
+      accountId: transactions.accountId,
+      counterAccountId: transactions.counterAccountId,
+      categoryId: transactions.categoryId,
       personId: transactions.personId,
       debtId: transactions.debtId,
       loanId: transactions.loanId,
+      installmentId: transactions.installmentId,
       lenderName: loans.lender,
       installmentSeq: installments.seq,
     })

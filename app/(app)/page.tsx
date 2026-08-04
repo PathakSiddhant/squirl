@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { Mark } from '@/components/brand/logo';
 import { QuickCapture } from '@/components/capture/quick-capture';
 import { ProgressPanel } from '@/components/game/progress-panel';
-import { EntryRow } from '@/components/ledger/entry-row';
+import { AddEntryButton, EntryList } from '@/components/ledger/entry-list';
 import { PositionStrip } from '@/components/today/position-strip';
 import { SafeToSpend } from '@/components/today/safe-to-spend';
 import { Panel, PanelHeader } from '@/components/ui/primitives';
@@ -39,6 +39,12 @@ export default async function TodayPage() {
     streak: stats.streak,
   });
 
+  const editorContext = {
+    accounts: captureContext.accounts,
+    categories: captureContext.categories.map((c) => ({ id: c.id, name: c.name, flow: c.flow })),
+    people: captureContext.people,
+  };
+
   if (stats.entryCount === 0) {
     return <FirstRun context={{ today: overview.asOf, ...captureContext }} />;
   }
@@ -64,7 +70,14 @@ export default async function TodayPage() {
         </Link>
       </header>
 
-      <QuickCapture context={{ today: overview.asOf, ...captureContext }} autoFocus />
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
+        <QuickCapture
+          context={{ today: overview.asOf, ...captureContext }}
+          autoFocus
+          className="flex-1"
+        />
+        <AddEntryButton context={editorContext} />
+      </div>
 
       <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[1.15fr_1fr]">
         <SafeToSpend
@@ -113,11 +126,11 @@ export default async function TodayPage() {
               its own.
             </p>
           ) : (
-            <div className="divide-y divide-line border-t border-line">
-              {overview.todayEntries.map((entry) => (
-                <EntryRow key={entry.id} entry={entry} />
-              ))}
-            </div>
+            <EntryList
+              entries={overview.todayEntries}
+              context={editorContext}
+              className="border-t border-line"
+            />
           )}
         </Panel>
 

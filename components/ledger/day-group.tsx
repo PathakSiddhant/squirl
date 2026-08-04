@@ -3,7 +3,8 @@ import { formatDayLong, formatRelativeDay, type DayString } from '@/lib/date';
 import { formatMoney } from '@/lib/money';
 import type { LedgerEntry } from '@/lib/queries/ledger';
 
-import { EntryRow } from './entry-row';
+import { EntryList } from './entry-list';
+import type { EditorContext } from './entry-editor';
 
 /**
  * A day, with everything that happened on it.
@@ -15,10 +16,12 @@ export function DayGroup({
   day,
   entries,
   today,
+  context,
 }: {
   day: DayString;
   entries: LedgerEntry[];
   today: DayString;
+  context: EditorContext;
 }) {
   let moneyIn = 0;
   let moneyOut = 0;
@@ -56,11 +59,7 @@ export function DayGroup({
         </div>
       </header>
 
-      <div className="divide-y divide-line">
-        {entries.map((entry) => (
-          <EntryRow key={entry.id} entry={entry} />
-        ))}
-      </div>
+      <EntryList entries={entries} context={context} />
     </section>
   );
 }
