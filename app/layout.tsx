@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { GeistMono } from 'geist/font/mono';
 import { GeistSans } from 'geist/font/sans';
 
+
 import { ThemeScript } from '@/components/shell/theme-script';
 import { Toasts } from '@/components/ui/toasts';
 

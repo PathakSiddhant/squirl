@@ -1,4 +1,4 @@
-import { Mark } from '@/components/brand/logo';
+import { Lockup } from '@/components/brand/logo';
 import { Icon } from '@/components/shell/icon';
 import { PageHeader, Panel } from '@/components/ui/primitives';
 import { CAPTURE_EXAMPLES } from '@/lib/domain/capture';
@@ -126,9 +126,7 @@ export default function GuidePage() {
 
       <Panel className="overflow-hidden">
         <div className="flex flex-col gap-4 px-5 py-5 sm:flex-row sm:items-center">
-          <div className="flex size-16 shrink-0 items-center justify-center rounded-md bg-[var(--acorn-wash)]">
-            <Mark size={46} />
-          </div>
+          <Lockup size={92} />
           <div className="max-w-[62ch]">
             <h2 className="text-[1.0625rem] font-semibold text-ink">The one idea</h2>
             <p className="mt-1 text-[0.9375rem] leading-relaxed text-ink-2">

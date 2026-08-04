@@ -119,7 +119,7 @@ test('parked money counts toward net worth but never toward safe to spend', () =
 
 test('investing is a move, not a spend, and gains are not income', () => {
   const base = { asOf: '2026-08-10', accounts, owedToMe: 0, owedByMeToPeople: 0,
-    loanPrincipalOutstanding: 0, commitments: [], buffer: 0, horizonDays: 30 } as const;
+    loanPrincipalOutstanding: 0, commitments: [], buffer: 0, horizonDays: 30 };
 
   const before = computePosition({ ...base, movements: brief });
 

@@ -1,7 +1,7 @@
 import { ArrowRight } from '@phosphor-icons/react/dist/ssr/ArrowRight';
 import Link from 'next/link';
 
-import { Mark } from '@/components/brand/logo';
+import { Lockup } from '@/components/brand/logo';
 import { QuickCapture } from '@/components/capture/quick-capture';
 import { ProgressPanel } from '@/components/game/progress-panel';
 import { AddEntryButton, EntryList } from '@/components/ledger/entry-list';
@@ -209,10 +209,8 @@ function FirstRun({ context }: { context: React.ComponentProps<typeof QuickCaptu
   return (
     <div className="mx-auto max-w-[640px] py-6">
       <div className="flex flex-col items-center text-center">
-        <div className="flex size-20 items-center justify-center rounded-lg bg-[var(--acorn-wash)]">
-          <Mark size={56} />
-        </div>
-        <h1 className="mt-4 text-[1.5rem] font-semibold tracking-tight text-ink">
+        <Lockup size={132} />
+        <h1 className="mt-5 text-[1.5rem] font-semibold tracking-tight text-ink">
           Let us find out where you stand
         </h1>
         <p className="mt-2 max-w-[48ch] text-[0.9375rem] leading-relaxed text-ink-2">

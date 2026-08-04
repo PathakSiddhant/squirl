@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
-import { Mark } from '@/components/brand/logo';
+import { Lockup, Mark } from '@/components/brand/logo';
 import { cn } from '@/lib/cn';
 
 import { Icon } from './icon';
@@ -20,14 +20,13 @@ export function Sidebar() {
 
   return (
     <aside className="sticky top-0 hidden h-dvh w-[228px] shrink-0 flex-col border-r border-line bg-surface lg:flex">
-      <Link href="/" className="flex items-center gap-2.5 px-4 py-4">
-        <Mark size={30} />
-        <span className="flex flex-col leading-none">
-          <span className="text-[0.9375rem] font-semibold uppercase tracking-[0.16em] text-ink">
-            Squirl
-          </span>
-          <span className="mt-1 text-[0.6875rem] text-ink-3">Know where you stand</span>
-        </span>
+      <Link
+        href="/"
+        aria-label="Squirl, home"
+        className="flex flex-col items-start gap-1 px-4 pb-3 pt-5"
+      >
+        <Lockup size={62} />
+        <span className="pl-0.5 text-[0.6875rem] text-ink-3">Know where you stand</span>
       </Link>
 
       <nav className="flex-1 overflow-y-auto px-2 pb-2" aria-label="Main">
@@ -126,11 +125,8 @@ export function TabBar() {
 export function MobileHeader() {
   return (
     <header className="z-sticky sticky top-0 flex items-center justify-between border-b border-line bg-bg/95 px-4 py-2.5 backdrop-blur lg:hidden">
-      <Link href="/" className="flex items-center gap-2">
-        <Mark size={24} />
-        <span className="text-[0.875rem] font-semibold uppercase tracking-[0.16em] text-ink">
-          Squirl
-        </span>
+      <Link href="/" aria-label="Squirl, home" className="flex items-center gap-2">
+        <Mark size={30} />
       </Link>
       <ThemeToggle />
     </header>

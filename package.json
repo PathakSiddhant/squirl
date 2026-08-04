@@ -15,6 +15,7 @@
     "db:demo": "tsx lib/db/seed.ts --demo",
     "db:reset": "tsx lib/db/reset.ts",
     "db:studio": "drizzle-kit studio",
+    "brand:build": "node scripts/make-icons.mjs",
     "setup": "npm run db:generate && npm run db:migrate && npm run db:seed"
   },
   "dependencies": {
@@ -51,6 +52,7 @@
     "drizzle-kit": "^0.31.10",
     "eslint": "^9",
     "eslint-config-next": "16.2.12",
+    "sharp": "^0.35.3",
     "tailwindcss": "^4",
     "tsx": "^4.23.5",
     "typescript": "^5"
