@@ -30,6 +30,13 @@ const IDEAS = [
       'Money moved to savings, or handed to family to hold. It is still completely yours and still counts towards what you are worth. It just does not count as spendable, which is the entire point of putting it there. Most apps call this an expense. It is not one.',
   },
   {
+    icon: 'ChartBar',
+    title: 'Invested',
+    plain: 'Money in stocks, funds or gold. Still yours, and the value moves.',
+    detail:
+      'Buying shares is not spending, it is moving money from one pocket of yours to another, so your net worth does not drop when you do it. Record it as a move from your bank into an invested account. When the value changes, use "Update value" on that account and type what it is worth now. The difference is stored as a gain or a loss, never as income or spending.',
+  },
+  {
     icon: 'HandCoins',
     title: 'Owed to me',
     plain: 'Money you lent that has not come back yet.',
@@ -80,8 +87,24 @@ const QUESTIONS = [
     a: 'Go to Accounts and use "Check against reality". Type what your bank actually says. Squirl writes the difference into your history as a real entry, so the record corrects itself instead of slowly drifting into fiction. Missing a few small payments is normal and expected.',
   },
   {
-    q: 'Do I have to fill in a form every time?',
-    a: 'No. Type it in the bar at the top of the screen the way you would say it out loud. "chai 20" is a complete entry. It shows you what it understood before you press enter, and you can correct anything it got wrong.',
+    q: 'Do I have to type it in that exact way?',
+    a: 'Not at all. The typing bar is the fast path, never the only one. Next to it there is "Add by form", which gives you every field as a normal dropdown: amount, date, account, category, how it was paid, and a note. Use whichever you prefer, and mix them freely.',
+  },
+  {
+    q: 'How do I change or delete something I got wrong?',
+    a: 'Click any entry, anywhere it appears. It opens with every field editable and a Delete button. Nothing you log is permanent, and correcting a mistake takes two clicks.',
+  },
+  {
+    q: 'It assumed UPI but I paid by card. How do I fix it?',
+    a: 'Two ways. Say it in the line, like "899 netflix card" or "moved 1500 to investments netbanking", and it will pick that up. Or log it, click the entry, and change how it was paid. The guess is only a default, never a decision.',
+  },
+  {
+    q: 'I typed "moved 1500 to investment" and it complained. Why?',
+    a: 'Because you have no account with that name. Squirl will not invent one, since it cannot know whether you meant a new investment account, your savings, or a typo. Create the account once on the Accounts page and the same sentence will work forever after. The error now tells you exactly which accounts you do have.',
+  },
+  {
+    q: 'What about profit on something I invested in?',
+    a: 'Go to Accounts, find the invested account, and press "Update value". Type what the holding is worth today. Squirl records the difference as a gain or a loss against that account. It raises or lowers your net worth without ever pretending it was income you could spend.',
   },
   {
     q: 'What is the streak for?',
@@ -161,7 +184,14 @@ export default function GuidePage() {
             </ul>
             <p className="mt-3 max-w-[68ch] text-[0.8125rem] text-ink-3">
               Dates understand today, yesterday, kal, aaj, 3 days ago, last friday, 2 aug and 12/7.
-              Amounts understand 1.2k and 2L. Naming someone new adds them automatically.
+              Amounts understand 1.2k and 2L. Naming someone new adds them automatically. Say upi,
+              card, cash or netbanking anywhere in the line to set how it was paid.
+            </p>
+            <p className="mt-3 max-w-[68ch] rounded-sm border border-line bg-surface-2 px-3 py-2 text-[0.8125rem] leading-relaxed text-ink-2">
+              None of this is compulsory. Next to the bar there is{' '}
+              <strong className="font-medium text-ink">Add by form</strong> with every field as a
+              plain dropdown, and every entry can be clicked open and edited or deleted afterwards.
+              The typing is a shortcut, not a rule you have to learn.
             </p>
           </div>
         </Panel>

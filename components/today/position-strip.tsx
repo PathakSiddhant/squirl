@@ -18,7 +18,7 @@ import type { Position } from '@/lib/domain/position';
  * whole idea, because "parked" means nothing to someone seeing it first time.
  */
 const CELLS: Array<{
-  key: 'inHand' | 'parked' | 'owedToMe' | 'iOwe';
+  key: 'inHand' | 'parked' | 'invested' | 'owedToMe' | 'iOwe';
   label: string;
   hint: string;
   tone: string;
@@ -35,10 +35,18 @@ const CELLS: Array<{
   },
   {
     key: 'parked',
-    label: 'Stashed',
+    label: 'Set aside',
     hint: 'Yours, kept out of reach',
     tone: 'text-[var(--parked-text)]',
     dot: 'bg-[var(--parked)]',
+    href: '/accounts',
+  },
+  {
+    key: 'invested',
+    label: 'Invested',
+    hint: 'Yours, value moves',
+    tone: 'text-[var(--acorn-deep)]',
+    dot: 'bg-[var(--acorn)]',
     href: '/accounts',
   },
   {
@@ -80,7 +88,7 @@ export function PositionStrip({ position }: { position: Position }) {
         </button>
       </div>
 
-      <div className="grid grid-cols-2 gap-px overflow-hidden rounded-md border border-line bg-line sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-px overflow-hidden rounded-md border border-line bg-line sm:grid-cols-3 lg:grid-cols-5">
         {CELLS.map((cell) => (
           <Link
             key={cell.key}

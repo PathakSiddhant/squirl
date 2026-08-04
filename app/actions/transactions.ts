@@ -7,7 +7,7 @@ import { today } from '@/lib/date';
 import { db } from '@/lib/db/client';
 import { newId } from '@/lib/db/id';
 import { debts, installments, people, transactions } from '@/lib/db/schema';
-import { parseCapture } from '@/lib/domain/capture';
+import { intendedDestination, parseCapture } from '@/lib/domain/capture';
 import { computeDebtPosition, splitRepayment } from '@/lib/domain/interest';
 import { getCaptureContext } from '@/lib/queries/reference';
 import { getDebtMovements } from '@/lib/queries/ledger';
@@ -64,11 +64,22 @@ export async function captureTransaction(raw: string): Promise<ActionResult<{ id
   const accountId = parsed.accountId ?? fallbackAccount;
   if (!accountId) return { ok: false, error: 'Add an account first' };
 
-  let counterAccountId = parsed.counterAccountId;
+  const counterAccountId = parsed.counterAccountId;
   if (parsed.kind === 'transfer') {
-    if (!counterAccountId) return { ok: false, error: 'Say where the money went, e.g. "moved 500 to parents"' };
+    if (!counterAccountId) {
+      // Name the actual problem. "Say where the money went" is maddening when
+      // you plainly did; the account simply does not exist yet.
+      const wanted = intendedDestination(text);
+      const names = context.accounts.map((a) => a.name).join(', ');
+      return {
+        ok: false,
+        error: wanted
+          ? `There is no account called "${wanted}". Create it on the Accounts page, then try again. You have: ${names}.`
+          : `Say which account it went into. You have: ${names}.`,
+      };
+    }
     if (counterAccountId === accountId) {
-      return { ok: false, error: 'Source and destination are the same account' };
+      return { ok: false, error: 'That is the same account on both sides. Pick a different destination.' };
     }
   }
 

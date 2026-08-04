@@ -73,7 +73,14 @@ const KIND_HINTS: Array<{ kind: TransactionKind; verbs: RegExp[]; nouns?: RegExp
   { kind: 'settle', verbs: [/\bsettled\b/, /\bpay(ed|ing)? back\b/, /\bchukaya\b/, /\bsettle\b/] },
   { kind: 'lend', verbs: [/\blent\b/, /\blend\b/, /\bloaned\b/, /\budhaar diya\b/, /\bdiya\b/] },
   { kind: 'borrow', verbs: [/\bborrowed\b/, /\bborrow\b/, /\budhaar liya\b/, /\bliya\b/] },
-  { kind: 'transfer', verbs: [/\bmoved\b/, /\btransferred\b/, /\btransfer\b/, /\bbheja\b/] },
+  {
+    kind: 'transfer',
+    verbs: [
+      /\bmoved\b/, /\btransferred\b/, /\btransfer\b/, /\bbheja\b/,
+      // Investing is a move, not a spend: the money is still yours.
+      /\binvested\b/, /\binvest\b/, /\bput\b/, /\bsaved\b/, /\bdeposited\b/, /\bwithdrew\b/, /\bwithdrawn\b/,
+    ],
+  },
   {
     kind: 'income',
     verbs: [/\bgot\b/, /\breceived\b/, /\bearned\b/, /\bmila\b/],
@@ -327,7 +334,10 @@ function extractAccounts(
   consume: (text: string, field: CaptureField) => void,
 ): { accountId: string | null; counterAccountId: string | null } {
   const hits: string[] = [];
-  for (const account of accounts) {
+
+  // Longest name first, so "Emergency fund" wins over a hypothetical "Fund".
+  const byLength = [...accounts].sort((a, b) => b.name.length - a.name.length);
+  for (const account of byLength) {
     const pattern = new RegExp(`\\b${escapeRegExp(account.name.toLowerCase())}\\b`);
     if (pattern.test(working)) {
       hits.push(account.id);
@@ -339,13 +349,28 @@ function extractAccounts(
     return { accountId: hits[0], counterAccountId: hits[1] };
   }
   if (kind === 'transfer' && hits.length === 1) {
-    // "moved 15000 to parents" names only the destination.
-    const parked = accounts.find((a) => a.id === hits[0])?.kind === 'parked';
-    return parked
+    // "moved 15000 to savings" names only the destination. Anything that is
+    // not spendable is assumed to be where the money went.
+    const kindOfHit = accounts.find((a) => a.id === hits[0])?.kind;
+    const isDestination = kindOfHit === 'parked' || kindOfHit === 'invest';
+    return isDestination
       ? { accountId: null, counterAccountId: hits[0] }
       : { accountId: hits[0], counterAccountId: null };
   }
   return { accountId: hits[0] ?? null, counterAccountId: null };
+}
+
+/**
+ * The word a transfer was aimed at, when it matched no account.
+ *
+ * Used to say "there is no account called investment" instead of the useless
+ * "say where the money went", which is maddening when you plainly did.
+ */
+export function intendedDestination(input: string): string | null {
+  const match = input
+    .toLowerCase()
+    .match(/\b(?:to|into|in|towards)\s+([a-z][a-z\s'-]{1,28}?)(?:\s+(?:via|by|through|using|from)\b|$)/);
+  return match ? match[1].trim() : null;
 }
 
 function extractCategory(
