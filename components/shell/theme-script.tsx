@@ -7,7 +7,7 @@
 const script = `
 (function () {
   try {
-    var stored = localStorage.getItem('hisaab-theme');
+    var stored = localStorage.getItem('squirl-theme');
     var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     var dark = stored === 'dark' || ((!stored || stored === 'system') && prefersDark);
     document.documentElement.classList.toggle('dark', dark);

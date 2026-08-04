@@ -25,6 +25,7 @@ import { Coins } from '@phosphor-icons/react/dist/csr/Coins';
 import { DeviceMobile } from '@phosphor-icons/react/dist/csr/DeviceMobile';
 import { DotsThree } from '@phosphor-icons/react/dist/csr/DotsThree';
 import { FilmSlate } from '@phosphor-icons/react/dist/csr/FilmSlate';
+import { Flame } from '@phosphor-icons/react/dist/csr/Flame';
 import { ForkKnife } from '@phosphor-icons/react/dist/csr/ForkKnife';
 import { GearSix } from '@phosphor-icons/react/dist/csr/GearSix';
 import { Gift } from '@phosphor-icons/react/dist/csr/Gift';
@@ -35,6 +36,7 @@ import { Heartbeat } from '@phosphor-icons/react/dist/csr/Heartbeat';
 import { House } from '@phosphor-icons/react/dist/csr/House';
 import { Lightning } from '@phosphor-icons/react/dist/csr/Lightning';
 import { ListDashes } from '@phosphor-icons/react/dist/csr/ListDashes';
+import { Question } from '@phosphor-icons/react/dist/csr/Question';
 import { Receipt } from '@phosphor-icons/react/dist/csr/Receipt';
 import { Repeat } from '@phosphor-icons/react/dist/csr/Repeat';
 import { Scales } from '@phosphor-icons/react/dist/csr/Scales';
@@ -67,6 +69,7 @@ const ICONS: Record<string, PhosphorIcon> = {
   DeviceMobile,
   DotsThree,
   FilmSlate,
+  Flame,
   ForkKnife,
   GearSix,
   Gift,
@@ -77,6 +80,7 @@ const ICONS: Record<string, PhosphorIcon> = {
   House,
   Lightning,
   ListDashes,
+  Question,
   Receipt,
   Repeat,
   Scales,

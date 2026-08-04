@@ -21,12 +21,12 @@ export function ThemeToggle({ className }: { className?: string }) {
 
   useEffect(() => {
     setMounted(true);
-    setTheme((localStorage.getItem('hisaab-theme') as Theme) ?? 'system');
+    setTheme((localStorage.getItem('squirl-theme') as Theme) ?? 'system');
   }, []);
 
   const apply = (next: Theme) => {
     setTheme(next);
-    localStorage.setItem('hisaab-theme', next);
+    localStorage.setItem('squirl-theme', next);
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     const dark = next === 'dark' || (next === 'system' && prefersDark);
     document.documentElement.classList.toggle('dark', dark);

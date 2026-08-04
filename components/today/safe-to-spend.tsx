@@ -45,8 +45,8 @@ export function SafeToSpend({
   const display = useCountUp(isUnderwater ? shortfall : safeToSpend);
 
   return (
-    <section className="rounded-md border border-line bg-surface">
-      <div className="px-5 pt-5">
+    <section className="flex flex-col rounded-md border border-line bg-surface">
+      <div className="px-5 pb-4 pt-5">
         <div className="flex items-center gap-2">
           <h2 className="label">{isUnderwater ? 'Short by' : 'Safe to spend'}</h2>
           {isUnderwater ? (
@@ -57,13 +57,12 @@ export function SafeToSpend({
           ) : null}
         </div>
 
+        {/* Rounded to the rupee. Paise on a headline figure is noise, and the
+            count-up would otherwise land on a jittering fractional value. */}
         <p
-          className={cn(
-            'hero-figure mt-2',
-            isUnderwater ? 'text-[var(--i-owe-text)]' : 'text-ink',
-          )}
+          className={cn('hero-figure mt-2', isUnderwater ? 'text-[var(--i-owe-text)]' : 'text-ink')}
         >
-          {formatMoney(display)}
+          {formatMoney(display, { paise: false })}
         </p>
 
         <p className="mt-2 max-w-[52ch] text-[0.875rem] text-ink-2">
@@ -83,11 +82,14 @@ export function SafeToSpend({
         </p>
       </div>
 
+      {/* mt-auto pins the disclosure to the bottom, so when this panel is
+          stretched to match a taller neighbour the slack sits above the rule
+          rather than leaving a dead gap under it. */}
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        className="mt-4 flex w-full items-center justify-between gap-2 border-t border-line px-5 py-2.5 text-left text-[0.8125rem] text-ink-2 transition-colors hover:bg-surface-2"
+        className="mt-auto flex w-full items-center justify-between gap-2 border-t border-line px-5 py-2.5 text-left text-[0.8125rem] text-ink-2 transition-colors hover:bg-surface-2"
       >
         <span>How this number is built</span>
         <CaretDown
