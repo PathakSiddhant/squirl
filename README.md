@@ -173,10 +173,26 @@ one-click JSON export anyway.
 
 ### On your phone
 
-Run `npm run build && npm start`, open the machine's address from your phone on
-the same network, and use "Add to Home Screen". It installs as a standalone
-app. Keep it on your own network: there is no login, because there is no notion
-of other users.
+Squirl is a PWA, so it installs to the home screen and opens without browser
+chrome. It still runs from your computer; the phone is only the screen.
+
+1. Start it on the computer: `npm run build && npm start`
+2. Find that machine's address on your network. `npm run dev` prints it, or run
+   `ipconfig` on Windows and take the Wi-Fi IPv4 address.
+3. With the phone on the **same Wi-Fi**, open `http://THAT-IP:3000`
+4. Android Chrome: menu, "Add to Home screen".
+   iPhone Safari: share, "Add to Home Screen".
+
+The computer has to be awake and running the app for the phone to reach it. If
+the page will not load, Windows Firewall is usually the cause: allow Node.js on
+private networks when it asks, or add an inbound rule for port 3000.
+
+Away from home, put both devices on [Tailscale](https://tailscale.com) and use
+the machine's Tailscale address instead. That keeps everything private without
+exposing anything to the internet.
+
+There is no login, because there is no notion of other users. Do not port
+forward this to the public internet.
 
 ---
 
