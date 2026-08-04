@@ -9,14 +9,14 @@ import './globals.css';
 
 export const metadata: Metadata = {
   title: {
-    default: 'Hisaab',
-    template: '%s · Hisaab',
+    default: 'Squirl',
+    template: '%s · Squirl',
   },
   description:
     'A personal money ledger that knows the difference between money you spent, money you lent, and money you parked.',
-  applicationName: 'Hisaab',
+  applicationName: 'Squirl',
   manifest: '/manifest.webmanifest',
-  appleWebApp: { capable: true, title: 'Hisaab', statusBarStyle: 'default' },
+  appleWebApp: { capable: true, title: 'Squirl', statusBarStyle: 'default' },
   formatDetection: { telephone: false },
 };
 

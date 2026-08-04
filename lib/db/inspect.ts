@@ -14,7 +14,7 @@ async function main() {
 
   const line = (label: string, value: string) => console.log(`  ${label.padEnd(24)} ${value.padStart(14)}`);
 
-  console.log(`\nHISAAB, as of ${o.asOf}\n${'-'.repeat(42)}`);
+  console.log(`\nSQUIRL, as of ${o.asOf}\n${'-'.repeat(42)}`);
   line('in hand', formatMoney(p.inHand));
   line('parked with parents', formatMoney(p.parked));
   line('owed to me', formatMoney(p.owedToMe));

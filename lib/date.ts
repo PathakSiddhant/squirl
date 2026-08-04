@@ -1,5 +1,5 @@
 /**
- * Every date in Hisaab is a plain `YYYY-MM-DD` day string in IST.
+ * Every date in Squirl is a plain `YYYY-MM-DD` day string in IST.
  *
  * The user asked for the day, never the clock, so there are no timestamps in
  * the domain at all. Two rules keep this honest:

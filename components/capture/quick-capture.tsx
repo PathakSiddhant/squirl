@@ -46,6 +46,20 @@ export function QuickCapture({
     return () => clearInterval(timer);
   }, [value]);
 
+  /**
+   * Focus imperatively rather than with React's autoFocus.
+   *
+   * Next server-renders `caret-color: transparent` onto an autofocused input
+   * and the client never does, which is a hydration mismatch. Doing it here
+   * also means the mobile keyboard does not spring open the moment the page
+   * loads, which is the last thing you want when glancing at a balance.
+   */
+  useEffect(() => {
+    if (!autoFocus) return;
+    if (!window.matchMedia('(min-width: 1024px)').matches) return;
+    inputRef.current?.focus();
+  }, [autoFocus]);
+
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
@@ -92,7 +106,6 @@ export function QuickCapture({
         <input
           ref={inputRef}
           value={value}
-          autoFocus={autoFocus}
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Enter') {

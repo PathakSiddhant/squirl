@@ -167,7 +167,7 @@ export async function exportLedger(): Promise<string> {
 
   return JSON.stringify(
     {
-      app: 'hisaab',
+      app: 'squirl',
       version: 1,
       exportedOn: istToday(),
       accounts: accountRows,

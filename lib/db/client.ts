@@ -10,30 +10,30 @@ import * as schema from './schema';
  * new handle on every hot reload.
  */
 
-export const DATABASE_URL = process.env.DATABASE_URL ?? 'file:./data/hisaab.db';
+export const DATABASE_URL = process.env.DATABASE_URL ?? 'file:./data/squirl.db';
 
 type Drizzle = ReturnType<typeof drizzle<typeof schema>>;
 
 declare global {
   // eslint-disable-next-line no-var
-  var __hisaabClient: Client | undefined;
+  var __squirlClient: Client | undefined;
   // eslint-disable-next-line no-var
-  var __hisaabDb: Drizzle | undefined;
+  var __squirlDb: Drizzle | undefined;
 }
 
 function getClient(): Client {
-  if (!globalThis.__hisaabClient) {
-    globalThis.__hisaabClient = createClient({ url: DATABASE_URL });
+  if (!globalThis.__squirlClient) {
+    globalThis.__squirlClient = createClient({ url: DATABASE_URL });
     // Foreign keys are off by default in SQLite, which would silently allow
     // orphaned transactions pointing at deleted debts.
-    void globalThis.__hisaabClient.execute('PRAGMA foreign_keys = ON');
+    void globalThis.__squirlClient.execute('PRAGMA foreign_keys = ON');
   }
-  return globalThis.__hisaabClient;
+  return globalThis.__squirlClient;
 }
 
 function getDb(): Drizzle {
-  if (!globalThis.__hisaabDb) globalThis.__hisaabDb = drizzle(getClient(), { schema });
-  return globalThis.__hisaabDb;
+  if (!globalThis.__squirlDb) globalThis.__squirlDb = drizzle(getClient(), { schema });
+  return globalThis.__squirlDb;
 }
 
 /**

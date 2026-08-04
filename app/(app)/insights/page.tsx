@@ -78,7 +78,7 @@ export default async function InsightsPage(props: PageProps<'/insights'>) {
         <CalendarHeat days={heatDays} today={asOf} />
       </Panel>
 
-      <div className="grid gap-5 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         <Panel>
           <PanelHeader title="Where it went" hint={`${outgoing.length} categories`} />
           <CategoryBars rows={outgoing} total={spent} />
@@ -145,7 +145,7 @@ export default async function InsightsPage(props: PageProps<'/insights'>) {
       {incoming.length > 0 ? (
         <Panel>
           <PanelHeader title="Where it came from" hint={`${formatMoney(earned)} in this window`} />
-          <CategoryBars rows={incoming} total={earned} />
+          <CategoryBars rows={incoming} total={earned} tone="in" />
         </Panel>
       ) : null}
     </div>

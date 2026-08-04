@@ -84,7 +84,7 @@ export default async function LoansPage() {
           <Empty
             icon={<Bank size={22} />}
             title="No loans"
-            body="Add one and Hisaab builds the full installment schedule, then counts every upcoming payment against what is safe to spend today."
+            body="Add one and Squirl builds the full installment schedule, then counts every upcoming payment against what is safe to spend today."
           />
         </div>
       ) : (

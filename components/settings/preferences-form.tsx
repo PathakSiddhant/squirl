@@ -38,7 +38,7 @@ export function PreferencesForm({
 
   return (
     <div className="px-4 pb-4">
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <Field
           label="Look ahead, days"
           hint="How far forward a promise counts against today"
@@ -81,7 +81,7 @@ export function ExportButton() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `hisaab-${new Date().toISOString().slice(0, 10)}.json`;
+      link.download = `squirl-${new Date().toISOString().slice(0, 10)}.json`;
       link.click();
       URL.revokeObjectURL(url);
       toast.success('Exported');

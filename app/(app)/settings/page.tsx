@@ -31,7 +31,7 @@ export default async function SettingsPage() {
           hint="Everything the capture bar understands. It parses on your machine, with no model call."
         />
         <div className="px-4 pb-4">
-          <ul className="grid gap-1.5 sm:grid-cols-2">
+          <ul className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
             {CAPTURE_EXAMPLES.map((example) => (
               <li
                 key={example}
@@ -56,7 +56,7 @@ export default async function SettingsPage() {
         />
         <div className="px-4 pb-4">
           <p className="mb-3 max-w-[68ch] text-[0.875rem] text-ink-2">
-            Everything lives in <code className="font-mono text-[0.8125rem] text-ink">data/hisaab.db</code>.
+            Everything lives in <code className="font-mono text-[0.8125rem] text-ink">data/squirl.db</code>.
             Copy that file and you have copied your entire financial history. Delete it and nothing
             of yours remains. There is no account, no sync and no server.
           </p>

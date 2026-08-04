@@ -80,7 +80,7 @@ export function Reconcile({
   return (
     <div className="mt-3 rounded-sm border border-line bg-surface-2 p-3">
       <p className="text-[0.8125rem] text-ink-2">
-        Hisaab thinks {accountName} holds{' '}
+        Squirl thinks {accountName} holds{' '}
         <span className="money text-ink">{formatMoney(expected)}</span>. What does it actually say?
       </p>
 
