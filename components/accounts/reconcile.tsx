@@ -22,11 +22,14 @@ export function Reconcile({
   accountName,
   expected,
   today,
+  isInvestment = false,
 }: {
   accountId: string;
   accountName: string;
   expected: number;
   today: DayString;
+  /** Investments drift because the market moved, not because you forgot to log. */
+  isInvestment?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [actual, setActual] = useState('');
@@ -54,10 +57,16 @@ export function Reconcile({
         const diff = result.data.difference;
         toast.success(
           diff === 0
-            ? 'Spot on, nothing was missing'
+            ? isInvestment
+              ? 'No change since last time'
+              : 'Spot on, nothing was missing'
             : diff > 0
-              ? `Found ${formatMoney(diff)} you had not logged`
-              : `${formatMoney(-diff)} had gone out untracked`,
+              ? isInvestment
+                ? `Up ${formatMoney(diff)}`
+                : `Found ${formatMoney(diff)} you had not logged`
+              : isInvestment
+                ? `Down ${formatMoney(-diff)}`
+                : `${formatMoney(-diff)} had gone out untracked`,
         );
         setOpen(false);
         setActual('');
@@ -72,7 +81,7 @@ export function Reconcile({
     return (
       <Button size="sm" variant="ghost" onClick={() => setOpen(true)}>
         <Scales size={13} />
-        Check against reality
+        {isInvestment ? 'Update value' : 'Check against reality'}
       </Button>
     );
   }
@@ -80,8 +89,18 @@ export function Reconcile({
   return (
     <div className="mt-3 rounded-sm border border-line bg-surface-2 p-3">
       <p className="text-[0.8125rem] text-ink-2">
-        Squirl thinks {accountName} holds{' '}
-        <span className="money text-ink">{formatMoney(expected)}</span>. What does it actually say?
+        {isInvestment ? (
+          <>
+            You have put <span className="money text-ink">{formatMoney(expected)}</span> into{' '}
+            {accountName}. What is it worth today?
+          </>
+        ) : (
+          <>
+            Squirl thinks {accountName} holds{' '}
+            <span className="money text-ink">{formatMoney(expected)}</span>. What does it actually
+            say?
+          </>
+        )}
       </p>
 
       <div className="mt-2.5 flex flex-wrap items-center gap-2">
@@ -96,14 +115,14 @@ export function Reconcile({
           }}
           inputMode="decimal"
           autoFocus
-          placeholder="Real balance"
-          aria-label={`Actual balance in ${accountName}`}
+          placeholder={isInvestment ? 'Worth today' : 'Real balance'}
+          aria-label={isInvestment ? `Current value of ${accountName}` : `Actual balance in ${accountName}`}
           className="h-8 w-32"
         />
         <Input
           value={note}
           onChange={(e) => setNote(e.target.value)}
-          placeholder="What do you think it was?"
+          placeholder={isInvestment ? 'Optional note' : 'What do you think it was?'}
           className="h-8 min-w-0 flex-1"
         />
       </div>
@@ -119,7 +138,13 @@ export function Reconcile({
             {difference > 0 ? '+' : '−'}
             {formatMoney(Math.abs(difference))}
           </span>{' '}
-          {difference > 0 ? 'more than expected, so something came in unlogged.' : 'missing, so something went out unlogged.'}
+          {isInvestment
+            ? difference > 0
+              ? 'in profit so far. Recorded as a gain, not as income.'
+              : 'down so far. Recorded as a loss, not as spending.'
+            : difference > 0
+              ? 'more than expected, so something came in unlogged.'
+              : 'missing, so something went out unlogged.'}
         </p>
       ) : null}
 
