@@ -3,6 +3,7 @@ import { asc, eq } from 'drizzle-orm';
 import type { DayString } from '../date';
 import { db } from '../db/client';
 import { debts, people, type Debt, type Person } from '../db/schema';
+export type { Person };
 import { computeDebtPosition, type DebtEvent, type DebtPosition } from '../domain/interest';
 import { sum } from '../money';
 import { getAllDebtMovements } from './ledger';
@@ -76,27 +77,42 @@ export interface PersonStanding {
   owedToYou: number;
   youOwe: number;
   openDebts: DebtWithPosition[];
+  /** Settled, written off, or fully repaid. Kept visible so it can be undone. */
+  closedDebts: DebtWithPosition[];
   nextDueOn: DayString | null;
   hasOverdue: boolean;
 }
 
-/** Rolls debts up per person, which is how the user actually thinks about it. */
+/**
+ * Rolls debts up per person, which is how the user actually thinks about it.
+ *
+ * Everyone in `allPeople` gets a row, even with nothing outstanding. Building
+ * the list from debts alone hid anyone whose agreements were all settled or
+ * written off, which left no way to reopen or delete them, and hid people
+ * created by quick capture who never got an agreement at all.
+ */
 export function standingsByPerson(
   entries: DebtWithPosition[],
   asOf: DayString,
+  allPeople: Person[] = [],
 ): PersonStanding[] {
   const byPerson = new Map<string, PersonStanding>();
 
+  const blank = (person: Person): PersonStanding => ({
+    person,
+    net: 0,
+    owedToYou: 0,
+    youOwe: 0,
+    openDebts: [],
+    closedDebts: [],
+    nextDueOn: null,
+    hasOverdue: false,
+  });
+
+  for (const person of allPeople) byPerson.set(person.id, blank(person));
+
   for (const entry of entries) {
-    const existing = byPerson.get(entry.person.id) ?? {
-      person: entry.person,
-      net: 0,
-      owedToYou: 0,
-      youOwe: 0,
-      openDebts: [],
-      nextDueOn: null,
-      hasOverdue: false,
-    };
+    const existing = byPerson.get(entry.person.id) ?? blank(entry.person);
 
     const isOpen = entry.debt.status === 'open' && !entry.position.isCleared;
     if (isOpen) {
@@ -112,13 +128,22 @@ export function standingsByPerson(
         }
         if (entry.debt.dueOn < asOf) existing.hasOverdue = true;
       }
+    } else {
+      existing.closedDebts.push(entry);
     }
 
     existing.net = existing.owedToYou - existing.youOwe;
     byPerson.set(entry.person.id, existing);
   }
 
-  return [...byPerson.values()].sort((a, b) => Math.abs(b.net) - Math.abs(a.net));
+  // Anyone you actually owe or are owed floats to the top; the rest follow by name.
+  return [...byPerson.values()].sort((a, b) => {
+    const weight = Math.abs(b.net) - Math.abs(a.net);
+    if (weight !== 0) return weight;
+    const activity = b.openDebts.length - a.openDebts.length;
+    if (activity !== 0) return activity;
+    return a.person.name.localeCompare(b.person.name);
+  });
 }
 
 export interface DebtTotals {

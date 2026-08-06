@@ -4,18 +4,27 @@ import { CaretDown } from '@phosphor-icons/react/dist/csr/CaretDown';
 import { useState, useTransition } from 'react';
 import { toast } from 'sonner';
 
-import { closeDebt, recordRepayment } from '@/app/actions/debts';
+import {
+  archivePerson,
+  closeDebt,
+  deleteDebt,
+  deletePerson,
+  recordRepayment,
+  reopenDebt,
+} from '@/app/actions/debts';
 import { cn } from '@/lib/cn';
 import { formatDay, formatRelativeDay, type DayString } from '@/lib/date';
 import { describeTerms } from '@/lib/domain/interest';
 import { formatMoney, parseAmount } from '@/lib/money';
 
 import { Button } from '../ui/button';
+import { ConfirmButton } from '../ui/confirm-button';
 import { Input } from '../ui/primitives';
 
 export interface DebtView {
   id: string;
   direction: 'lent' | 'borrowed';
+  status: 'open' | 'settled' | 'written_off';
   openedOn: DayString;
   dueOn: DayString | null;
   interestKind: 'none' | 'simple' | 'compound';
@@ -26,6 +35,7 @@ export interface DebtView {
   payoffTotal: number;
   principalAdvanced: number;
   totalRepaid: number;
+  movementCount: number;
 }
 
 export interface PersonView {
@@ -36,14 +46,15 @@ export interface PersonView {
   youOwe: number;
   hasOverdue: boolean;
   debts: DebtView[];
+  closedDebts: DebtView[];
 }
 
 /**
  * One person, and exactly where you stand with them.
  *
  * The headline is the net position, because that is the question actually
- * being asked. The individual agreements sit underneath for when the answer
- * needs unpacking.
+ * being asked. Closed agreements stay listed underneath rather than vanishing,
+ * so a write-off can be undone and a mistake can be erased.
  */
 export function PersonCard({
   person,
@@ -55,67 +66,128 @@ export function PersonCard({
   today: DayString;
 }) {
   const [open, setOpen] = useState(false);
+  const [pending, startTransition] = useTransition();
+
+  const hasAnything = person.debts.length > 0 || person.closedDebts.length > 0;
   const settled = person.debts.length === 0;
 
   return (
     <section className="rounded-md border border-line bg-surface">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-        disabled={settled}
-        className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors duration-[var(--t-state)] enabled:hover:bg-surface-2"
-      >
-        <span
-          aria-hidden
-          className="flex size-8 shrink-0 items-center justify-center rounded-full bg-surface-2 text-[0.8125rem] font-medium text-ink-2"
+      <div className="flex items-center gap-3 px-4 py-3">
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          aria-expanded={open}
+          className="flex min-w-0 flex-1 items-center gap-3 text-left"
         >
-          {person.name.slice(0, 1).toUpperCase()}
-        </span>
-
-        <span className="min-w-0 flex-1">
-          <span className="block truncate text-[0.9375rem] text-ink">{person.name}</span>
-          <span className="block truncate text-[0.75rem] text-ink-3">
-            {settled
-              ? 'All settled'
-              : `${person.debts.length} open ${person.debts.length === 1 ? 'agreement' : 'agreements'}`}
-            {person.hasOverdue ? (
-              <span className="ml-1.5 text-[var(--i-owe-text)]">past the date</span>
-            ) : null}
-          </span>
-        </span>
-
-        <span className="shrink-0 text-right">
           <span
-            className={cn(
-              'money block text-[0.9375rem]',
-              person.net > 0
-                ? 'text-[var(--owed-me-text)]'
-                : person.net < 0
-                  ? 'text-[var(--i-owe-text)]'
-                  : 'text-ink-3',
-            )}
+            aria-hidden
+            className="flex size-8 shrink-0 items-center justify-center rounded-full bg-surface-2 text-[0.8125rem] font-medium text-ink-2"
           >
-            {formatMoney(Math.abs(person.net))}
+            {person.name.slice(0, 1).toUpperCase()}
           </span>
-          <span className="block text-[0.75rem] text-ink-3">
-            {person.net > 0 ? 'owes you' : person.net < 0 ? 'you owe' : 'settled'}
+
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-[0.9375rem] text-ink">{person.name}</span>
+            <span className="block truncate text-[0.75rem] text-ink-3">
+              {person.debts.length > 0
+                ? `${person.debts.length} open ${person.debts.length === 1 ? 'agreement' : 'agreements'}`
+                : person.closedDebts.length > 0
+                  ? `${person.closedDebts.length} closed, nothing outstanding`
+                  : 'No agreements yet'}
+              {person.hasOverdue ? (
+                <span className="ml-1.5 text-[var(--i-owe-text)]">past the date</span>
+              ) : null}
+            </span>
           </span>
-        </span>
 
-        {!settled ? (
-          <CaretDown
-            size={14}
-            className={cn('shrink-0 text-ink-3 transition-transform duration-[var(--t-move)]', open && 'rotate-180')}
-          />
-        ) : null}
-      </button>
+          <span className="shrink-0 text-right">
+            <span
+              className={cn(
+                'money block text-[0.9375rem]',
+                person.net > 0
+                  ? 'text-[var(--owed-me-text)]'
+                  : person.net < 0
+                    ? 'text-[var(--i-owe-text)]'
+                    : 'text-ink-3',
+              )}
+            >
+              {formatMoney(Math.abs(person.net))}
+            </span>
+            <span className="block text-[0.75rem] text-ink-3">
+              {person.net > 0 ? 'owes you' : person.net < 0 ? 'you owe' : 'settled'}
+            </span>
+          </span>
 
-      {open ? (
-        <div className="divide-y divide-line border-t border-line">
+          {hasAnything ? (
+            <CaretDown
+              size={14}
+              className={cn(
+                'shrink-0 text-ink-3 transition-transform duration-[var(--t-move)]',
+                open && 'rotate-180',
+              )}
+            />
+          ) : null}
+        </button>
+      </div>
+
+      {open || !hasAnything ? (
+        <div className="border-t border-line">
           {person.debts.map((debt) => (
-            <DebtRow key={debt.id} debt={debt} accounts={accounts} today={today} personName={person.name} />
+            <DebtRow
+              key={debt.id}
+              debt={debt}
+              accounts={accounts}
+              today={today}
+              personName={person.name}
+            />
           ))}
+
+          {person.closedDebts.length > 0 ? (
+            <div className="border-t border-line bg-surface-2/40">
+              <p className="px-4 pt-2.5 text-[0.75rem] font-medium text-ink-3">Closed</p>
+              {person.closedDebts.map((debt) => (
+                <ClosedDebtRow key={debt.id} debt={debt} today={today} personName={person.name} />
+              ))}
+            </div>
+          ) : null}
+
+          <div className="flex flex-wrap items-center justify-end gap-2 border-t border-line px-4 py-2.5">
+            <span className="mr-auto text-[0.75rem] text-ink-3">
+              {settled
+                ? 'Nothing outstanding with them.'
+                : 'Settle everything before removing them.'}
+            </span>
+            <Button
+              size="sm"
+              variant="ghost"
+              disabled={pending}
+              onClick={() =>
+                startTransition(async () => {
+                  const result = await archivePerson(person.id);
+                  if (result.ok) toast.success(`${person.name} hidden`);
+                  else toast.error(result.error);
+                })
+              }
+            >
+              Hide
+            </Button>
+            <ConfirmButton
+              confirmLabel={
+                person.debts.length + person.closedDebts.length > 0
+                  ? 'Delete them and their history?'
+                  : 'Delete for good?'
+              }
+              disabled={pending}
+              onConfirm={async () => {
+                const result = await deletePerson(person.id);
+                if (result.ok) toast.success(`${person.name} deleted`);
+                else toast.error(result.error);
+              }}
+            >
+              Delete person
+            </ConfirmButton>
+          </div>
         </div>
       ) : null}
     </section>
@@ -168,7 +240,7 @@ function DebtRow({
   };
 
   return (
-    <div className="px-4 py-3">
+    <div className="border-b border-line px-4 py-3 last:border-b-0">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <div className="min-w-0">
           <p className="text-[0.875rem] text-ink">
@@ -242,21 +314,96 @@ function DebtRow({
         <Button size="sm" variant="outline" disabled={pending} onClick={() => submit(true)}>
           Settle all
         </Button>
-        <Button
-          size="sm"
-          variant="ghost"
-          disabled={pending}
-          onClick={() =>
-            startTransition(async () => {
+
+        <span className="ml-auto flex items-center gap-1">
+          <ConfirmButton
+            confirmLabel="Write it off?"
+            disabled={pending}
+            onConfirm={async () => {
               const result = await closeDebt(debt.id, 'written_off', today);
-              if (result.ok) toast.success('Written off');
+              if (result.ok) toast.success('Written off, and kept in the record');
               else toast.error(result.error);
-            })
-          }
-        >
-          Write off
-        </Button>
+            }}
+          >
+            Write off
+          </ConfirmButton>
+          <ConfirmButton
+            confirmLabel={debt.movementCount > 0 ? `Erase and ${debt.movementCount} entries?` : 'Erase it?'}
+            disabled={pending}
+            onConfirm={async () => {
+              const result = await deleteDebt(debt.id);
+              if (result.ok) {
+                toast.success(
+                  result.data.removed > 0
+                    ? `Deleted, along with ${result.data.removed} ${result.data.removed === 1 ? 'entry' : 'entries'}`
+                    : 'Deleted',
+                );
+              } else {
+                toast.error(result.error);
+              }
+            }}
+          >
+            Delete
+          </ConfirmButton>
+        </span>
       </div>
+    </div>
+  );
+}
+
+function ClosedDebtRow({
+  debt,
+  today,
+  personName,
+}: {
+  debt: DebtView;
+  today: DayString;
+  personName: string;
+}) {
+  const [pending, startTransition] = useTransition();
+  const isLent = debt.direction === 'lent';
+
+  return (
+    <div className="flex flex-wrap items-center gap-2 px-4 py-2.5">
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-[0.8125rem] text-ink-2">
+          {isLent ? `Lent ${personName}` : `Borrowed from ${personName}`}{' '}
+          <span className="money">{formatMoney(debt.principalAdvanced)}</span>
+          <span className="ml-1.5 text-ink-3">
+            {debt.status === 'written_off' ? 'written off' : 'settled'}
+          </span>
+        </p>
+        <p className="text-[0.75rem] text-ink-3">
+          opened {formatDay(debt.openedOn, today)}
+          {debt.movementCount === 0 ? ' · no entries recorded' : ''}
+        </p>
+      </div>
+
+      <Button
+        size="sm"
+        variant="ghost"
+        disabled={pending}
+        onClick={() =>
+          startTransition(async () => {
+            const result = await reopenDebt(debt.id);
+            if (result.ok) toast.success('Reopened');
+            else toast.error(result.error);
+          })
+        }
+      >
+        Reopen
+      </Button>
+      <ConfirmButton
+        confirmLabel={debt.movementCount > 0 ? `Erase and ${debt.movementCount} entries?` : 'Erase it?'}
+        disabled={pending}
+        onConfirm={async () => {
+          const result = await deleteDebt(debt.id);
+          if (result.ok) toast.success('Deleted');
+          else toast.error(result.error);
+        }}
+      >
+        Delete
+      </ConfirmButton>
     </div>
   );
 }

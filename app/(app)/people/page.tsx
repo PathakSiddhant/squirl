@@ -19,9 +19,26 @@ export default async function PeoplePage() {
     getPeople(),
   ]);
 
-  const standings = standingsByPerson(entries, asOf);
+  const standings = standingsByPerson(entries, asOf, people);
   const totals = debtTotals(entries);
   const net = totals.owedToMe - totals.owedByMe;
+
+  const toDebtView = (entry: (typeof entries)[number]) => ({
+    id: entry.debt.id,
+    direction: entry.debt.direction,
+    status: entry.debt.status,
+    openedOn: entry.debt.openedOn,
+    dueOn: entry.debt.dueOn,
+    interestKind: entry.debt.interestKind,
+    rateBpsPerMonth: entry.debt.rateBpsPerMonth,
+    note: entry.debt.note,
+    outstandingPrincipal: entry.position.outstandingPrincipal,
+    accruedInterest: entry.position.accruedInterest,
+    payoffTotal: entry.position.payoffTotal,
+    principalAdvanced: entry.position.principalAdvanced,
+    totalRepaid: entry.position.totalRepaid,
+    movementCount: entry.events.length,
+  });
 
   const views: PersonView[] = standings.map((standing) => ({
     id: standing.person.id,
@@ -30,22 +47,11 @@ export default async function PeoplePage() {
     owedToYou: standing.owedToYou,
     youOwe: standing.youOwe,
     hasOverdue: standing.hasOverdue,
-    debts: standing.openDebts.map((entry) => ({
-      id: entry.debt.id,
-      direction: entry.debt.direction,
-      openedOn: entry.debt.openedOn,
-      dueOn: entry.debt.dueOn,
-      interestKind: entry.debt.interestKind,
-      rateBpsPerMonth: entry.debt.rateBpsPerMonth,
-      note: entry.debt.note,
-      outstandingPrincipal: entry.position.outstandingPrincipal,
-      accruedInterest: entry.position.accruedInterest,
-      payoffTotal: entry.position.payoffTotal,
-      principalAdvanced: entry.position.principalAdvanced,
-      totalRepaid: entry.position.totalRepaid,
-    })),
+    debts: standing.openDebts.map(toDebtView),
+    closedDebts: standing.closedDebts.map(toDebtView),
   }));
 
+  // Money can leave any account you can actually reach, including investments.
   const spendable = accounts
     .filter((a) => a.kind !== 'parked')
     .map((a) => ({ id: a.id, name: a.name }));

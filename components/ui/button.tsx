@@ -31,6 +31,8 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
   asChild?: boolean;
 }
 
+export { VARIANTS as BUTTON_VARIANTS, SIZES as BUTTON_SIZES };
+
 export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(function Button(
   { className, variant = 'secondary', size = 'md', asChild = false, ...props },
   ref,

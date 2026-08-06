@@ -95,6 +95,14 @@ const QUESTIONS = [
     a: 'Click any entry, anywhere it appears. It opens with every field editable and a Delete button. Nothing you log is permanent, and correcting a mistake takes two clicks.',
   },
   {
+    q: 'What is the difference between writing off an agreement and deleting it?',
+    a: 'Writing off says "this happened and I am never getting it back". The money genuinely left, so it stays in your history and still counts against what you are worth. Deleting says "this never happened", which is what you want after a mistake or a test entry. Deleting an agreement also removes every movement recorded against it, so the money comes back into your balances. Both options sit on each agreement under People.',
+  },
+  {
+    q: 'How do I remove a person entirely?',
+    a: 'Open them on the People page and use Delete person. That erases their agreements and the movements on those agreements. If you would rather keep the history but stop seeing them, use Hide instead, which is reversible. Every destructive button asks once before it does anything.',
+  },
+  {
     q: 'It assumed UPI but I paid by card. How do I fix it?',
     a: 'Two ways. Say it in the line, like "899 netflix card" or "moved 1500 to investments netbanking", and it will pick that up. Or log it, click the entry, and change how it was paid. The guess is only a default, never a decision.',
   },

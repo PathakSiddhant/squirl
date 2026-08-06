@@ -116,6 +116,79 @@ export async function reopenDebt(debtId: string): Promise<ActionResult> {
   return { ok: true, data: undefined };
 }
 
+/**
+ * Erases an agreement and every movement recorded against it.
+ *
+ * Distinct from writing it off. A write-off says "this happened and I am never
+ * getting it back", and stays in the record because it is true. Deleting says
+ * "this never happened", which is what you want after a mistake or a test
+ * entry. Both need to exist, and neither can stand in for the other.
+ */
+export async function deleteDebt(debtId: string): Promise<ActionResult<{ removed: number }>> {
+  const [debt] = await db.select().from(debts).where(eq(debts.id, debtId)).limit(1);
+  if (!debt) return { ok: false, error: 'That agreement is already gone' };
+
+  const movements = await db
+    .select({ id: transactions.id })
+    .from(transactions)
+    .where(eq(transactions.debtId, debtId));
+
+  // transactions.debt_id cascades, so the movements go with the debt row and
+  // the money they moved is removed from every balance at the same time.
+  await db.delete(debts).where(eq(debts.id, debtId));
+
+  refreshAll();
+  return { ok: true, data: { removed: movements.length } };
+}
+
+/** What deleting a person would take with them, so the warning is specific. */
+export async function personImpact(
+  personId: string,
+): Promise<{ name: string; debts: number; movements: number }> {
+  const [person] = await db.select().from(people).where(eq(people.id, personId)).limit(1);
+  const theirDebts = await db.select({ id: debts.id }).from(debts).where(eq(debts.personId, personId));
+  const movements = await db
+    .select({ id: transactions.id })
+    .from(transactions)
+    .where(eq(transactions.personId, personId));
+
+  return {
+    name: person?.name ?? 'Unknown',
+    debts: theirDebts.length,
+    movements: movements.length,
+  };
+}
+
+/**
+ * Removes a person and everything that only existed because of them.
+ *
+ * Their agreements cascade, and so do the movements on those agreements.
+ * Movements that merely mention them, like a repayment logged loosely, keep
+ * their money but lose the name, because deleting real money to tidy up a
+ * contact list would be the wrong trade.
+ */
+export async function deletePerson(personId: string): Promise<ActionResult> {
+  const [person] = await db.select().from(people).where(eq(people.id, personId)).limit(1);
+  if (!person) return { ok: false, error: 'That person is already gone' };
+
+  await db.delete(people).where(eq(people.id, personId));
+  refreshAll();
+  return { ok: true, data: undefined };
+}
+
+/** Hides someone without touching the history. The reversible option. */
+export async function archivePerson(personId: string): Promise<ActionResult> {
+  await db.update(people).set({ archivedAt: Date.now() }).where(eq(people.id, personId));
+  refreshAll();
+  return { ok: true, data: undefined };
+}
+
+export async function restorePerson(personId: string): Promise<ActionResult> {
+  await db.update(people).set({ archivedAt: null }).where(eq(people.id, personId));
+  refreshAll();
+  return { ok: true, data: undefined };
+}
+
 const personInput = z.object({
   name: z.string().trim().min(1, 'Give them a name').max(60),
   handle: z.string().trim().max(30).nullable().optional(),
