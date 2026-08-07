@@ -14,6 +14,8 @@ import {
 
 export const dayField = z.string().refine(isDayString, 'Use a real date');
 
+export const PAYMENT_METHOD_ENUM = z.enum(PAYMENT_METHODS);
+
 /** Amounts arrive from forms as rupee strings and leave as whole paise. */
 export const amountField = z
   .number()

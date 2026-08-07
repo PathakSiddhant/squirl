@@ -29,6 +29,12 @@ export const NAV_SECTIONS: NavSection[] = [
       { href: '/', label: 'Today', icon: 'House', blurb: 'How you are doing right now', primary: true },
       { href: '/ledger', label: 'History', icon: 'ListDashes', blurb: 'Everything, day by day', primary: true },
       { href: '/accounts', label: 'Accounts', icon: 'Wallet', blurb: 'Your piles of money' },
+      {
+        href: '/repeating',
+        label: 'Repeating',
+        icon: 'Repeat',
+        blurb: 'Subscriptions and auto-debits',
+      },
     ],
   },
   {

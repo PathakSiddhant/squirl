@@ -15,11 +15,17 @@ import { formatMoney } from '@/lib/money';
 import { debtTotals, getDebtsWithPositions } from '@/lib/queries/debts';
 import { getOverview } from '@/lib/queries/overview';
 import { getAchievements } from '@/lib/queries/progress';
+import { catchUpAutoPosted } from '@/app/actions/recurring';
 import { getCaptureContext } from '@/lib/queries/reference';
 
 export const dynamic = 'force-dynamic';
 
 export default async function TodayPage() {
+  // Autopay charges leave whether the app was open or not, so the first thing
+  // the home screen does is write down anything that happened while it was
+  // closed. Runs before the read, so the numbers below already include it.
+  await catchUpAutoPosted();
+
   const [overview, captureContext] = await Promise.all([getOverview(), getCaptureContext()]);
   const { position, runway, allowance } = overview;
 

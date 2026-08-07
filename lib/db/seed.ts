@@ -372,7 +372,9 @@ async function seedDemo(accountIds: Map<string, string>, categoryIds: Map<string
     }
   }
 
-  // ---- recurring commitments ---------------------------------------------
+  // ---- repeating money ----------------------------------------------------
+  // A mix on purpose: two confirm-first rules and two real auto-debits, so the
+  // demo shows both behaviours rather than only one.
   await db.insert(recurring).values([
     {
       id: newId('rec'),
@@ -381,9 +383,11 @@ async function seedDemo(accountIds: Map<string, string>, categoryIds: Map<string
       amount: 2000000,
       accountId: bank,
       categoryId: cat('stipend'),
-      cadence: 'monthly',
-      anchor: 3,
+      intervalUnit: 'month',
+      intervalCount: 1,
+      startsOn: nextAnchor(now, 3),
       nextDueOn: nextAnchor(now, 3),
+      autoPost: false,
       method: 'bank',
       active: true,
     },
@@ -394,10 +398,42 @@ async function seedDemo(accountIds: Map<string, string>, categoryIds: Map<string
       amount: 1500000,
       accountId: bank,
       counterAccountId: savings,
-      cadence: 'monthly',
-      anchor: 4,
+      intervalUnit: 'month',
+      intervalCount: 1,
+      startsOn: nextAnchor(now, 4),
       nextDueOn: nextAnchor(now, 4),
+      autoPost: false,
       method: 'upi',
+      active: true,
+    },
+    {
+      id: newId('rec'),
+      name: 'Netflix',
+      kind: 'expense',
+      amount: 19900,
+      accountId: bank,
+      categoryId: cat('subs'),
+      intervalUnit: 'month',
+      intervalCount: 1,
+      startsOn: nextAnchor(now, 12),
+      nextDueOn: nextAnchor(now, 12),
+      autoPost: true,
+      method: 'auto',
+      active: true,
+    },
+    {
+      id: newId('rec'),
+      name: 'Domain renewal',
+      kind: 'expense',
+      amount: 89900,
+      accountId: bank,
+      categoryId: cat('subs'),
+      intervalUnit: 'year',
+      intervalCount: 1,
+      startsOn: nextAnchor(now, 20),
+      nextDueOn: nextAnchor(now, 20),
+      autoPost: true,
+      method: 'auto',
       active: true,
     },
   ]);

@@ -100,6 +100,27 @@ So that is what Squirl asks for. Then it tells you what it really costs:
 The full instalment schedule is generated, and every upcoming payment is
 subtracted from what is safe to spend today.
 
+### Subscriptions that log themselves
+
+The ₹179 you find on a statement four days later and cannot place: that is what
+this solves.
+
+Add a subscription or auto-debit once with its amount, how often it bills, and
+the date it first charged. Anything you mark as leaving on its own gets written
+into your history on its due date without asking, because the bank takes it
+whether you are watching or not. If your machine was off, it catches up every
+missed charge the next time you open the app.
+
+Any interval works: monthly, quarterly, every six months, yearly, weekly, or a
+custom number of days, weeks, months or years, with an optional end date.
+Month-end billing is handled properly, so something charged on the 31st goes
+31 Jan, 28 Feb, 31 Mar, rather than slipping to the 28th forever.
+
+Things that only *usually* go through can be left as reminders instead: they
+wait on the Repeating page and ask before recording anything. Either way, every
+posted charge is a normal entry you can open, edit or delete, and upcoming ones
+are already subtracted from what is safe to spend.
+
 ### It stays honest when you forget
 
 Tap-to-pay is easy to forget, and one missed ₹40 chai makes every figure
@@ -171,6 +192,28 @@ financial history. Delete it and nothing of yours remains anywhere. There is no
 account to close and nothing to export from a server, though Settings has a
 one-click JSON export anyway.
 
+### Having it always running (Windows)
+
+Rather than starting it by hand each time, you can have it launch silently
+whenever you sign in:
+
+```powershell
+npm run build
+powershell -ExecutionPolicy Bypass -File scripts\windows\install-autostart.ps1
+```
+
+That drops a shortcut in your Startup folder pointing at a small VBScript
+wrapper, which runs `npm start` with no console window. It uses the Startup
+folder rather than Task Scheduler because creating a scheduled task needs
+privileges a normal account often does not have.
+
+- Logs go to `logs/squirl.log`
+- Stop it any time: `powershell -File scripts\windows\stop-squirl.ps1`
+- Undo it: `powershell -File scripts\windows\uninstall-autostart.ps1`
+
+It only runs while you are signed in, and rebuilding (`npm run build`) is still
+needed after any code change.
+
 ### On your phone
 
 Squirl is a PWA, so it installs to the home screen and opens without browser
@@ -215,13 +258,14 @@ lib/
     loans.ts            instalment schedules, four models, an APR solver
     position.ts         the five piles, burn rate, runway
     capture.ts          the natural-language parser
+    recurring.ts        billing schedules, drift-free at month end
     achievements.ts     milestones, evaluated from real position
   db/                   schema, migrations, seed, demo data
   queries/              read models composed from the pure engines above
 app/
   actions/              server actions, validated at the boundary
-  (app)/                Today, History, People, Loans, Accounts, Insights,
-                        Progress, Guide, Settings
+  (app)/                Today, History, Accounts, Repeating, People, Loans,
+                        Insights, Progress, Guide, Settings
 components/             design system and feature components
 brand-assets/           logo artwork
 ```

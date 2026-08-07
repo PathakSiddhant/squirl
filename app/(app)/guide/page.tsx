@@ -65,6 +65,7 @@ const TABS = [
   { icon: 'Users', name: 'People', plain: 'Who owes you, who you owe, and by how much.' },
   { icon: 'Bank', name: 'Loans', plain: 'Formal borrowing with a repayment schedule.' },
   { icon: 'Wallet', name: 'Accounts', plain: 'Your piles of money, and a way to check them against reality.' },
+  { icon: 'Repeat', name: 'Repeating', plain: 'Subscriptions and auto-debits, logged on their date.' },
   { icon: 'ChartBar', name: 'Insights', plain: 'Where it actually went, over time.' },
   { icon: 'Coffee', name: 'Progress', plain: 'Streaks and milestones you have earned.' },
 ];
@@ -109,6 +110,18 @@ const QUESTIONS = [
   {
     q: 'I typed "moved 1500 to investment" and it complained. Why?',
     a: 'Because you have no account with that name. Squirl will not invent one, since it cannot know whether you meant a new investment account, your savings, or a typo. Create the account once on the Accounts page and the same sentence will work forever after. The error now tells you exactly which accounts you do have.',
+  },
+  {
+    q: 'A subscription got debited while I was out and I only noticed days later. Can Squirl handle that?',
+    a: 'That is exactly what Repeating is for. Add the subscription once with its amount, how often it bills, and the date it first charged, then tick "the money leaves on its own". From then on Squirl writes the charge into your history on its due date without asking, because the bank took it whether you were watching or not. If your laptop was off, it catches up every missed charge the next time you open the app. No more finding a ₹179 on a statement and having to work out what it was.',
+  },
+  {
+    q: 'Can it handle things that are not monthly?',
+    a: 'Any interval. Monthly, every three months, every six, yearly, weekly, fortnightly, or a custom number of days, weeks, months or years. You can also set an end date for a plan you know finishes. Month-end dates are handled properly: something billed on the 31st charges on 31 January, 28 February, then 31 March, rather than slipping to the 28th forever.',
+  },
+  {
+    q: 'What if a subscription only usually goes through?',
+    a: 'Leave "the money leaves on its own" unticked. Squirl then treats it as a reminder: when the date arrives it shows a prompt on the Repeating page asking whether it went through, and only writes it once you confirm. Use auto for real auto-debits and manual for everything you want to check first.',
   },
   {
     q: 'What about profit on something I invested in?',

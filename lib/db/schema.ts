@@ -281,13 +281,24 @@ export const transactions = sqliteTable(
 
 // --------------------------------------------------------------- recurring
 
-export const RECURRING_CADENCES = ['monthly', 'weekly'] as const;
-export type RecurringCadence = (typeof RECURRING_CADENCES)[number];
+export const INTERVAL_UNITS = ['day', 'week', 'month', 'year'] as const;
+export type IntervalUnit = (typeof INTERVAL_UNITS)[number];
 
 /**
- * Known, repeating money: the stipend arriving, the 15,000 going to parents.
- * These are never posted automatically. They surface as something to confirm,
- * because a ledger that invents transactions is a ledger that lies.
+ * Money that repeats: subscriptions, auto-debits, the rent, the transfer home.
+ *
+ * Two behaviours, chosen per rule by `autoPost`:
+ *
+ *   on   the bank takes it whether you are watching or not, so Squirl posts it
+ *        on the due date without asking. That is not the ledger inventing a
+ *        transaction, it is the ledger keeping up with one that really happened.
+ *   off  a reminder you confirm, for things that only usually happen.
+ *
+ * Occurrences are derived from `startsOn` plus `postedCount`, never by walking
+ * `nextDueOn` forward. Walking forward drifts: a subscription billed on the
+ * 31st would land on the 28th in February and then stay there. Deriving from
+ * the original date gives 31 Jan, 28 Feb, 31 Mar, which is what actually
+ * happens on the statement.
  */
 export const recurring = sqliteTable(
   'recurring',
@@ -299,17 +310,35 @@ export const recurring = sqliteTable(
     accountId: text('account_id').references(() => accounts.id, { onDelete: 'cascade' }),
     counterAccountId: text('counter_account_id').references(() => accounts.id, { onDelete: 'cascade' }),
     categoryId: text('category_id').references(() => categories.id, { onDelete: 'set null' }),
-    cadence: text('cadence', { enum: RECURRING_CADENCES }).notNull().default('monthly'),
-    /** 1-31 for monthly, clamped to the end of short months. 0-6 for weekly. */
-    anchor: integer('anchor').notNull().default(1),
+
+    /** Every `intervalCount` `intervalUnit`s: 1 month, 3 months, 1 year, 2 weeks. */
+    intervalUnit: text('interval_unit', { enum: INTERVAL_UNITS }).notNull().default('month'),
+    intervalCount: integer('interval_count').notNull().default(1),
+
+    /** The first billing date. Every later one is derived from it. */
+    startsOn: text('starts_on').notNull(),
+    /** Optional last date, for a plan you know ends. */
+    endsOn: text('ends_on'),
+    /** How many occurrences have been written to the ledger. */
+    postedCount: integer('posted_count').notNull().default(0),
+    /** Cached next date, kept in step with postedCount for cheap querying. */
     nextDueOn: text('next_due_on').notNull(),
     lastPostedOn: text('last_posted_on'),
-    method: text('method', { enum: PAYMENT_METHODS }).notNull().default('bank'),
+
+    /** True for a real auto-debit. False makes it a reminder to confirm. */
+    autoPost: integer('auto_post', { mode: 'boolean' }).notNull().default(false),
+
+    method: text('method', { enum: PAYMENT_METHODS }).notNull().default('auto'),
     active: integer('active', { mode: 'boolean' }).notNull().default(true),
     note: text('note'),
     createdAt: integer('created_at').notNull().$defaultFn(now),
   },
-  (t) => [index('recurring_next_due_idx').on(t.nextDueOn), index('recurring_active_idx').on(t.active)],
+  (t) => [
+    index('recurring_next_due_idx').on(t.nextDueOn),
+    index('recurring_active_idx').on(t.active),
+    check('recurring_interval_positive', sql`${t.intervalCount} > 0`),
+    check('recurring_amount_positive', sql`${t.amount} > 0`),
+  ],
 );
 
 // --------------------------------------------------------- reconciliations

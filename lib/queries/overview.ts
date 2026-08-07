@@ -14,6 +14,7 @@ import {
   type Position,
   type Runway,
 } from '../domain/position';
+import { duePostings } from '../domain/recurring';
 import { debtTotals, getDebtsWithPositions, type DebtWithPosition } from './debts';
 import { getLedgerEntries, getLoggedDays, getMovements, type LedgerEntry } from './ledger';
 import { activeLoans, getLoansWithSchedules, type LoanWithSchedule } from './loans';
@@ -149,17 +150,31 @@ function buildCommitments(
     });
   }
 
+  // Every charge falling inside the horizon counts, not just the next one. A
+  // weekly subscription hits four times in a month, and reserving one week of
+  // it would overstate what is safe to spend.
   const OUTFLOWS = new Set(['expense', 'transfer', 'settle', 'loan_payment']);
   for (const rule of recurringRows) {
-    if (!OUTFLOWS.has(rule.kind) || rule.nextDueOn > horizonEnd) continue;
-    commitments.push({
-      id: rule.id,
-      label: rule.name,
-      dueOn: rule.nextDueOn,
-      amount: rule.amount,
-      source: 'recurring',
-      isOverdue: rule.nextDueOn < asOf,
-    });
+    if (!OUTFLOWS.has(rule.kind)) continue;
+
+    const schedule = {
+      startsOn: rule.startsOn,
+      intervalUnit: rule.intervalUnit,
+      intervalCount: rule.intervalCount,
+      endsOn: rule.endsOn,
+    };
+
+    const upcoming = duePostings(schedule, rule.postedCount, horizonEnd);
+    for (const dueOn of upcoming) {
+      commitments.push({
+        id: `${rule.id}:${dueOn}`,
+        label: rule.name,
+        dueOn,
+        amount: rule.amount,
+        source: 'recurring',
+        isOverdue: dueOn < asOf,
+      });
+    }
   }
 
   return commitments;
