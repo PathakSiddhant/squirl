@@ -48,6 +48,9 @@ next-env.d.ts
 *.db-shm
 /backups
 
+# runtime logs from the always-on launcher
+/logs
+
 # playwright / verification artifacts
 /test-results
 /playwright-report
