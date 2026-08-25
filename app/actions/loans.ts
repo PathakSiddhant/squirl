@@ -127,3 +127,94 @@ export async function deleteLoan(loanId: string): Promise<ActionResult> {
   refreshAll();
   return { ok: true, data: undefined };
 }
+
+/**
+ * Edits a loan's terms and rebuilds its schedule.
+ *
+ * Whatever has already been paid is left alone: those installments are
+ * historical fact, not a plan that can be rewritten. Only the still-due tail
+ * is regenerated, so fixing a typo in the principal never touches a payment
+ * you already made. Reducing the tenure below what is already paid is refused
+ * outright, since there would be nothing left to apply the new terms to.
+ */
+export async function updateLoan(
+  loanId: string,
+  input: z.input<typeof loanInput>,
+): Promise<ActionResult<{ id: string }>> {
+  const parsed = loanInput.safeParse(input);
+  if (!parsed.success) return fromZodError(parsed.error);
+  const value = parsed.data;
+
+  const [loan] = await db.select().from(loans).where(eq(loans.id, loanId)).limit(1);
+  if (!loan) return { ok: false, error: 'That loan no longer exists' };
+
+  const existing = await db
+    .select()
+    .from(installments)
+    .where(eq(installments.loanId, loanId))
+    .orderBy(installments.seq);
+  const paid = existing.filter((i) => i.status === 'paid');
+
+  if (value.tenureMonths < paid.length) {
+    return {
+      ok: false,
+      error: `Already paid ${paid.length} of these. Cannot shorten below that.`,
+    };
+  }
+
+  const schedule = buildSchedule({
+    principal: value.principal,
+    tenureMonths: value.tenureMonths,
+    firstDueOn: value.firstDueOn,
+    interestModel: value.interestModel,
+    emiAmount: value.emiAmount,
+    rateBpsPerAnnum: Math.round(value.ratePctPerAnnum * 100),
+  });
+  if (schedule.length === 0) return { ok: false, error: 'That does not make a valid schedule' };
+
+  const remaining = schedule.slice(paid.length);
+
+  await db
+    .delete(installments)
+    .where(and(eq(installments.loanId, loanId), eq(installments.status, 'due')));
+  await db.insert(installments).values(
+    remaining.map((item) => ({
+      id: newId('inst'),
+      loanId,
+      seq: item.seq,
+      dueOn: item.dueOn,
+      amount: item.amount,
+      principalPart: item.principalPart,
+      interestPart: item.interestPart,
+      status: 'due' as const,
+    })),
+  );
+
+  await db
+    .update(loans)
+    .set({
+      lender: value.lender,
+      principal: value.principal,
+      tenureMonths: value.tenureMonths,
+      interestModel: value.interestModel,
+      rateBpsPerAnnum: Math.round(value.ratePctPerAnnum * 100),
+      emiAmount: value.emiAmount,
+      processingFee: value.processingFee,
+      firstDueOn: value.firstDueOn,
+      note: value.note ?? null,
+      // Re-editing an already-finished loan reopens it; the new tail is unpaid.
+      status: 'active',
+      closedOn: null,
+    })
+    .where(eq(loans.id, loanId));
+
+  // The disbursal record should track the corrected principal, so a typo
+  // there does not go on quietly overstating a real account balance.
+  await db
+    .update(transactions)
+    .set({ amount: value.principal - value.processingFee, updatedAt: Date.now() })
+    .where(and(eq(transactions.loanId, loanId), eq(transactions.kind, 'loan_taken')));
+
+  refreshAll();
+  return { ok: true, data: { id: loanId } };
+}

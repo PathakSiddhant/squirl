@@ -59,6 +59,23 @@ export interface EditableEntry {
  *  from their own screens, where the schedule and terms live. */
 const PICKABLE_KINDS: TransactionKind[] = ['expense', 'income', 'transfer'];
 
+/**
+ * Kinds whose amount is structurally tied to something else and genuinely
+ * cannot be edited here.
+ *
+ * `loan_taken`/`loan_payment` are one line of a schedule generated elsewhere;
+ * changing the number without touching the installment it came from would
+ * desync the two. `adjust_up`/`adjust_down` are the record of a reconciliation
+ * check; if the figure was wrong, redo the check rather than hand-edit its
+ * result.
+ *
+ * Everything else here, `lend`, `borrow`, `collect`, `settle`, has no stored
+ * total anywhere: a debt's position is always replayed from these amounts, so
+ * fixing a typo in one is completely safe and takes effect the moment it is
+ * saved, exactly like an ordinary expense.
+ */
+const AMOUNT_LOCKED_KINDS: TransactionKind[] = ['loan_taken', 'loan_payment', 'adjust_up', 'adjust_down'];
+
 const METHOD_LABEL: Record<PaymentMethod, string> = {
   upi: 'UPI',
   card: 'Card',
@@ -104,7 +121,8 @@ export function EntryEditor({
     setNote(entry?.note ?? '');
   }, [open, entry, context.accounts]);
 
-  const locked = !isNew && !PICKABLE_KINDS.includes(entry.kind);
+  const kindLocked = !isNew && !PICKABLE_KINDS.includes(entry.kind);
+  const amountLocked = !isNew && AMOUNT_LOCKED_KINDS.includes(entry.kind);
   const categories = context.categories.filter((c) =>
     kind === 'income' ? c.flow === 'in' : c.flow === 'out',
   );
@@ -183,11 +201,22 @@ export function EntryEditor({
           </div>
 
           <div className="space-y-3 px-4 py-4">
-            {locked ? (
+            {kindLocked ? (
               <p className="rounded-sm border border-line bg-surface-2 px-3 py-2 text-[0.8125rem] text-ink-2">
-                This is a {KIND_META[entry.kind].label.toLowerCase()} entry tied to{' '}
-                {entry.debtId ? 'a debt' : 'a loan'}. You can change the date, note and how it was
-                paid here. To change the amount, delete it and record it again from that screen.
+                {amountLocked ? (
+                  <>
+                    This is a {KIND_META[entry.kind].label.toLowerCase()} entry tied to a loan's
+                    schedule. You can change the date, note and how it was paid here. To change the
+                    amount, fix it from the loan on the Loans page instead, so the plan stays
+                    consistent.
+                  </>
+                ) : (
+                  <>
+                    This is a {KIND_META[entry.kind].label.toLowerCase()} entry on an agreement with
+                    someone. The amount is safe to correct here, it is what everything else about the
+                    debt is worked out from. It just cannot switch to a different kind of entry.
+                  </>
+                )}
               </p>
             ) : (
               <Field label="What happened">
@@ -218,7 +247,7 @@ export function EntryEditor({
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
                   inputMode="decimal"
-                  disabled={locked}
+                  disabled={amountLocked}
                   placeholder="0"
                   autoFocus={isNew}
                 />
@@ -232,7 +261,7 @@ export function EntryEditor({
               <select
                 value={accountId}
                 onChange={(e) => setAccountId(e.target.value)}
-                disabled={locked}
+                disabled={amountLocked}
                 className="h-9 w-full rounded-sm border border-line bg-surface px-2 text-[0.875rem] text-ink disabled:opacity-50"
               >
                 {context.accounts.map((a) => (

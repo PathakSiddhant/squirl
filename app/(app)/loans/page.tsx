@@ -1,7 +1,7 @@
 import { Bank } from '@phosphor-icons/react/dist/ssr/Bank';
 
 import { LoanCard, type LoanView } from '@/components/loans/loan-card';
-import { NewLoanForm } from '@/components/loans/new-loan-form';
+import { AddLoanButton } from '@/components/loans/new-loan-form';
 import { Empty, PageHeader } from '@/components/ui/primitives';
 import { today as istToday } from '@/lib/date';
 import { formatMoney } from '@/lib/money';
@@ -48,6 +48,8 @@ export default async function LoansPage() {
     totalInterest: entry.totalInterest,
     effectiveApr: entry.effectiveApr,
     progress: entry.progress,
+    emiAmount: entry.loan.emiAmount,
+    firstDueOn: entry.loan.firstDueOn,
   });
 
   return (
@@ -59,7 +61,7 @@ export default async function LoansPage() {
             ? 'Structured borrowing with a repayment schedule'
             : `${formatMoney(outstanding)} left across ${active.length} active ${active.length === 1 ? 'loan' : 'loans'}`
         }
-        action={<NewLoanForm accounts={spendable} today={asOf} />}
+        action={<AddLoanButton accounts={spendable} today={asOf} />}
       />
 
       {active.length > 0 ? (

@@ -1,15 +1,18 @@
 'use client';
 
+import { CaretDown } from '@phosphor-icons/react/dist/csr/CaretDown';
 import { Warning } from '@phosphor-icons/react/dist/csr/Warning';
-import { useTransition } from 'react';
+import { useState, useTransition } from 'react';
 import { toast } from 'sonner';
 
-import { payInstallment } from '@/app/actions/loans';
+import { deleteLoan, payInstallment } from '@/app/actions/loans';
 import { cn } from '@/lib/cn';
 import { formatDay, formatRelativeDay, type DayString } from '@/lib/date';
 import { formatMoney } from '@/lib/money';
 
 import { Button } from '../ui/button';
+import { ConfirmButton } from '../ui/confirm-button';
+import { LoanForm, type LoanEditable } from './new-loan-form';
 
 export interface InstallmentView {
   id: string;
@@ -35,6 +38,8 @@ export interface LoanView {
   totalInterest: number;
   effectiveApr: number | null;
   progress: number;
+  emiAmount: number;
+  firstDueOn: DayString;
 }
 
 /**
@@ -54,8 +59,13 @@ export function LoanCard({
   today: DayString;
 }) {
   const [pending, startTransition] = useTransition();
+  const [editing, setEditing] = useState(false);
   const overdue = loan.schedule.filter((i) => i.status === 'due' && i.dueOn < today);
   const isClosed = loan.status !== 'active';
+  // Open by default only when something needs attention. A loan that is on
+  // track collapses to its summary, so several loans do not turn the page
+  // into a wall of installment rows.
+  const [showSchedule, setShowSchedule] = useState(overdue.length > 0);
 
   const pay = (installmentId: string) => {
     startTransition(async () => {
@@ -63,6 +73,18 @@ export function LoanCard({
       if (result.ok) toast.success('Installment marked paid');
       else toast.error(result.error);
     });
+  };
+
+  const editable: LoanEditable = {
+    id: loan.id,
+    lender: loan.lender,
+    principal: loan.principal,
+    tenureMonths: loan.schedule.length,
+    emiAmount: loan.emiAmount,
+    firstDueOn: loan.schedule.find((i) => i.status === 'due')?.dueOn ?? loan.firstDueOn,
+    takenOn: loan.takenOn,
+    note: loan.note,
+    paidCount: loan.paidCount,
   };
 
   return (
@@ -94,7 +116,12 @@ export function LoanCard({
         </div>
       </header>
 
-      <div className="px-4 pb-3">
+      <button
+        type="button"
+        onClick={() => setShowSchedule((v) => !v)}
+        aria-expanded={showSchedule}
+        className="flex w-full flex-col gap-1.5 px-4 pb-3 text-left transition-colors hover:bg-surface-2"
+      >
         {/* Progress as discrete blocks, one per installment: at three months a
             continuous bar would be less legible than simply counting them. */}
         <div className="flex items-center gap-1" role="img" aria-label={`${loan.paidCount} of ${loan.schedule.length} installments paid`}>
@@ -112,9 +139,13 @@ export function LoanCard({
             />
           ))}
         </div>
-        <div className="mt-1.5 flex items-center justify-between text-[0.75rem] text-ink-3">
-          <span>
+        <div className="flex items-center justify-between text-[0.75rem] text-ink-3">
+          <span className="flex items-center gap-1.5">
             {loan.paidCount} of {loan.schedule.length} paid
+            <CaretDown
+              size={11}
+              className={cn('transition-transform duration-[var(--t-move)]', showSchedule && 'rotate-180')}
+            />
           </span>
           {loan.effectiveApr !== null && loan.effectiveApr > 0 ? (
             <span className={loan.effectiveApr > 36 ? 'text-[var(--i-owe-text)]' : undefined}>
@@ -122,61 +153,90 @@ export function LoanCard({
             </span>
           ) : null}
         </div>
+      </button>
+
+      {showSchedule ? (
+        <ul className="divide-y divide-line border-t border-line">
+          {loan.schedule.map((item) => {
+            const isOverdue = item.status === 'due' && item.dueOn < today;
+            return (
+              <li key={item.id} className="flex items-center gap-3 px-4 py-2.5">
+                <span
+                  className={cn(
+                    'flex size-6 shrink-0 items-center justify-center rounded-full text-[0.6875rem] font-medium',
+                    item.status === 'paid'
+                      ? 'bg-surface-2 text-ink-3'
+                      : isOverdue
+                        ? 'bg-[var(--i-owe-wash)] text-[var(--i-owe-text)]'
+                        : 'bg-surface-2 text-ink-2',
+                  )}
+                >
+                  {item.seq}
+                </span>
+
+                <div className="min-w-0 flex-1">
+                  <p className={cn('text-[0.875rem]', item.status === 'paid' ? 'text-ink-3' : 'text-ink')}>
+                    {formatMoney(item.amount)}
+                  </p>
+                  <p className="text-[0.75rem] text-ink-3">
+                    {formatMoney(item.principalPart)} principal
+                    {item.interestPart > 0 ? ` · ${formatMoney(item.interestPart)} interest` : ''}
+                  </p>
+                </div>
+
+                <div className="shrink-0 text-right">
+                  {item.status === 'paid' ? (
+                    <span className="text-[0.75rem] text-ink-3">
+                      paid {item.paidOn ? formatDay(item.paidOn, today) : ''}
+                    </span>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={cn(
+                          'text-[0.75rem]',
+                          isOverdue ? 'text-[var(--i-owe-text)]' : 'text-ink-3',
+                        )}
+                      >
+                        {isOverdue ? 'overdue' : formatRelativeDay(item.dueOn, today)}
+                      </span>
+                      <Button size="sm" variant="outline" disabled={pending} onClick={() => pay(item.id)}>
+                        Mark paid
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      ) : null}
+
+      <div className="flex items-center justify-end gap-2 border-t border-line px-4 py-2">
+        <Button size="sm" variant="ghost" onClick={() => setEditing(true)} disabled={pending}>
+          Edit
+        </Button>
+        <ConfirmButton
+          confirmLabel={
+            loan.paidCount > 0 ? `Delete, including ${loan.paidCount} paid?` : 'Delete this loan?'
+          }
+          disabled={pending}
+          onConfirm={async () => {
+            const result = await deleteLoan(loan.id);
+            if (result.ok) toast.success('Deleted');
+            else toast.error(result.error);
+          }}
+        >
+          Delete
+        </ConfirmButton>
       </div>
 
-      <ul className="divide-y divide-line border-t border-line">
-        {loan.schedule.map((item) => {
-          const isOverdue = item.status === 'due' && item.dueOn < today;
-          return (
-            <li key={item.id} className="flex items-center gap-3 px-4 py-2.5">
-              <span
-                className={cn(
-                  'flex size-6 shrink-0 items-center justify-center rounded-full text-[0.6875rem] font-medium',
-                  item.status === 'paid'
-                    ? 'bg-surface-2 text-ink-3'
-                    : isOverdue
-                      ? 'bg-[var(--i-owe-wash)] text-[var(--i-owe-text)]'
-                      : 'bg-surface-2 text-ink-2',
-                )}
-              >
-                {item.seq}
-              </span>
-
-              <div className="min-w-0 flex-1">
-                <p className={cn('text-[0.875rem]', item.status === 'paid' ? 'text-ink-3' : 'text-ink')}>
-                  {formatMoney(item.amount)}
-                </p>
-                <p className="text-[0.75rem] text-ink-3">
-                  {formatMoney(item.principalPart)} principal
-                  {item.interestPart > 0 ? ` · ${formatMoney(item.interestPart)} interest` : ''}
-                </p>
-              </div>
-
-              <div className="shrink-0 text-right">
-                {item.status === 'paid' ? (
-                  <span className="text-[0.75rem] text-ink-3">
-                    paid {item.paidOn ? formatDay(item.paidOn, today) : ''}
-                  </span>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={cn(
-                        'text-[0.75rem]',
-                        isOverdue ? 'text-[var(--i-owe-text)]' : 'text-ink-3',
-                      )}
-                    >
-                      {isOverdue ? 'overdue' : formatRelativeDay(item.dueOn, today)}
-                    </span>
-                    <Button size="sm" variant="outline" disabled={pending} onClick={() => pay(item.id)}>
-                      Mark paid
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </li>
-          );
-        })}
-      </ul>
+      <LoanForm
+        existing={editable}
+        accounts={accounts}
+        today={today}
+        open={editing}
+        onOpenChange={setEditing}
+      />
     </section>
   );
 }
