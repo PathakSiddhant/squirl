@@ -185,7 +185,7 @@ export function LockScreen({ phase }: { phase: DeskPhase }) {
                   spellCheck={false}
                   autoCapitalize="none"
                   aria-invalid={state.error ? true : undefined}
-                  className="h-12 w-full rounded-lg border border-line bg-surface pl-10 pr-3.5 text-[0.9375rem] text-ink transition-colors duration-[var(--t-state)] placeholder:text-ink-3 focus:border-line-strong"
+                  className="field h-12 w-full rounded-lg border border-line bg-surface pl-10 pr-3.5 text-[0.9375rem] text-ink transition-[border-color,box-shadow] duration-[var(--t-state)] placeholder:text-ink-3"
                 />
               </label>
 
@@ -202,7 +202,7 @@ export function LockScreen({ phase }: { phase: DeskPhase }) {
                   placeholder="Password"
                   autoComplete="current-password"
                   aria-invalid={state.error ? true : undefined}
-                  className="h-12 w-full rounded-lg border border-line bg-surface pl-10 pr-11 text-[0.9375rem] text-ink transition-colors duration-[var(--t-state)] placeholder:text-ink-3 focus:border-line-strong"
+                  className="field h-12 w-full rounded-lg border border-line bg-surface pl-10 pr-11 text-[0.9375rem] text-ink transition-[border-color,box-shadow] duration-[var(--t-state)] placeholder:text-ink-3"
                 />
                 <button
                   type="button"
