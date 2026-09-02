@@ -54,7 +54,10 @@ export function Label({ className, ...props }: React.HTMLAttributes<HTMLSpanElem
   return <span className={cn('label', className)} {...props} />;
 }
 
-export function Input({ className, ...props }: React.InputHTMLAttributes<HTMLInputElement>) {
+// ComponentProps rather than InputHTMLAttributes so that `ref` is part of the
+// type. React 19 passes it to function components as an ordinary prop, but the
+// attribute-only types do not describe it.
+export function Input({ className, ...props }: React.ComponentProps<'input'>) {
   return (
     <input
       className={cn(
@@ -68,7 +71,7 @@ export function Input({ className, ...props }: React.InputHTMLAttributes<HTMLInp
   );
 }
 
-export function Textarea({ className, ...props }: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
+export function Textarea({ className, ...props }: React.ComponentProps<'textarea'>) {
   return (
     <textarea
       className={cn(
