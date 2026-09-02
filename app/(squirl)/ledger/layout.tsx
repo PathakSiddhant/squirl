@@ -1,8 +1,16 @@
 import { MobileHeader, Sidebar, TabBar } from '@/components/shell/sidebar';
 
-export default function AppLayout({ children }: { children: React.ReactNode }) {
+/**
+ * Ledger's own shell.
+ *
+ * `app-ledger` fills the --app-accent slot with Ledger's forest green for
+ * everything nested inside, which is how you can tell at a glance which
+ * application you are standing in. The money palette is untouched by it: an
+ * accent marks the place, data keeps its own colours.
+ */
+export default function LedgerLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex min-h-dvh">
+    <div className="app-ledger flex min-h-dvh">
       <Sidebar />
       <div className="flex min-w-0 flex-1 flex-col">
         <MobileHeader />

@@ -105,14 +105,14 @@ export function TabBar() {
         })}
         <li>
           <Link
-            href="/guide"
-            aria-current={pathname.startsWith('/guide') ? 'page' : undefined}
+            href="/ledger/guide"
+            aria-current={pathname.startsWith('/ledger/guide') ? 'page' : undefined}
             className={cn(
               'flex flex-col items-center gap-1 py-2.5 text-[0.6875rem] font-medium',
-              pathname.startsWith('/guide') ? 'text-ink' : 'text-ink-3',
+              pathname.startsWith('/ledger/guide') ? 'text-ink' : 'text-ink-3',
             )}
           >
-            <Icon name="Question" size={19} weight={pathname.startsWith('/guide') ? 'fill' : 'regular'} />
+            <Icon name="Question" size={19} weight={pathname.startsWith('/ledger/guide') ? 'fill' : 'regular'} />
             Help
           </Link>
         </li>

@@ -24,7 +24,7 @@ const METHOD_LABEL: Record<string, string> = {
   other: 'Other',
 };
 
-export default async function InsightsPage(props: PageProps<'/insights'>) {
+export default async function InsightsPage(props: PageProps<'/ledger/insights'>) {
   const params = await props.searchParams;
   const asOf = istToday();
   const windowDays = typeof params.range === 'string' ? Number(params.range) || 30 : 30;

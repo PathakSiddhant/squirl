@@ -69,7 +69,7 @@ export default async function TodayPage() {
           </p>
         </div>
         <Link
-          href="/guide"
+          href="/ledger/guide"
           className="text-[0.8125rem] text-ink-3 underline underline-offset-4 transition-colors hover:text-ink"
         >
           New here? Read the guide
@@ -119,7 +119,7 @@ export default async function TodayPage() {
             hint={overview.todayIn > 0 ? `${formatMoney(overview.todayIn)} came in` : undefined}
             action={
               <Link
-                href="/ledger"
+                href="/ledger/history"
                 className="inline-flex items-center gap-1 text-[0.8125rem] text-ink-2 hover:text-ink"
               >
                 All history <ArrowRight size={12} />
@@ -245,7 +245,7 @@ function FirstRun({ context }: { context: React.ComponentProps<typeof QuickCaptu
 
       <p className="mt-4 text-center text-[0.8125rem] text-ink-3">
         Want the whole thing explained first?{' '}
-        <Link href="/guide" className="font-medium text-ink underline underline-offset-4">
+        <Link href="/ledger/guide" className="font-medium text-ink underline underline-offset-4">
           Read the guide
         </Link>
         , it takes five minutes.

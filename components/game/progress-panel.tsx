@@ -69,7 +69,7 @@ export function ProgressPanel({
 
       {next ? (
         <Link
-          href="/progress"
+          href="/ledger/progress"
           className="flex items-center gap-3 border-t border-line px-4 py-3 transition-colors duration-[var(--t-state)] hover:bg-surface-2"
         >
           <span className="flex size-7 shrink-0 items-center justify-center rounded-sm bg-surface-2 text-ink-3">
@@ -93,7 +93,7 @@ export function ProgressPanel({
         </Link>
       ) : (
         <Link
-          href="/progress"
+          href="/ledger/progress"
           className="flex items-center justify-between border-t border-line px-4 py-3 text-[0.8125rem] text-ink-2 transition-colors hover:bg-surface-2"
         >
           Every milestone earned. Have a look.

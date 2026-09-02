@@ -31,7 +31,7 @@ const CELLS: Array<{
     hint: 'You can spend this now',
     tone: 'text-ink',
     dot: 'bg-ink',
-    href: '/accounts',
+    href: '/ledger/accounts',
   },
   {
     key: 'parked',
@@ -39,7 +39,7 @@ const CELLS: Array<{
     hint: 'Yours, kept out of reach',
     tone: 'text-[var(--parked-text)]',
     dot: 'bg-[var(--parked)]',
-    href: '/accounts',
+    href: '/ledger/accounts',
   },
   {
     key: 'invested',
@@ -47,7 +47,7 @@ const CELLS: Array<{
     hint: 'Yours, value moves',
     tone: 'text-[var(--acorn-deep)]',
     dot: 'bg-[var(--acorn)]',
-    href: '/accounts',
+    href: '/ledger/accounts',
   },
   {
     key: 'owedToMe',
@@ -55,7 +55,7 @@ const CELLS: Array<{
     hint: 'Lent out, coming back',
     tone: 'text-[var(--owed-me-text)]',
     dot: 'bg-[var(--owed-me)]',
-    href: '/people',
+    href: '/ledger/people',
   },
   {
     key: 'iOwe',
@@ -63,7 +63,7 @@ const CELLS: Array<{
     hint: 'Has to be paid back',
     tone: 'text-[var(--i-owe-text)]',
     dot: 'bg-[var(--i-owe)]',
-    href: '/loans',
+    href: '/ledger/loans',
   },
 ];
 
@@ -119,7 +119,7 @@ export function PositionStrip({ position }: { position: Position }) {
             buy this today".
           </p>
           <Link
-            href="/guide"
+            href="/ledger/guide"
             className="mt-2 inline-block text-[0.8125rem] font-medium text-ink underline underline-offset-4"
           >
             Read the full guide

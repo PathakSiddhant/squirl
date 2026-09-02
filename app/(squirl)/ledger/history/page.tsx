@@ -13,9 +13,9 @@ import type { TransactionKind } from '@/lib/db/schema';
 
 export const dynamic = 'force-dynamic';
 
-export const metadata = { title: 'Ledger' };
+export const metadata = { title: 'History' };
 
-export default async function LedgerPage(props: PageProps<'/ledger'>) {
+export default async function HistoryPage(props: PageProps<'/ledger/history'>) {
   const params = await props.searchParams;
   const asOf = istToday();
 
@@ -50,7 +50,7 @@ export default async function LedgerPage(props: PageProps<'/ledger'>) {
   return (
     <div className="space-y-5">
       <PageHeader
-        title="Ledger"
+        title="History"
         subtitle={
           entries.length === 0
             ? 'Every movement, day by day'
