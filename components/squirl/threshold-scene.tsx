@@ -1,6 +1,3 @@
-'use client';
-
-import { motion, useTransform, type MotionValue } from 'motion/react';
 import Image from 'next/image';
 
 import { cn } from '@/lib/cn';
@@ -11,58 +8,42 @@ import type { DeskPhase } from '@/lib/squirl/phase';
  *
  * Two illustrations, day and night, drawn as one matched pair: same
  * composition, same rock, same squirrel, so moving between them never shifts
- * anything on screen. Which one shows is decided by two things, and both are
- * honest signals rather than settings: the hour where the owner actually is,
- * resolved in IST on the server, and the theme they chose.
+ * anything on screen. Which one shows is decided by two honest signals and
+ * nothing else: the hour where the owner actually is, resolved in IST on the
+ * server, and the theme they chose.
  *
  * Both are rendered and CSS picks one, because the theme is a class on the
- * document and is not known while the server is rendering. They come to about
- * a hundred kilobytes together, which is cheaper than the flash of a wrong
- * illustration.
+ * document and is not known while the server renders. Together they come to
+ * about a hundred kilobytes, which is cheaper than a flash of the wrong one.
  *
- * The whole frame drifts a little under the pointer. It is scaled up slightly
- * to give that drift somewhere to go, so the edges never pull away from the
- * panel.
+ * Nothing here is scaled or offset. An earlier version drifted the whole frame
+ * under the pointer, which meant blowing it up past its edges to have somewhere
+ * to drift to: the picture was permanently cropped to pay for an effect you
+ * only saw while moving the mouse. The movement is a light crossing the valley
+ * now. It costs no crop, it runs on its own, and the scene is whole the moment
+ * the page opens.
  */
-export function ThresholdScene({
-  pointerX,
-  pointerY,
-  live,
-  phase,
-}: {
-  pointerX: MotionValue<number>;
-  pointerY: MotionValue<number>;
-  live: boolean;
-  phase: DeskPhase;
-}) {
-  const x = useTransform(pointerX, [0, 1], [16, -16]);
-  const y = useTransform(pointerY, [0, 1], [11, -11]);
-
+export function ThresholdScene({ phase }: { phase: DeskPhase }) {
   const nightByHour = phase === 'night';
 
-  // On a desktop the column that holds this is capped so it never gets wider
-  // than three quarters of its height, which is the illustration's own shape.
-  // Cover then fits by width and the whole picture is on screen: sky, sun,
-  // river, rock and squirrel, with nothing trimmed off the bottom.
+  // The column is capped near the illustration's own three-by-four shape, so
+  // only the dark foot of the picture is ever trimmed. Biased slightly upward,
+  // because the empty top of the sky is worth less than the rock and the
+  // squirrel at the bottom.
   //
-  // A phone is the exception. There the scene is a short band with nothing set
-  // over it but the wordmark, so it is cropped, anchored below the middle to
-  // keep the sun and the squirrel in view.
-  const art = 'object-cover object-[50%_38%] lg:object-center';
+  // A phone is the exception: a short band with nothing over it but the
+  // wordmark, so it crops harder and sits lower to keep the sun in view.
+  const art = 'object-cover object-[50%_38%] lg:object-[50%_30%]';
 
   return (
-    <motion.div
-      aria-hidden="true"
-      style={live ? { x, y } : undefined}
-      className="absolute inset-0 scale-[1.06]"
-    >
+    <div aria-hidden="true" className="absolute inset-0 overflow-hidden">
       <Image
         src="/brand/threshold-day.webp"
         alt=""
         fill
         priority={!nightByHour}
         quality={90}
-        sizes="(min-width: 1024px) 54vw, 100vw"
+        sizes="(min-width: 1024px) 58vw, 100vw"
         className={cn(art, nightByHour ? 'hidden' : 'block dark:hidden')}
       />
       <Image
@@ -71,9 +52,11 @@ export function ThresholdScene({
         fill
         priority={nightByHour}
         quality={90}
-        sizes="(min-width: 1024px) 54vw, 100vw"
+        sizes="(min-width: 1024px) 58vw, 100vw"
         className={cn(art, nightByHour ? 'block' : 'hidden dark:block')}
       />
-    </motion.div>
+
+      <span className="scene-light" />
+    </div>
   );
 }

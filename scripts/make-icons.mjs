@@ -63,6 +63,54 @@ for (const [source, name] of [
   console.log(`  ${name}.png  ${info.width}x${info.height}  ${Math.round(data.length / 1024)}KB`);
 }
 
+/*
+  The wordmark on its own.
+
+  The lockup is drawn stacked, squirrel over word, which is the wrong shape for
+  a header that has to sit on one line. Rather than set SQUIRL in a typeface and
+  hope it matches, the word is cut out of the real artwork: those letterforms
+  are custom, and the nearest available face is visibly not-quite-right sitting
+  next to the mark.
+
+  The cut is found rather than hard-coded. The widest run of empty rows below
+  the halfway point is the gap between the squirrel and the word, so everything
+  under it is the word.
+*/
+{
+  const source = join(ROOT, 'public', 'brand', 'lockup.png');
+  const { data, info } = await sharp(source).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+
+  const inked = [];
+  for (let y = 0; y < info.height; y++) {
+    let n = 0;
+    for (let x = 0; x < info.width; x++) if (data[(y * info.width + x) * 4 + 3] > 40) n++;
+    inked.push(n);
+  }
+
+  let best = null;
+  let run = null;
+  for (let y = Math.floor(info.height * 0.4); y < info.height; y++) {
+    if (inked[y] === 0) run = run ?? y;
+    else if (run !== null) {
+      const len = y - run;
+      if (!best || len > best.len) best = { start: run, len };
+      run = null;
+    }
+  }
+
+  const top = best ? best.start + best.len : Math.floor(info.height * 0.75);
+  const word = await sharp(source)
+    .extract({ left: 0, top, width: info.width, height: info.height - top })
+    .trim({ background: TRANSPARENT, threshold: 0 })
+    .png({ compressionLevel: 9 })
+    .toBuffer();
+
+  const size = await sharp(word).metadata();
+  writeFileSync(join(ROOT, 'public', 'brand', 'wordmark.png'), word);
+  meta.wordmark = { width: size.width, height: size.height };
+  console.log(`  wordmark.png  ${size.width}x${size.height}`);
+}
+
 writeFileSync(join(ROOT, 'lib', 'brand.json'), `${JSON.stringify(meta, null, 2)}\n`);
 
 /*

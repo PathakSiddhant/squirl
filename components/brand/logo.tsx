@@ -72,6 +72,47 @@ export function Lockup({
   );
 }
 
+const WORD_RATIO = brand.wordmark.width / brand.wordmark.height;
+
+/**
+ * The mark and the word, side by side.
+ *
+ * The drawn lockup stacks them, which is the wrong shape for a header that has
+ * to sit on one line. This sets the same two pieces of artwork in a row: the
+ * word is cut from the lockup itself by `npm run brand:build`, so the
+ * letterforms are the real ones rather than a typeface standing in for them.
+ *
+ * `size` is the height of the squirrel. The word is set smaller and optically
+ * centred against it, the way it sits in the original.
+ */
+export function LockupRow({
+  size = 44,
+  className,
+  alt = 'Squirl',
+}: {
+  size?: number;
+  className?: string;
+  alt?: string;
+}) {
+  const wordHeight = Math.round(size * 0.42);
+  return (
+    <span className={cn('inline-flex items-center', className)} style={{ gap: size * 0.28 }}>
+      <Mark size={size} />
+      <Image
+        src="/brand/wordmark.png"
+        alt={alt}
+        width={brand.wordmark.width}
+        height={brand.wordmark.height}
+        quality={100}
+        priority
+        sizes={`${Math.round(wordHeight * WORD_RATIO) * 2}px`}
+        className="shrink-0 object-contain"
+        style={{ width: Math.round(wordHeight * WORD_RATIO), height: wordHeight }}
+      />
+    </span>
+  );
+}
+
 /**
  * The name as plain text, for places where an image would be wrong: the
  * document title, a sentence, a screen reader. Never used as the visible

@@ -407,6 +407,51 @@
 }
 
 /*
+  The threshold.
+
+  The panel is warm, not white. It carries the illustration's own paper colour
+  so the two halves read as one sheet with a curve drawn through it, rather
+  than a picture bolted to a white form. Pure white beside that cream was the
+  single loudest thing on the screen.
+
+  The light is a wide, very soft band crossing the scene on a slow loop, the
+  way the sun moves over a valley. It replaced a parallax that drifted the
+  whole frame under the pointer: that needed the picture blown up past its own
+  edges to have somewhere to drift to, so the illustration was permanently
+  cropped to pay for an effect you only saw while moving the mouse. This costs
+  no crop, and it runs whether or not anyone touches anything.
+*/
+.threshold {
+  --panel: oklch(0.974 0.008 84);
+}
+
+.dark .threshold {
+  --panel: oklch(0.196 0.008 250);
+}
+
+.scene-light {
+  position: absolute;
+  inset: -20% -60%;
+  pointer-events: none;
+  mix-blend-mode: soft-light;
+  background: radial-gradient(
+    ellipse 42% 60% at 50% 50%,
+    oklch(1 0 0 / 0.55) 0%,
+    oklch(1 0 0 / 0) 70%
+  );
+  animation: scene-light 26s cubic-bezier(0.45, 0, 0.55, 1) infinite alternate;
+}
+
+@keyframes scene-light {
+  from {
+    transform: translate3d(-14%, 4%, 0);
+  }
+  to {
+    transform: translate3d(14%, -4%, 0);
+  }
+}
+
+/*
   Type sitting on the night illustration.
 
   That picture is near-black where the headline goes, and the page's ink is

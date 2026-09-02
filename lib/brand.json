@@ -14,5 +14,9 @@
   "form-mark": {
     "width": 358,
     "height": 640
+  },
+  "wordmark": {
+    "width": 658,
+    "height": 164
   }
 }

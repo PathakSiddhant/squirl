@@ -6,11 +6,11 @@ import { EyeSlash } from '@phosphor-icons/react/dist/csr/EyeSlash';
 import { Leaf } from '@phosphor-icons/react/dist/csr/Leaf';
 import { LockSimple } from '@phosphor-icons/react/dist/csr/LockSimple';
 import { User } from '@phosphor-icons/react/dist/csr/User';
-import { motion, useMotionValue, useReducedMotion, useSpring } from 'motion/react';
-import { useActionState, useCallback, useEffect, useRef, useState } from 'react';
+import { motion, useReducedMotion } from 'motion/react';
+import { useActionState, useEffect, useRef, useState } from 'react';
 
 import { signIn, type SignInState } from '@/app/actions/session';
-import { Lockup, Mark } from '@/components/brand/logo';
+import { LockupRow, Mark } from '@/components/brand/logo';
 import { cn } from '@/lib/cn';
 import type { DeskPhase } from '@/lib/squirl/phase';
 
@@ -32,9 +32,12 @@ function PanelEdge() {
       viewBox="0 0 100 100"
       preserveAspectRatio="none"
       aria-hidden="true"
-      className="absolute inset-y-0 right-full hidden h-full w-[7.5rem] lg:block"
+      className="absolute inset-y-0 right-full hidden h-full w-[18rem] lg:block"
     >
-      <path d="M100,0 C58,16 76,42 62,60 C50,76 66,88 54,100 L100,100 Z" fill="var(--surface)" />
+      {/* One sweep with a single inflection, not a wave. An earlier path
+          oscillated across five control points and read as a ripple down the
+          side of the screen rather than as an edge. */}
+      <path d="M100,0 L84,0 C56,16 76,40 54,58 C34,74 32,88 8,100 L100,100 Z" fill="var(--panel)" />
     </svg>
   );
 }
@@ -56,7 +59,6 @@ function PanelEdge() {
 export function LockScreen({ phase }: { phase: DeskPhase }) {
   const [state, formAction, pending] = useActionState(signIn, INITIAL);
   const usernameField = useRef<HTMLInputElement>(null);
-  const scene = useRef<HTMLDivElement>(null);
   const reduceMotion = useReducedMotion();
 
   // Held in state on purpose. React resets an uncontrolled form once its action
@@ -65,35 +67,6 @@ export function LockScreen({ phase }: { phase: DeskPhase }) {
   // password is deliberately left to clear itself.
   const [username, setUsername] = useState('');
   const [reveal, setReveal] = useState(false);
-  const [live, setLive] = useState(false);
-
-  const rawX = useMotionValue(0.5);
-  const rawY = useMotionValue(0.5);
-  const pointerX = useSpring(rawX, { stiffness: 70, damping: 20, mass: 0.8 });
-  const pointerY = useSpring(rawY, { stiffness: 70, damping: 20, mass: 0.8 });
-
-  useEffect(() => {
-    if (window.matchMedia('(pointer: fine)').matches) {
-      usernameField.current?.focus();
-      if (!reduceMotion) setLive(true);
-    }
-  }, [reduceMotion]);
-
-  const track = useCallback(
-    (event: React.PointerEvent<HTMLElement>) => {
-      if (!live) return;
-      const box = scene.current?.getBoundingClientRect();
-      if (!box) return;
-      rawX.set(Math.min(1, Math.max(0, (event.clientX - box.left) / box.width)));
-      rawY.set(Math.min(1, Math.max(0, (event.clientY - box.top) / box.height)));
-    },
-    [live, rawX, rawY],
-  );
-
-  const settle = useCallback(() => {
-    rawX.set(0.5);
-    rawY.set(0.5);
-  }, [rawX, rawY]);
 
   // At night the illustration is near-black behind the headline, so the type
   // over it has to invert. In the dark theme the ink tokens are already light,
@@ -105,15 +78,13 @@ export function LockScreen({ phase }: { phase: DeskPhase }) {
   return (
     <main
       data-phase={phase}
-      onPointerMove={track}
-      onPointerLeave={settle}
-      className="threshold relative flex min-h-dvh flex-col bg-surface lg:flex-row"
+      className="threshold relative flex min-h-dvh flex-col bg-[var(--panel)] lg:flex-row"
     >
-      <div
-        ref={scene}
-        className="relative h-[34vh] w-full shrink-0 overflow-hidden lg:h-auto lg:min-h-dvh lg:w-[min(54%,75vh)]"
-      >
-        <ThresholdScene pointerX={pointerX} pointerY={pointerY} live={live} phase={phase} />
+      {/* Capped near the illustration's own proportions so the picture stays
+          large and nearly whole, rather than a fixed share of the width that
+          turns landscape on a short window and throws a third of it away. */}
+      <div className="relative h-[34vh] w-full shrink-0 overflow-hidden lg:h-auto lg:min-h-dvh lg:w-[min(63%,98vh)]">
+        <ThresholdScene phase={phase} />
 
         <div
           className={cn(
@@ -122,8 +93,8 @@ export function LockScreen({ phase }: { phase: DeskPhase }) {
           )}
         >
           <div className="rise" style={{ animationDelay: '880ms' }}>
-            <Lockup size={54} alt="Squirl" className={cn('lg:hidden', markOnDark)} />
-            <Lockup size={64} alt="Squirl" className={cn('hidden lg:block', markOnDark)} />
+            <LockupRow size={40} alt="Squirl" className={cn('lg:hidden', markOnDark)} />
+            <LockupRow size={54} alt="Squirl" className={cn('hidden lg:inline-flex', markOnDark)} />
           </div>
 
           {/* Sized against the viewport height rather than a fixed scale. The
@@ -156,7 +127,7 @@ export function LockScreen({ phase }: { phase: DeskPhase }) {
         </div>
       </div>
 
-      <div className="relative flex flex-1 flex-col bg-surface">
+      <div className="relative flex flex-1 flex-col bg-[var(--panel)]">
         <PanelEdge />
 
         <div className="flex items-center justify-end gap-2.5 px-6 pt-6 text-[0.6875rem] font-medium uppercase tracking-[0.09em] text-ink-3 lg:px-12">
@@ -168,7 +139,7 @@ export function LockScreen({ phase }: { phase: DeskPhase }) {
           <span>This device</span>
         </div>
 
-        <div className="mx-auto flex w-full max-w-[23rem] flex-1 flex-col justify-center px-6 pb-12 pt-6 lg:px-0">
+        <div className="mx-auto flex w-full max-w-[25.5rem] flex-1 flex-col justify-center px-6 pb-12 pt-6 lg:px-0">
           <div className="rise flex flex-col items-center" style={{ animationDelay: '900ms' }}>
             {/* The panel keeps the app's own surface, so in the dark theme a
                 charcoal mark sits on a charcoal disc and disappears. Punched
@@ -192,7 +163,7 @@ export function LockScreen({ phase }: { phase: DeskPhase }) {
                 <User
                   size={16}
                   aria-hidden="true"
-                  className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-3"
+                  className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-ink-3"
                 />
                 <input
                   ref={usernameField}
@@ -204,7 +175,7 @@ export function LockScreen({ phase }: { phase: DeskPhase }) {
                   spellCheck={false}
                   autoCapitalize="none"
                   aria-invalid={state.error ? true : undefined}
-                  className="field h-12 w-full rounded-lg border border-line bg-surface pl-10 pr-3.5 text-[0.9375rem] text-ink transition-[border-color,box-shadow] duration-[var(--t-state)] placeholder:text-ink-3"
+                  className="field h-[3.25rem] w-full rounded-xl border border-line bg-surface pl-11 pr-4 text-[0.9375rem] text-ink transition-[border-color,box-shadow] duration-[var(--t-state)] placeholder:text-ink-3"
                 />
               </label>
 
@@ -213,7 +184,7 @@ export function LockScreen({ phase }: { phase: DeskPhase }) {
                 <LockSimple
                   size={16}
                   aria-hidden="true"
-                  className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-3"
+                  className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-ink-3"
                 />
                 <input
                   name="password"
@@ -221,7 +192,7 @@ export function LockScreen({ phase }: { phase: DeskPhase }) {
                   placeholder="Password"
                   autoComplete="current-password"
                   aria-invalid={state.error ? true : undefined}
-                  className="field h-12 w-full rounded-lg border border-line bg-surface pl-10 pr-11 text-[0.9375rem] text-ink transition-[border-color,box-shadow] duration-[var(--t-state)] placeholder:text-ink-3"
+                  className="field h-[3.25rem] w-full rounded-xl border border-line bg-surface pl-11 pr-12 text-[0.9375rem] text-ink transition-[border-color,box-shadow] duration-[var(--t-state)] placeholder:text-ink-3"
                 />
                 <button
                   type="button"
@@ -253,7 +224,7 @@ export function LockScreen({ phase }: { phase: DeskPhase }) {
               type="submit"
               disabled={pending}
               className={cn(
-                'mt-2 flex h-12 w-full items-center justify-center gap-2 rounded-lg',
+                'mt-2 flex h-[3.25rem] w-full items-center justify-center gap-2.5 rounded-xl',
                 'bg-[var(--cta)] text-[0.9375rem] font-semibold text-white',
                 'transition-[background-color,transform] duration-[var(--t-state)]',
                 'hover:bg-[var(--cta-hover)] active:scale-[0.99]',
