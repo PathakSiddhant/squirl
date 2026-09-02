@@ -1,4 +1,4 @@
-import { Mark } from '@/components/brand/logo';
+import { LedgerMark } from '@/components/brand/logo';
 import { MilestoneGrid } from '@/components/game/progress-panel';
 import { PageHeader, Panel } from '@/components/ui/primitives';
 import { today as istToday } from '@/lib/date';
@@ -41,7 +41,7 @@ export default async function ProgressPage() {
       <Panel>
         <div className="flex flex-col gap-4 px-5 py-5 sm:flex-row sm:items-center">
           <div className="flex size-16 shrink-0 items-center justify-center rounded-md bg-[var(--acorn-wash)]">
-            <Mark size={46} />
+            <LedgerMark size={42} />
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-[1.0625rem] font-semibold text-ink">{mood.title}</p>

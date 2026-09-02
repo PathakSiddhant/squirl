@@ -5,7 +5,7 @@ import { Flame } from '@phosphor-icons/react/dist/csr/Flame';
 import Link from 'next/link';
 import { useState } from 'react';
 
-import { Mark } from '@/components/brand/logo';
+import { LedgerMark } from '@/components/brand/logo';
 import { Icon } from '@/components/shell/icon';
 import { cn } from '@/lib/cn';
 import { formatMoney } from '@/lib/money';
@@ -46,7 +46,7 @@ export function ProgressPanel({
               : 'bg-[var(--acorn-wash)]',
           )}
         >
-          <Mark size={34} className={mood.mood === 'new' ? 'opacity-45' : undefined} />
+          <LedgerMark size={30} className={mood.mood === 'new' ? 'opacity-45' : undefined} />
         </div>
 
         <div className="min-w-0 flex-1">
