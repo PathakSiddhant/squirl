@@ -48,17 +48,23 @@ lib/
                           a day earlier.
 
 components/
-  squirl/                 boot sheet, lock screen
+  squirl/                 boot sheet, lock screen, launcher rail and cards
   shell/                  the application shell: rail, tab bar, nav config
   brand/                  the marks, Squirl's and each application's
   ui/                     primitives any application may use
   today/ ledger/ people/ loans/ …   Ledger's own feature components
 ```
 
-Squirl has no settings screen of its own yet. Theme and lock live in the
-launcher header, and Ledger's own preferences live inside Ledger. A
-Squirl-level settings page gets built when there is a second thing to put on
-it, rather than now, to look symmetrical.
+Squirl has no settings screen of its own yet. Theme, lock, and the panel
+showing where the database file actually sits live on the launcher rail (and in
+the header on a phone, where there is no rail); Ledger's own preferences live
+inside Ledger. A Squirl-level settings page gets built when there is a second
+thing to put on it, rather than now, to look symmetrical.
+
+The launcher is sized to be read without scrolling. It is the screen that
+answers "what do I have, and does any of it need me", and an answer you have to
+scroll for is a worse answer, so reference material that does not serve that
+question opens from a control rather than occupying the page.
 
 ## Rules
 

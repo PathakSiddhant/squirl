@@ -122,6 +122,17 @@ all, because they do not read on near-black; it separates with `--line`.
 No nested cards. Grouping is done with `divide-y` on hairlines and negative
 space. Side-stripe borders are banned.
 
+**No scrollbars, anywhere.** Every surface still scrolls by wheel, trackpad,
+touch and keyboard; only the bar is hidden, on the page and on every inner
+scroller. The chrome here is hairlines and negative space, and a grey rail down
+the side of a panel belongs to neither. Nothing reserves a scrollbar gutter
+either: a bar with no width cannot shift the layout when content grows, which is
+the only thing the gutter was for.
+
+The corollary is that scrollable regions must be legible as scrollable without
+one. A cut-off row or a fading edge has to do that work, so content is never
+allowed to end exactly on the fold.
+
 ## Motion
 
 Durations `120ms` (state), `180ms` (enter/exit), `260ms` (layout). Easing
@@ -194,12 +205,24 @@ instead of a screen cut in half.
 The illustration is a matched pair, day and night: same composition, same rock,
 same squirrel, so moving between them never shifts anything on screen. Which
 one shows is decided by two honest signals and nothing else, the hour resolved
-in Asia/Kolkata on the server, and the theme. Nothing announces it and there is
-no control for it. It is meant to be felt, not read.
+in Asia/Kolkata on the server, and the theme.
 
-The whole frame drifts a little under the pointer, scaled up slightly to give
-that drift somewhere to go. That is the only motion, it runs on a transform,
-and it does not run on a coarse pointer or for a reader who asked for less.
+Those two can disagree, so they are ranked. **A theme chosen by hand wins; the
+hour only decides when the theme is left on System.** Someone who picked Light
+at eleven at night asked for a light screen and gets one. The rule is worth
+stating because the obvious implementation gets it wrong: pinning the night
+picture on by the clock alone leaves the theme control unable to reach the one
+screen it is most visible on, which is a setting that visibly does nothing.
+
+Nothing announces the hour and there is no control for it. It is meant to be
+felt, not read.
+
+The only motion is a wide, soft light crossing the valley on a slow loop. It
+replaced a parallax that drifted the whole frame under the pointer: that needed
+the picture scaled up past its own edges to have somewhere to drift to, so the
+illustration was permanently cropped to pay for an effect you only saw while
+moving the mouse. The light costs no crop and runs whether or not anyone
+touches anything.
 
 Two things this screen is allowed that the rest of the product is not:
 
@@ -211,9 +234,12 @@ Two things this screen is allowed that the rest of the product is not:
   Geist on a real contrast axis, where a second sans would be two typefaces
   doing one job.
 
-At night the picture is near-black where the headline sits, so `.on-night`
-inverts the ink ramp for that subtree rather than hard-coding white into the
-markup, and the mark is punched out white. The fields drop the base focus
+When the night picture is the one showing, it is near-black where the headline
+sits, so `.over-art` inverts the ink ramp for that subtree rather than
+hard-coding white into the markup, and `.mark-over-art` punches the mark out
+white. Both are keyed to the picture that actually won rather than to the hour,
+because inverting on the hour alone puts white type on the day picture every
+time a reader chooses Light after dark. The fields drop the base focus
 outline for the accent: border and a soft ring. That outline is right inside
 Ledger, where focus must be unmistakable against dense content, and wrong on a
 quiet panel where it reads as the browser's own default.

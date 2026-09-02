@@ -7,7 +7,7 @@ import { Leaf } from '@phosphor-icons/react/dist/csr/Leaf';
 import { LockSimple } from '@phosphor-icons/react/dist/csr/LockSimple';
 import { User } from '@phosphor-icons/react/dist/csr/User';
 import { motion, useReducedMotion } from 'motion/react';
-import { useActionState, useEffect, useRef, useState } from 'react';
+import { useActionState, useRef, useState } from 'react';
 
 import { signIn, type SignInState } from '@/app/actions/session';
 import { LockupRow, Mark } from '@/components/brand/logo';
@@ -74,13 +74,6 @@ export function LockScreen({ phase }: { phase: DeskPhase }) {
   const [username, setUsername] = useState('');
   const [reveal, setReveal] = useState(false);
 
-  // At night the illustration is near-black behind the headline, so the type
-  // over it has to invert. In the dark theme the ink tokens are already light,
-  // and the night picture is showing anyway, so the same treatment applies
-  // there through the dark variant rather than through this flag.
-  const onNight = phase === 'night';
-  const markOnDark = cn(onNight && 'brightness-0 invert', 'dark:brightness-0 dark:invert');
-
   return (
     <main
       data-phase={phase}
@@ -92,15 +85,13 @@ export function LockScreen({ phase }: { phase: DeskPhase }) {
       <div className="relative h-[34vh] w-full shrink-0 overflow-hidden lg:h-auto lg:min-h-dvh lg:w-[min(63%,98vh)]">
         <ThresholdScene phase={phase} />
 
-        <div
-          className={cn(
-            'relative z-10 flex h-full flex-col p-6 lg:p-10 xl:p-14',
-            onNight && 'on-night',
-          )}
-        >
+        {/* The ink ramp and the wordmark both invert when the night picture is
+            the one showing. Which that is depends on the hour and on the theme
+            together, so it is settled in CSS rather than guessed here. */}
+        <div className="over-art relative z-10 flex h-full flex-col p-6 lg:p-10 xl:p-14">
           <div className="rise" style={{ animationDelay: '880ms' }}>
-            <LockupRow size={40} alt="Squirl" className={cn('lg:hidden', markOnDark)} />
-            <LockupRow size={54} alt="Squirl" className={cn('hidden lg:inline-flex', markOnDark)} />
+            <LockupRow size={40} alt="Squirl" className="mark-over-art lg:hidden" />
+            <LockupRow size={54} alt="Squirl" className="mark-over-art hidden lg:inline-flex" />
           </div>
 
           {/* Sized against the viewport height rather than a fixed scale. The

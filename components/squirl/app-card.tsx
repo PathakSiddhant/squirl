@@ -95,9 +95,16 @@ export function AppCard({
 
       {snapshot ? (
         <>
-          <dl className="relative mt-6 grid grid-cols-3 divide-x divide-line border-t border-line pt-4">
+          {/* Three across needs about 150px a column to hold a rupee figure.
+              A phone cannot give it, and the figures were arriving as ₹1,086…
+              and ₹12,… — a money card whose numbers are elided is worse than
+              a taller one, so below sm they stack and stay whole. */}
+          <dl className="relative mt-6 grid grid-cols-1 divide-y divide-line border-t border-line pt-4 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
             {snapshot.stats.map((stat, index) => (
-              <div key={stat.label} className={cn('min-w-0', index === 0 ? 'pr-4' : 'px-4')}>
+              <div
+                key={stat.label}
+                className={cn('min-w-0 py-2.5 sm:py-0', index === 0 ? 'sm:pr-4' : 'sm:px-4')}
+              >
                 <dt className="truncate text-[0.75rem] text-ink-3">{stat.label}</dt>
                 <dd
                   className={cn(
@@ -130,6 +137,18 @@ export function AppCard({
             </div>
           ) : null}
         </>
+      ) : open ? (
+        /* A built application with no figures has failed to read them, which is
+           a different fact from not existing. Saying "Not built yet" here told
+           someone whose ledger was full that their application was never made,
+           which is the most alarming thing this card could get wrong. */
+        <div className="relative mt-6 flex flex-1 flex-col justify-center border-t border-line pt-6">
+          <p className="text-[0.9375rem] font-medium text-ink">Figures unavailable</p>
+          <p className="mt-2 max-w-[26rem] text-[0.8125rem] leading-relaxed text-ink-3">
+            {app.name} is installed and nothing has been changed. Its numbers could not be read just
+            now, so none are shown rather than shown wrong. Open it to see what went wrong.
+          </p>
+        </div>
       ) : (
         <div className="relative mt-6 flex flex-1 flex-col justify-center border-t border-line pt-6">
           <p className="text-[0.9375rem] font-medium text-ink">Not built yet</p>

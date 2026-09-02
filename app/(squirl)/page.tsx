@@ -1,9 +1,7 @@
 import { statSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { ClockCounterClockwise } from '@phosphor-icons/react/dist/ssr/ClockCounterClockwise';
-import { Database } from '@phosphor-icons/react/dist/ssr/Database';
-import { HardDrives } from '@phosphor-icons/react/dist/ssr/HardDrives';
+import { Info } from '@phosphor-icons/react/dist/ssr/Info';
 import { Lock } from '@phosphor-icons/react/dist/ssr/Lock';
 
 import { signOut } from '@/app/actions/session';
@@ -12,6 +10,7 @@ import { ThemeToggle } from '@/components/shell/theme-toggle';
 import { AppCard } from '@/components/squirl/app-card';
 import { Orbit } from '@/components/squirl/orbit';
 import { Rail } from '@/components/squirl/rail';
+import { StorageSheet, type StorageFacts } from '@/components/squirl/storage-sheet';
 import { Button } from '@/components/ui/button';
 import { formatDayLong, IST_TIME_ZONE, today } from '@/lib/date';
 import { APPS, type AppSnapshot, type SquirlApp } from '@/lib/squirl/apps';
@@ -39,7 +38,7 @@ async function readSnapshot(app: SquirlApp): Promise<AppSnapshot | null> {
  * not claim one: it reports where the file is, how big it has got, and when it
  * was last written, which is what you would want to know before copying it.
  */
-function storage(): { size: string; written: string } | null {
+function storage(): StorageFacts | null {
   try {
     const file = statSync(join(process.cwd(), 'data', 'squirl.db'));
     const mb = file.size / (1024 * 1024);
@@ -73,33 +72,9 @@ export default async function SquirlHome() {
   );
   const file = storage();
 
-  const facts = [
-    {
-      icon: Database,
-      label: 'Where it lives',
-      value: 'data/squirl.db',
-      note: 'On this machine, nowhere else',
-      mono: true,
-    },
-    {
-      icon: HardDrives,
-      label: 'Size on disk',
-      value: file ? file.size : 'not created yet',
-      note: 'Everything, across every application',
-      mono: false,
-    },
-    {
-      icon: ClockCounterClockwise,
-      label: 'Last written',
-      value: file ? file.written : 'never',
-      note: 'Copy the file and you have a backup',
-      mono: false,
-    },
-  ];
-
   return (
     <main data-phase={deskPhase()} className="desk min-h-dvh">
-      <Rail />
+      <Rail storage={file} />
 
       {/* The rail is desktop only, so the controls it holds need a home on a
           phone. This bar is that, and nothing else. */}
@@ -107,6 +82,17 @@ export default async function SquirlHome() {
         <Lockup size={44} alt="Squirl" />
         <div className="flex items-center gap-1.5">
           <ThemeToggle />
+          <StorageSheet facts={file}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              title="Where your data lives"
+              aria-label="Where your data lives"
+            >
+              <Info size={15} />
+            </Button>
+          </StorageSheet>
           <form action={signOut}>
             <Button type="submit" variant="ghost" size="icon" title="Lock Squirl" aria-label="Lock Squirl">
               <Lock size={15} />
@@ -116,10 +102,16 @@ export default async function SquirlHome() {
       </header>
 
       <div className="relative z-10 lg:pl-[8.75rem]">
-        <div className="mx-auto w-full max-w-[72rem] px-5 py-10 sm:px-8 lg:py-14">
+        {/* The launcher has to be readable without scrolling: it is the screen
+            that answers "what do I have and does any of it need me", and an
+            answer you have to scroll for is a worse answer. So the column is
+            the window's height and the rhythm inside it is measured against
+            that height, rather than against a fixed scale that overflows the
+            moment the window is a laptop rather than a monitor. */}
+        <div className="mx-auto flex w-full max-w-[72rem] flex-col px-5 py-8 sm:px-8 lg:min-h-dvh lg:justify-center lg:py-[min(3.5rem,4.4vh)]">
           <div className="flex items-start justify-between gap-10">
             <div className="rise min-w-0" style={{ animationDelay: '40ms' }}>
-              <h1 className="font-serif text-[2.75rem] font-normal leading-[1.04] tracking-[-0.02em] text-ink sm:text-[3.25rem]">
+              <h1 className="font-serif text-[2.75rem] font-normal leading-[1.04] tracking-[-0.02em] text-ink sm:text-[3.25rem] lg:text-[min(3.25rem,6.4vh)]">
                 Welcome to
                 <br />
                 <span className="text-[var(--cta)]">Squirl.</span>
@@ -138,46 +130,11 @@ export default async function SquirlHome() {
             </div>
           </div>
 
-          <div className="mt-10 grid grid-cols-1 items-stretch gap-4 lg:grid-cols-2">
+          <div className="mt-8 grid grid-cols-1 items-stretch gap-4 lg:mt-[min(2.5rem,3.6vh)] lg:grid-cols-2">
             {cards.map(({ app, snapshot }, index) => (
               <AppCard key={app.id} app={app} snapshot={snapshot} delay={220 + index * 90} />
             ))}
           </div>
-
-          <section
-            className="rise mt-4 rounded-xl border border-line bg-surface p-6"
-            style={{ animationDelay: `${220 + cards.length * 90 + 70}ms` }}
-          >
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,15rem)_1fr] lg:gap-10">
-              <p className="font-serif text-[1.125rem] leading-snug text-ink">
-                Nothing here is guessed. Every number is replayed from what you wrote down.
-              </p>
-
-              <div className="grid grid-cols-1 gap-5 sm:grid-cols-3 sm:divide-x sm:divide-line">
-                {facts.map((fact, index) => (
-                  <div
-                    key={fact.label}
-                    className={`flex items-start gap-3 ${index === 0 ? 'sm:pr-5' : 'sm:px-5'}`}
-                  >
-                    <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-surface-2 text-ink-2">
-                      <fact.icon size={16} />
-                    </span>
-                    <span className="min-w-0">
-                      <span className="block text-[0.75rem] text-ink-3">{fact.label}</span>
-                      <span
-                        className={`mt-1 block truncate text-[0.875rem] text-ink ${fact.mono ? 'font-mono text-[0.8125rem]' : ''}`}
-                      >
-                        {fact.value}
-                      </span>
-                      <span className="mt-1 block text-[0.75rem] leading-relaxed text-ink-3">
-                        {fact.note}
-                      </span>
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </section>
         </div>
       </div>
     </main>

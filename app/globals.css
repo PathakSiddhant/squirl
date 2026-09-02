@@ -237,13 +237,29 @@
     -webkit-tap-highlight-color: transparent;
   }
 
-  /* Reserving the scrollbar gutter stops desktop layout shift, but on a phone
-     it steals 15px the fixed tab bar still spans, which makes the page scroll
-     sideways. Only reserve it where a scrollbar actually takes up space. */
-  @media (min-width: 1024px) {
-    html {
-      scrollbar-gutter: stable;
-    }
+  /*
+    No scrollbars anywhere, on any surface. Everything still scrolls: wheel,
+    trackpad, touch, keyboard and the scroll-into-view a focused field relies
+    on all behave exactly as before. Only the bar itself is gone.
+
+    Applied to every element rather than to the page alone, because the inner
+    scrollers (a wide table, a long menu) each grow their own bar, and one
+    stray grey rail down the side of a panel is the thing that reads as unfinished.
+
+    Nothing reserves a gutter now: a bar with no width cannot shift the layout
+    when content grows past the fold, which is what the gutter was there for.
+  */
+  *,
+  *::before,
+  *::after {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  *::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;
   }
 
   body {
@@ -322,7 +338,6 @@
   .scroll-x {
     overflow-x: auto;
     overscroll-behavior-x: contain;
-    scrollbar-width: thin;
   }
 
   .z-sticky {
@@ -452,6 +467,46 @@
 }
 
 /*
+  Which picture shows, and everything that has to follow it.
+
+  Two signals, in a fixed order of authority:
+
+    1. A theme the reader chose by hand wins. Someone who picked Light at
+       eleven at night asked for a light screen and must get one; the hour is
+       not entitled to overrule them. This is the bug this block exists to
+       close: the night picture used to be pinned on by the clock, so the
+       theme control could not reach the one screen it was most visible on.
+    2. Otherwise the hour decides, which is the ambient default and the thing
+       worth keeping. Coming back at night should feel like coming back at
+       night.
+
+  `system` carries no instruction from the reader, so it falls to the hour,
+  and to the dark class the theme script sets from the OS.
+
+  Expressed with :not() rather than by stacking specificity, so each rule reads
+  as the condition it actually means and none of them depend on source order.
+  With scripting off no data-theme is stamped, the hour decides, and the screen
+  is still correct.
+*/
+.scene-day {
+  display: block;
+}
+
+.scene-night {
+  display: none;
+}
+
+html:not([data-theme='light']) .threshold[data-phase='night'] .scene-day,
+html.dark .threshold .scene-day {
+  display: none;
+}
+
+html:not([data-theme='light']) .threshold[data-phase='night'] .scene-night,
+html.dark .threshold .scene-night {
+  display: block;
+}
+
+/*
   Type sitting on the night illustration.
 
   That picture is near-black where the headline goes, and the page's ink is
@@ -459,14 +514,23 @@
   that subtree only, rather than hard-coding white into the markup, so the
   hierarchy between the headline, the line under it and the caption survives.
 
-  It is applied when the hour is night. In the dark theme the ink tokens are
-  already light and this changes nothing.
+  Keyed to the picture that actually won, not to the hour. Inverting on the
+  hour alone put white type on the day picture every time a reader chose Light
+  after dark, which is invisible.
 */
-.on-night {
+html:not([data-theme='light']) .threshold[data-phase='night'] .over-art,
+html.dark .threshold .over-art {
   --ink: oklch(0.972 0.004 250);
   --ink-2: oklch(0.838 0.008 250);
   --ink-3: oklch(0.706 0.012 250);
   --line-strong: oklch(0.62 0.012 250);
+}
+
+/* The wordmark is a flat charcoal drawing, so it needs punching out to white
+   over the same picture. Same condition, same reason. */
+html:not([data-theme='light']) .threshold[data-phase='night'] .mark-over-art,
+html.dark .threshold .mark-over-art {
+  filter: brightness(0) invert(1);
 }
 
 /*
@@ -669,6 +733,38 @@
   to {
     opacity: 1;
     transform: none;
+  }
+}
+
+/*
+  The storage sheet. It settles in place in the middle of the screen: a small
+  scale and a fade, and no travel at all.
+
+  Scale only, and deliberately so. The panel is centred with `-translate-x-1/2
+  -translate-y-1/2`, which Tailwind v4 compiles to the standalone `translate`
+  property rather than to `transform`. The two compose, so a keyframe that also
+  wrote `transform: translate(-50%, -50%)` applied the offset a second time and
+  the sheet flew in from the top left corner before snapping to the middle.
+  Anything that needs to move this element must go through `translate`; this
+  animation owns `transform`, and uses it for scale and nothing else.
+*/
+@keyframes sheet-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes scrim-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
   }
 }
 

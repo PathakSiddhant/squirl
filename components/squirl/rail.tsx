@@ -3,10 +3,12 @@ import { Lock } from '@phosphor-icons/react/dist/ssr/Lock';
 import Link from 'next/link';
 
 import { signOut } from '@/app/actions/session';
-import { AppMark, Mark } from '@/components/brand/logo';
+import { AppMark } from '@/components/brand/logo';
 import { ThemeToggle } from '@/components/shell/theme-toggle';
 import { Button } from '@/components/ui/button';
 import { APPS } from '@/lib/squirl/apps';
+
+import { StorageSheet, type StorageFacts } from './storage-sheet';
 
 /**
  * The rail down the left of Squirl's home.
@@ -20,7 +22,7 @@ import { APPS } from '@/lib/squirl/apps';
  * shortest path between them once there is more than one, and it is the same
  * shape in every application's own shell.
  */
-export function Rail() {
+export function Rail({ storage }: { storage: StorageFacts | null }) {
   return (
     <aside className="z-rail fixed inset-y-0 left-0 hidden w-[8.75rem] flex-col items-center border-r border-line bg-surface px-3 py-5 lg:flex">
       <Link
@@ -84,15 +86,23 @@ export function Rail() {
       <span className="my-4 h-px w-9 bg-line" />
 
       {/* Not a badge. It is the one claim the whole product rests on, so it is
-          stated on the screen you see most, where it can be checked. */}
-      <p className="text-center text-[0.6875rem] leading-[1.5] text-ink-3">
-        <span className="flex items-center justify-center gap-1.5 font-medium text-ink-2">
-          <span className="size-1.5 rounded-full bg-[var(--in)]" aria-hidden="true" />
-          All local
-        </span>
-        <span className="mt-1.5 block">No sync.</span>
-        <span className="block">No cloud.</span>
-      </p>
+          stated on the screen you see most — and it opens the file's actual
+          size, path and last write, so the claim can be checked from the place
+          it is made rather than taken on trust. */}
+      <StorageSheet facts={storage}>
+        <button
+          type="button"
+          title="Where your data lives"
+          className="w-full rounded-lg px-2 py-2 text-center text-[0.6875rem] leading-[1.5] text-ink-3 transition-colors duration-[var(--t-state)] hover:bg-surface-2 hover:text-ink-2"
+        >
+          <span className="flex items-center justify-center gap-1.5 font-medium text-ink-2">
+            <span className="size-1.5 rounded-full bg-[var(--in)]" aria-hidden="true" />
+            All local
+          </span>
+          <span className="mt-1.5 block">No sync.</span>
+          <span className="block">No cloud.</span>
+        </button>
+      </StorageSheet>
     </aside>
   );
 }

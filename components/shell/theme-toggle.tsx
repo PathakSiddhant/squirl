@@ -15,6 +15,17 @@ const OPTIONS: Array<{ value: Theme; label: string; Icon: typeof Sun }> = [
   { value: 'dark', label: 'Dark', Icon: Moon },
 ];
 
+/** Writes the resolved theme onto the document. The stored choice is kept
+ *  beside it, because the threshold treats a chosen Light differently from an
+ *  OS that merely happens to be light. */
+function paint(choice: Theme) {
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const dark = choice === 'dark' || (choice === 'system' && prefersDark);
+  document.documentElement.classList.toggle('dark', dark);
+  document.documentElement.dataset.theme = choice;
+  document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
+}
+
 export function ThemeToggle({ className }: { className?: string }) {
   const [theme, setTheme] = useState<Theme>('system');
   const [mounted, setMounted] = useState(false);
@@ -24,13 +35,21 @@ export function ThemeToggle({ className }: { className?: string }) {
     setTheme((localStorage.getItem('squirl-theme') as Theme) ?? 'system');
   }, []);
 
+  // On System, follow the OS while the page is open. Without this the setting
+  // means "whatever the OS said at load", and the screen stays light while the
+  // machine goes dark around it.
+  useEffect(() => {
+    if (theme !== 'system') return;
+    const query = window.matchMedia('(prefers-color-scheme: dark)');
+    const sync = () => paint('system');
+    query.addEventListener('change', sync);
+    return () => query.removeEventListener('change', sync);
+  }, [theme]);
+
   const apply = (next: Theme) => {
     setTheme(next);
     localStorage.setItem('squirl-theme', next);
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const dark = next === 'dark' || (next === 'system' && prefersDark);
-    document.documentElement.classList.toggle('dark', dark);
-    document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
+    paint(next);
   };
 
   return (

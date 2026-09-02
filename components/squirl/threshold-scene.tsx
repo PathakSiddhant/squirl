@@ -16,6 +16,11 @@ import type { DeskPhase } from '@/lib/squirl/phase';
  * document and is not known while the server renders. Together they come to
  * about a hundred kilobytes, which is cheaper than a flash of the wrong one.
  *
+ * The choosing lives in globals.css, next to the ink and wordmark rules that
+ * have to agree with it. Deciding it here in two ternaries is how the theme
+ * came to be ignored after dark: the hour hard-coded `hidden` onto the day
+ * picture, and no theme class could reach past it.
+ *
  * Nothing here is scaled or offset. An earlier version drifted the whole frame
  * under the pointer, which meant blowing it up past its edges to have somewhere
  * to drift to: the picture was permanently cropped to pay for an effect you
@@ -24,6 +29,8 @@ import type { DeskPhase } from '@/lib/squirl/phase';
  * the page opens.
  */
 export function ThresholdScene({ phase }: { phase: DeskPhase }) {
+  // Only used to decide which file to fetch first. The hour is the right guess:
+  // it is what shows unless a reader has overruled it by hand.
   const nightByHour = phase === 'night';
 
   // The column is capped near the illustration's own three-by-four shape, so
@@ -44,7 +51,7 @@ export function ThresholdScene({ phase }: { phase: DeskPhase }) {
         priority={!nightByHour}
         quality={90}
         sizes="(min-width: 1024px) 58vw, 100vw"
-        className={cn(art, nightByHour ? 'hidden' : 'block dark:hidden')}
+        className={cn(art, 'scene-day')}
       />
       <Image
         src="/brand/threshold-night.webp"
@@ -53,7 +60,7 @@ export function ThresholdScene({ phase }: { phase: DeskPhase }) {
         priority={nightByHour}
         quality={90}
         sizes="(min-width: 1024px) 58vw, 100vw"
-        className={cn(art, nightByHour ? 'block' : 'hidden dark:block')}
+        className={cn(art, 'scene-night')}
       />
 
       <span className="scene-light" />
