@@ -25,6 +25,12 @@ const INITIAL: SignInState = { error: null };
  * lets the panel lean into the picture instead, so the two halves read as one
  * composition. It is filled with the panel's own colour and sits to the left
  * of it, which is why the panel needs no border of its own.
+ *
+ * Overlapped by a pixel. Sat exactly flush, the fill and the panel each stop
+ * on the same subpixel boundary and antialiasing leaves a hairline of the
+ * layer behind showing between them: a dead straight line down the page,
+ * because this element's right edge is straight even though its left edge is
+ * the curve.
  */
 function PanelEdge() {
   return (
@@ -32,7 +38,7 @@ function PanelEdge() {
       viewBox="0 0 100 100"
       preserveAspectRatio="none"
       aria-hidden="true"
-      className="absolute inset-y-0 right-full hidden h-full w-[18rem] lg:block"
+      className="absolute inset-y-0 right-[calc(100%-1px)] hidden h-full w-[18rem] lg:block"
     >
       {/* One sweep with a single inflection, not a wave. An earlier path
           oscillated across five control points and read as a ripple down the
