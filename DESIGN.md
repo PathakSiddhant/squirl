@@ -148,3 +148,60 @@ the next action.
 Plain, lowercase-friendly, never moralising. Numbers over adjectives. No
 em-dashes anywhere in the interface. Rupees are written `₹1,240` with Indian
 digit grouping.
+
+## Application accents
+
+Squirl hosts applications, and the design system has to let you tell which one
+you are standing in without breaking the thesis above.
+
+One slot does that work: `--app-accent`, with `--app-accent-deep` and
+`--app-accent-wash` beside it. Squirl leaves it as the acorn. Each application
+overrides it in a single class, applied on that application's layout, so
+everything nested inside inherits it.
+
+| Application | Accent | Light | Dark |
+|---|---|---|---|
+| Squirl itself | acorn | `oklch(0.68 0.087 66)` | `oklch(0.75 0.095 68)` |
+| Ledger | forest | `oklch(0.42 0.045 165)` | `oklch(0.74 0.045 158)` |
+
+Ledger's green is sampled from its own mark, whose body reads
+`oklch(0.374 0.028 175)` and whose pages read `oklch(0.82 0.025 147)`. That is
+a genuinely desaturated green and it is kept that way. Raising the chroma to
+make it "pop" would put a second loud colour next to money data that has
+already earned its palette.
+
+An accent is allowed in exactly four places:
+
+- the application's mark tile, on its launcher row and in its own header
+- the selected row of that application's navigation, as a wash plus the icon
+- the hairline under an application on the launcher, when you reach for it
+- a focus ring inside that application, where ink would be ambiguous
+
+It is never allowed on data, on a chart series, on a button fill, or on
+anything chosen to look nice. **Colour is data; chrome is ink** still holds.
+The accent is the one piece of chrome that is allowed to say *where*, because
+"which application am I in" is genuine information rather than decoration.
+
+## The threshold
+
+The lock screen is the one surface in Squirl that is not the app shell, and it
+is designed as a room rather than as a page.
+
+A sheet of paper on a lit desk. The sheet is pure `--surface` with a hairline
+and a layered shadow, faintly ruled at its head and foot the way a ledger page
+is. The desk sits deeper than `--bg` on purpose: with both at the app's usual
+near-white the paper did not read as paper.
+
+Two things move, and both are motivated:
+
+- The sheet leans up to 2.4 degrees towards the pointer, with a highlight
+  travelling across it and the mark lifted above the form in real 3D so it
+  parallaxes. This is what makes the sheet read as a solid object rather than
+  as a rectangle with a shadow.
+- The desk lamp keeps the hour, resolved in Asia/Kolkata on the server: cool
+  and low at first light, plain through the day, warm in the evening, dim at
+  night. Nothing announces it and there is no control for it. It is meant to be
+  felt, not read.
+
+Neither runs on a coarse pointer or for a reader who asked for less motion, and
+the screen is complete and usable without a single frame of it.

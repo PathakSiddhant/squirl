@@ -4,21 +4,95 @@
 
 # SQUIRL
 
-**Know where you stand.**
+**A place for software you actually own.**
 
-A personal money ledger that keeps money you *spent*, money you *lent*,
-and money you *stashed* as three different things, because they are.
+Squirl is a personal workspace that runs on your own machine.
+No account, no server, no sync, no telemetry. One file holds everything.
 
-Runs entirely on your own machine against a single file.
-No account, no server, no sync, nothing leaves the device.
+Its first application is **Ledger**, which keeps money you *spent*,
+money you *lent*, and money you *put away* as three different things.
 
-[The idea](#the-idea) · [What it does](#what-it-does) · [Run it](#run-it) · [Under the hood](#under-the-hood)
+[What Squirl is](#what-squirl-is) · [Ledger](#ledger-the-first-application) · [Run it](#run-it) · [Under the hood](#under-the-hood)
 
 </div>
 
 ---
 
-## The idea
+## What Squirl is
+
+Most software you use is a tenant on someone else's computer. It can change
+under you, start charging, start watching, or disappear. Squirl is the
+opposite arrangement: it runs on your machine, against a file you can copy,
+open with any SQLite tool, and delete.
+
+That is the whole premise. Everything below follows from it.
+
+**Squirl is not one app.** It is the environment those apps live in. It owns
+the identity, the lock, the theme, where the data sits, and how it gets backed
+up. Applications own their own subject: their nouns, their screens, their
+vocabulary, their workflows.
+
+That split is deliberate, and it is the thing being protected here:
+
+|  | Squirl | An application |
+|---|---|---|
+| Owns | identity, shell, lock, theme, storage, backup | its domain model, screens, language |
+| Knows about | that applications exist, and how to list them | itself, and nothing else |
+| Never does | hold domain logic for any one app | reach into another app's data |
+
+Squirl knows Ledger exists. Ledger does not know Squirl has other plans.
+
+### What is inside, right now
+
+| Application | What it is for |
+|---|---|
+| **Ledger** | Money. What you spent, what you lent, what you owe, what is safe to spend. |
+
+That is the entire list, and it is honest. There is no roadmap of half-imagined
+apps here, because a list of things that do not exist is a promise, and this
+project would rather ship one thing that is genuinely finished. The second
+application arrives when there is something worth building, not to fill a grid.
+
+### The rules it holds itself to
+
+- **Local by default.** Nothing leaves the device. There is no account to make.
+- **Your data is inspectable.** One SQLite file, ordinary tables, plain columns.
+- **Deterministic.** The same input produces the same result. No model calls in
+  anything that has to be trustworthy.
+- **No dark patterns.** Nothing nags, streak-shames, or invents urgency.
+- **Focused apps, not one bloated one.** A shared home, not a shared blob.
+- **No premature abstraction.** There is no universal "item" every future app
+  must inherit. Real domains get real nouns.
+- **An app must be removable.** Delete its directory and its tables, and the
+  rest keeps running.
+
+---
+
+## Getting in
+
+Squirl opens on a lock screen. The default credentials are:
+
+```
+username   Siddhant_Squirl
+password   LocalSquirl_123
+```
+
+Change them with `SQUIRL_USERNAME` and `SQUIRL_PASSWORD` in a `.env.local`
+file, and set `SQUIRL_SESSION_SECRET` if you would rather pin the signing key
+than let it be generated into `data/`.
+
+**Be clear about what this lock is.** It stops someone idly opening the tab on
+a shared desk. It is not encryption. `data/squirl.db` sits on disk in the
+clear, and anyone holding the machine can read it with any SQLite browser. The
+lock screen says so out loud rather than implying protection it does not
+provide.
+
+Past the lock is Squirl's home: the applications it holds, and a live figure
+from each one so you know whether you need to open it at all.
+
+---
+
+## Ledger, the first application
 
 Almost every money app tracks one number: how much you have.
 
@@ -35,10 +109,8 @@ Only the third one is spending. The other two changed your **access** to money,
 not the **amount** of it. Blur those together and your balance starts feeling
 random: some weeks end flush, some end at zero, and nothing explains why.
 
-Squirl refuses to blur them. A squirrel does not eat its whole hoard just
+Ledger refuses to blur them. A squirrel does not eat its whole hoard just
 because it can reach it.
-
-## What it does
 
 ### Five piles, never added together
 
@@ -56,7 +128,8 @@ that fails if it ever stops being true.
 
 ### One number, and it shows its working
 
-**Safe to spend** = in hand − everything due in the next 30 days − your buffer.
+**Safe to spend** = in hand, minus everything due in the next 30 days, minus
+your buffer.
 
 It is never asserted without proof. One tap accounts for every rupee between
 the two figures and lists each obligation by name and date. An app that tells
@@ -84,7 +157,7 @@ produce the same entry. Dates handle `today`, `yesterday`, `kal`, `aaj`,
 ### Debts that behave like real life
 
 Money between friends is messy: partial repayments, no fixed date, sometimes
-interest, sometimes settled six months later. Squirl replays each debt as a
+interest, sometimes settled six months later. Ledger replays each debt as a
 timeline rather than storing a balance, so every amount accrues from its own
 day and a repayment clears interest before it touches principal, which is how
 people actually settle up.
@@ -92,7 +165,7 @@ people actually settle up.
 ### Loans, entered the way they are actually sold
 
 You are told *"borrow ₹1,500, pay ₹550 a month for 3 months"*, never a rate.
-So that is what Squirl asks for. Then it tells you what it really costs:
+So that is what Ledger asks for. Then it tells you what it really costs:
 
 > **₹1,500 repaid as ₹550 × 3 is an effective 78% a year**, not the 10% the
 > headline implies, because what you owe shrinks while the payment does not.
@@ -125,7 +198,7 @@ are already subtracted from what is safe to spend.
 
 Tap-to-pay is easy to forget, and one missed ₹40 chai makes every figure
 slightly wrong. Rather than pretend that never happens, open your banking app,
-type what it *actually* says, and Squirl writes the difference into your
+type what it *actually* says, and Ledger writes the difference into your
 history as a real entry with a reason. The record corrects itself instead of
 slowly drifting into fiction.
 
@@ -152,15 +225,15 @@ You need **Node 20.9 or newer**. Nothing else. No database to install, no
 Docker, no API keys, no sign-up.
 
 ```bash
-git clone https://github.com/PathakSiddhant/not-your-usual-expense-tracker.git
-cd not-your-usual-expense-tracker
+git clone https://github.com/PathakSiddhant/squirl.git
+cd squirl
 
 npm install
 npm run setup     # creates the file, applies migrations, seeds accounts and categories
 npm run dev
 ```
 
-Open **http://localhost:3000**.
+Open **http://localhost:3000** and sign in with the credentials above.
 
 ### Want to look around before committing to it?
 
@@ -183,14 +256,15 @@ loan. Delete `data/squirl.db` whenever you want a clean start.
 | `npm run db:studio` | Browse the raw database |
 | `npm test` | Run the test suite |
 | `npm run typecheck` | Type-check without building |
+| `npm run brand:build` | Regenerate marks and icons from the artwork |
 | `npm run build && npm start` | Production build |
 
 ### Where your data lives
 
-One file: **`data/squirl.db`**. Copy it and you have copied your entire
-financial history. Delete it and nothing of yours remains anywhere. There is no
-account to close and nothing to export from a server, though Settings has a
-one-click JSON export anyway.
+One file: **`data/squirl.db`**. Copy it and you have copied everything Squirl
+holds, across every application. Delete it and nothing of yours remains
+anywhere. There is no account to close and nothing to export from a server,
+though Ledger's settings has a one-click JSON export anyway.
 
 ### Having it always running (Windows)
 
@@ -210,6 +284,9 @@ privileges a normal account often does not have.
 - Logs go to `logs/squirl.log`
 - Stop it any time: `powershell -File scripts\windows\stop-squirl.ps1`
 - Undo it: `powershell -File scripts\windows\uninstall-autostart.ps1`
+- Moving the project folder breaks that shortcut, since it stores an absolute
+  path. Re-run the installer afterwards, or use
+  `scripts\windows\rename-project-folder.ps1`, which does both.
 
 It only runs while you are signed in, and rebuilding (`npm run build`) is still
 needed after any code change.
@@ -232,10 +309,8 @@ private networks when it asks, or add an inbound rule for port 3000.
 
 Away from home, put both devices on [Tailscale](https://tailscale.com) and use
 the machine's Tailscale address instead. That keeps everything private without
-exposing anything to the internet.
-
-There is no login, because there is no notion of other users. Do not port
-forward this to the public internet.
+exposing anything to the internet. Do not port forward this to the public
+internet: the lock is a lock, not a security boundary.
 
 ---
 
@@ -250,7 +325,22 @@ libSQL rather than `better-sqlite3` because its bindings ship prebuilt for
 every platform, so `npm install` never needs a C++ toolchain.
 
 ```
+app/
+  layout.tsx            fonts, theme, the boot sequence
+  lock/                 the threshold. the only route outside the gate.
+  (squirl)/
+    layout.tsx          the session gate every app route nests under
+    page.tsx            Squirl's home: the applications it holds
+    ledger/             one application, self-contained
+      page.tsx            Today
+      history/ accounts/ repeating/ people/ loans/
+      insights/ progress/ guide/ settings/
+  actions/              server actions, validated at the boundary
+
 lib/
+  squirl/               the platform. small on purpose.
+    apps.ts               the registry of installed applications
+    session.ts            the local lock
   money.ts              integer paise arithmetic, Indian digit grouping
   date.ts               IST day strings, no timestamps anywhere
   domain/
@@ -262,15 +352,22 @@ lib/
     achievements.ts     milestones, evaluated from real position
   db/                   schema, migrations, seed, demo data
   queries/              read models composed from the pure engines above
-app/
-  actions/              server actions, validated at the boundary
-  (app)/                Today, History, Accounts, Repeating, People, Loans,
-                        Insights, Progress, Guide, Settings
-components/             design system and feature components
-brand-assets/           logo artwork
+
+components/
+  squirl/               boot, lock screen, shell
+  brand/                the marks, Squirl's and each application's
+  ui/                   primitives any application may use
 ```
 
-Two rules hold it together:
+`lib/squirl/apps.ts` is the entire coupling between the shell and the things it
+hosts. An application declares a name, a mark, a route, an accent, and
+optionally one live figure for its card. Squirl renders that and nothing else:
+it does not know what a transaction is. Adding the second application means
+adding an entry there and a directory under `app/(squirl)`.
+
+More on that split in [ARCHITECTURE.md](ARCHITECTURE.md).
+
+Two rules hold the money side together:
 
 **Nothing is stored as a running total.** Balances, debt positions and loan
 liabilities are all derived from the ledger. A stored total and a ledger will
@@ -302,6 +399,12 @@ ink.** Every coloured pixel means something specific about money, so nothing is
 tinted to look nice, primary buttons are solid ink rather than a brand colour,
 and colour stays rare enough to still be a signal.
 
+Each application fills one slot in that system, `--app-accent`, with a hue
+sampled from its own mark. Ledger's is the desaturated forest green of its
+ledger book. An accent identifies an application, on its card and on the
+selected row of its own navigation. It never colours data, which has already
+earned its palette.
+
 Money direction uses a cool/warm pair rather than green/red, so red-green
 colour blindness never destroys the most important distinction in the app, and
 direction is always carried by a sign glyph as well as a hue. Both themes are
@@ -318,8 +421,11 @@ No bank sync, no cloud account, no multiple users, no receipt scanning, no
 investment tracking, no hard budget limits, and no notifications telling you
 off. It reports. It does not moralise.
 
+And no app store. Squirl holds the applications built for it, not a marketplace
+of other people's.
+
 ---
 
 ## License
 
-MIT. See [LICENSE](LICENSE). Your money, your data, your machine.
+MIT. See [LICENSE](LICENSE). Your machine, your data, your software.
