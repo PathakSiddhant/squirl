@@ -184,24 +184,36 @@ The accent is the one piece of chrome that is allowed to say *where*, because
 
 ## The threshold
 
-The lock screen is the one surface in Squirl that is not the app shell, and it
-is designed as a room rather than as a page.
+The lock screen is the one surface in Squirl that is a picture rather than a
+tool, and it is designed as a place instead of a form.
 
-A sheet of paper on a lit desk. The sheet is pure `--surface` with a hairline
-and a layered shadow, faintly ruled at its head and foot the way a ledger page
-is. The desk sits deeper than `--bg` on purpose: with both at the app's usual
-near-white the paper did not read as paper.
+A landscape fills the left, and the panel you sign in on leans into it across a
+curve rather than a straight seam, so the two halves read as one composition
+instead of a screen cut in half.
 
-Two things move, and both are motivated:
+The illustration is a matched pair, day and night: same composition, same rock,
+same squirrel, so moving between them never shifts anything on screen. Which
+one shows is decided by two honest signals and nothing else, the hour resolved
+in Asia/Kolkata on the server, and the theme. Nothing announces it and there is
+no control for it. It is meant to be felt, not read.
 
-- The sheet leans up to 2.4 degrees towards the pointer, with a highlight
-  travelling across it and the mark lifted above the form in real 3D so it
-  parallaxes. This is what makes the sheet read as a solid object rather than
-  as a rectangle with a shadow.
-- The desk lamp keeps the hour, resolved in Asia/Kolkata on the server: cool
-  and low at first light, plain through the day, warm in the evening, dim at
-  night. Nothing announces it and there is no control for it. It is meant to be
-  felt, not read.
+The whole frame drifts a little under the pointer, scaled up slightly to give
+that drift somewhere to go. That is the only motion, it runs on a transform,
+and it does not run on a coarse pointer or for a reader who asked for less.
 
-Neither runs on a coarse pointer or for a reader who asked for less motion, and
-the screen is complete and usable without a single frame of it.
+Two things this screen is allowed that the rest of the product is not:
+
+- **A saturated fill.** `--cta` carries the Unlock button and one word inside
+  each headline. It is a deeper orange than it wants to be, because the bright
+  version of that hue reaches about 3.2:1 against white and a button label has
+  to clear 4.5:1.
+- **A serif.** One transitional face, on the two headlines only. It pairs with
+  Geist on a real contrast axis, where a second sans would be two typefaces
+  doing one job.
+
+At night the picture is near-black where the headline sits, so `.on-night`
+inverts the ink ramp for that subtree rather than hard-coding white into the
+markup, and the mark is punched out white. The fields drop the base focus
+outline for the accent: border and a soft ring. That outline is right inside
+Ledger, where focus must be unmistakable against dense content, and wrong on a
+quiet panel where it reads as the browser's own default.

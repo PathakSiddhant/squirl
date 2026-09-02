@@ -95,6 +95,13 @@ export function LockScreen({ phase }: { phase: DeskPhase }) {
     rawY.set(0.5);
   }, [rawX, rawY]);
 
+  // At night the illustration is near-black behind the headline, so the type
+  // over it has to invert. In the dark theme the ink tokens are already light,
+  // and the night picture is showing anyway, so the same treatment applies
+  // there through the dark variant rather than through this flag.
+  const onNight = phase === 'night';
+  const markOnDark = cn(onNight && 'brightness-0 invert', 'dark:brightness-0 dark:invert');
+
   return (
     <main
       data-phase={phase}
@@ -106,17 +113,25 @@ export function LockScreen({ phase }: { phase: DeskPhase }) {
         ref={scene}
         className="relative h-[34vh] w-full shrink-0 overflow-hidden lg:h-auto lg:min-h-dvh lg:w-[54%]"
       >
-        <ThresholdScene pointerX={pointerX} pointerY={pointerY} live={live} />
+        <ThresholdScene pointerX={pointerX} pointerY={pointerY} live={live} phase={phase} />
 
-        <div className="relative z-10 flex h-full flex-col p-6 lg:p-14">
+        <div
+          className={cn(
+            'relative z-10 flex h-full flex-col p-6 lg:p-10 xl:p-14',
+            onNight && 'on-night',
+          )}
+        >
           <div className="rise" style={{ animationDelay: '880ms' }}>
-            <Lockup size={54} alt="Squirl" className="lg:hidden" />
-            <Lockup size={74} alt="Squirl" className="hidden lg:block" />
+            <Lockup size={54} alt="Squirl" className={cn('lg:hidden', markOnDark)} />
+            <Lockup size={74} alt="Squirl" className={cn('hidden lg:block', markOnDark)} />
           </div>
 
-          <div className="mt-14 hidden max-w-[26rem] lg:block">
+          {/* Sized against the viewport height rather than a fixed scale. The
+              sky the headline sits in is a fraction of the picture, so on a
+              short window the type has to come down with it. */}
+          <div className="mt-[min(3.5rem,5vh)] hidden max-w-[26rem] lg:block">
             <h1
-              className="rise font-serif text-[3.5rem] font-normal leading-[1.04] tracking-[-0.02em] text-ink"
+              className="rise font-serif text-[min(3.5rem,6.2vh)] font-normal leading-[1.04] tracking-[-0.02em] text-ink"
               style={{ animationDelay: '960ms' }}
             >
               Your space.
@@ -126,11 +141,11 @@ export function LockScreen({ phase }: { phase: DeskPhase }) {
               <span className="text-[var(--cta)]">All yours.</span>
             </h1>
             <span
-              className="rise mt-6 block h-px w-10 bg-[var(--cta)]"
+              className="rise mt-[min(1.5rem,2.4vh)] block h-px w-10 bg-[var(--cta)]"
               style={{ animationDelay: '1030ms' }}
             />
             <p
-              className="rise mt-6 text-[0.9375rem] leading-relaxed text-ink-2"
+              className="rise mt-[min(1.5rem,2.4vh)] text-[0.9375rem] leading-relaxed text-ink-2"
               style={{ animationDelay: '1080ms' }}
             >
               No cloud. No sync.
@@ -155,8 +170,12 @@ export function LockScreen({ phase }: { phase: DeskPhase }) {
 
         <div className="mx-auto flex w-full max-w-[23rem] flex-1 flex-col justify-center px-6 pb-12 pt-6 lg:px-0">
           <div className="rise flex flex-col items-center" style={{ animationDelay: '900ms' }}>
+            {/* The panel keeps the app's own surface, so in the dark theme a
+                charcoal mark sits on a charcoal disc and disappears. Punched
+                out white there instead, which is legible and reads as a
+                deliberate monochrome rather than a mark that failed to load. */}
             <span className="flex size-[4.5rem] items-center justify-center rounded-full border border-line bg-bg">
-              <Mark size={34} />
+              <Mark size={34} className="dark:brightness-0 dark:invert" />
             </span>
             <h2 className="mt-5 font-serif text-[2rem] font-normal leading-tight tracking-[-0.015em] text-ink">
               Welcome back.

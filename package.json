@@ -16,7 +16,6 @@
     "db:reset": "tsx lib/db/reset.ts",
     "db:studio": "drizzle-kit studio",
     "brand:build": "node scripts/make-icons.mjs",
-    "art:build": "node scripts/make-threshold-art.mjs",
     "setup": "npm run db:generate && npm run db:migrate && npm run db:seed"
   },
   "dependencies": {

@@ -407,6 +407,24 @@
 }
 
 /*
+  Type sitting on the night illustration.
+
+  That picture is near-black where the headline goes, and the page's ink is
+  charcoal, so the words would simply disappear. This inverts the ink ramp for
+  that subtree only, rather than hard-coding white into the markup, so the
+  hierarchy between the headline, the line under it and the caption survives.
+
+  It is applied when the hour is night. In the dark theme the ink tokens are
+  already light and this changes nothing.
+*/
+.on-night {
+  --ink: oklch(0.972 0.004 250);
+  --ink-2: oklch(0.838 0.008 250);
+  --ink-3: oklch(0.706 0.012 250);
+  --line-strong: oklch(0.62 0.012 250);
+}
+
+/*
   The fields on the threshold.
 
   Unlayered on purpose, so it beats the base focus ring without !important.
@@ -441,74 +459,6 @@
   sun sits low and heavy, at night it is a moon over near-black ridges, and at
   first light the whole thing is cool and thin. Nothing announces it.
 */
-.threshold {
-  --scene-sky: oklch(0.962 0.014 84);
-  --scene-sun: oklch(0.735 0.145 50);
-  --scene-far: oklch(0.868 0.019 140);
-  --scene-mid: oklch(0.79 0.016 118);
-  --scene-ridge: oklch(0.664 0.03 148);
-  --scene-water: oklch(0.944 0.01 110);
-  --scene-grass: oklch(0.44 0.03 152);
-  --scene-near: oklch(0.352 0.021 152);
-  --scene-rock: oklch(0.258 0.014 152);
-  --scene-sprig: oklch(0.66 0.152 46);
-  --scene-bird: oklch(0.42 0.02 152);
-
-}
-
-.threshold[data-phase='dawn'] {
-  --scene-sky: oklch(0.94 0.018 62);
-  --scene-sun: oklch(0.82 0.075 44);
-  --scene-far: oklch(0.878 0.014 178);
-  --scene-mid: oklch(0.782 0.016 168);
-  --scene-ridge: oklch(0.638 0.026 162);
-  --scene-water: oklch(0.926 0.01 196);
-  --scene-grass: oklch(0.4 0.026 166);
-  --scene-near: oklch(0.322 0.019 168);
-  --scene-rock: oklch(0.238 0.013 168);
-}
-
-.threshold[data-phase='dusk'] {
-  --scene-sky: oklch(0.905 0.048 68);
-  --scene-sun: oklch(0.672 0.175 42);
-  --scene-far: oklch(0.822 0.03 92);
-  --scene-mid: oklch(0.712 0.03 108);
-  --scene-ridge: oklch(0.564 0.038 140);
-  --scene-water: oklch(0.894 0.028 78);
-  --scene-grass: oklch(0.36 0.03 146);
-  --scene-near: oklch(0.288 0.024 148);
-  --scene-rock: oklch(0.212 0.016 148);
-}
-
-.threshold[data-phase='night'] {
-  --scene-sky: oklch(0.322 0.038 268);
-  /* A moon, not a sun. Same circle, and nothing else has to change. */
-  --scene-sun: oklch(0.888 0.014 250);
-  --scene-far: oklch(0.372 0.026 232);
-  --scene-mid: oklch(0.306 0.024 234);
-  --scene-ridge: oklch(0.248 0.022 238);
-  --scene-water: oklch(0.428 0.03 238);
-  --scene-grass: oklch(0.2 0.02 240);
-  --scene-near: oklch(0.185 0.018 240);
-  --scene-rock: oklch(0.138 0.014 240);
-  --scene-sprig: oklch(0.52 0.115 46);
-  --scene-bird: oklch(0.24 0.02 240);
-}
-
-.dark .threshold {
-  --scene-sky: oklch(0.278 0.032 264);
-  --scene-sun: oklch(0.812 0.06 58);
-  --scene-far: oklch(0.342 0.024 200);
-  --scene-mid: oklch(0.284 0.022 206);
-  --scene-ridge: oklch(0.228 0.02 214);
-  --scene-water: oklch(0.386 0.026 226);
-  --scene-grass: oklch(0.19 0.018 220);
-  --scene-near: oklch(0.172 0.016 220);
-  --scene-rock: oklch(0.128 0.012 220);
-  --scene-sprig: oklch(0.6 0.14 46);
-  --scene-bird: oklch(0.22 0.018 220);
-}
-
 /*
   The desk, and the sheet on it.
 

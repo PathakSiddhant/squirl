@@ -1,4 +1,4 @@
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import sharp from 'sharp';
@@ -64,6 +64,35 @@ for (const [source, name] of [
 }
 
 writeFileSync(join(ROOT, 'lib', 'brand.json'), `${JSON.stringify(meta, null, 2)}\n`);
+
+/*
+  The threshold illustrations.
+
+  Not trimmed and not treated like a mark: these are full-bleed artwork, and
+  the page crops them itself. They arrive as ~2MB PNGs, which is an absurd
+  thing to make someone download to look at a sign-in screen, so they are
+  re-encoded to WebP at roughly a tenth of that with no visible difference.
+
+  Day and night are one matched pair: same composition, same rock, same
+  squirrel, so switching between them by the hour never moves anything.
+*/
+console.log('encoding threshold art');
+for (const [source, name] of [
+  ['day_squirl_bg.png', 'threshold-day'],
+  ['night_bg.png', 'threshold-night'],
+]) {
+  const from = join(ROOT, 'brand-assets', source);
+  if (!existsSync(from)) {
+    console.log(`  ${source} missing, skipped`);
+    continue;
+  }
+
+  const out = join(ROOT, 'public', 'brand', `${name}.webp`);
+  await sharp(from).webp({ quality: 86, effort: 6 }).toFile(out);
+
+  const { width, height, size } = await sharp(out).metadata();
+  console.log(`  ${name}.webp  ${width}x${height}  ${Math.round((size ?? 0) / 1024)}KB`);
+}
 
 /** Fraction of an icon canvas the mark fills. Maskable leaves the safe area. */
 const FILL = { normal: 0.72, maskable: 0.54 };
