@@ -78,3 +78,29 @@ export function Lockup({
  * wordmark, which is always the artwork.
  */
 export const BRAND_NAME = 'Squirl';
+
+const LEDGER_RATIO = brand['ledger-mark'].width / brand['ledger-mark'].height;
+
+/**
+ * Ledger's mark.
+ *
+ * Squirl's squirrel is the environment; this is one application inside it. The
+ * two are never shown as equals: the squirrel identifies the product, this
+ * identifies a place within it. So it appears on Ledger's launcher card and in
+ * Ledger's own header, and nowhere else.
+ */
+export function LedgerMark({ size = 28, className }: { size?: number; className?: string }) {
+  const width = Math.round(size * LEDGER_RATIO);
+  return (
+    <Image
+      src="/brand/ledger-mark.png"
+      alt=""
+      width={brand['ledger-mark'].width}
+      height={brand['ledger-mark'].height}
+      quality={100}
+      sizes={`${width * 2}px`}
+      className={cn('shrink-0 object-contain', className)}
+      style={{ width, height: size }}
+    />
+  );
+}

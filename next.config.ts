@@ -9,6 +9,10 @@ const nextConfig: NextConfig = {
   // libsql ships a native binding. Keep it out of the bundler and let Node
   // require it directly at runtime.
   serverExternalPackages: ['@libsql/client', 'libsql'],
+  // The brand marks are flat, vector-style artwork and ask for quality 100.
+  // Next 16 will not honour a `quality` prop that is not declared here: it
+  // falls back to 75 and only warns, which is why the logo looked soft.
+  images: { qualities: [75, 90, 100] },
   typedRoutes: true,
 };
 

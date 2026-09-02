@@ -32,6 +32,21 @@
   --acorn-deep: oklch(0.52 0.09 62);
   --acorn-wash: oklch(0.68 0.087 66 / 0.14);
 
+  /*
+    The application accent slot.
+
+    Squirl owns the neutrals; each application fills this with its own hue so
+    you can tell at a glance which one you are standing in. Unset, it is the
+    acorn, which is Squirl's own accent for the launcher and the lock screen.
+
+    An accent identifies an application. It does not decorate it: it is allowed
+    on a selected nav row, a focus ring, an application's own mark, and nothing
+    else. Data keeps its own colours.
+  */
+  --app-accent: var(--acorn);
+  --app-accent-deep: var(--acorn-deep);
+  --app-accent-wash: var(--acorn-wash);
+
   /* money semantics. validated for colour-vision separation, see DESIGN.md */
   --in: oklch(0.6 0.102 190);
   --out: oklch(0.6 0.137 62);
@@ -81,6 +96,10 @@
   --acorn-deep: oklch(0.62 0.095 64);
   --acorn-wash: oklch(0.75 0.095 68 / 0.18);
 
+  --app-accent: var(--acorn);
+  --app-accent-deep: var(--acorn-deep);
+  --app-accent-wash: var(--acorn-wash);
+
   --in: oklch(0.65 0.112 190);
   --out: oklch(0.65 0.15 62);
   --owed-me: oklch(0.65 0.17 292);
@@ -103,6 +122,25 @@
   --shadow-pop: 0 0 0 1px oklch(0.35 0.012 265), 0 16px 40px oklch(0 0 0 / 0.5);
 }
 
+/*
+  Ledger's accent, sampled from its own mark: the ledger body is
+  oklch(0.374 0.028 175) and its pages are oklch(0.82 0.025 147). That is a
+  genuinely desaturated green, and it is kept that way here. Pushing the chroma
+  up to make it "pop" would turn an accent into decoration and put a second
+  loud colour next to money data that has already earned its colours.
+*/
+.app-ledger {
+  --app-accent: oklch(0.42 0.045 165);
+  --app-accent-deep: oklch(0.34 0.04 168);
+  --app-accent-wash: oklch(0.42 0.045 165 / 0.12);
+}
+
+.dark .app-ledger {
+  --app-accent: oklch(0.74 0.045 158);
+  --app-accent-deep: oklch(0.62 0.045 160);
+  --app-accent-wash: oklch(0.74 0.045 158 / 0.16);
+}
+
 @theme inline {
   --color-bg: var(--bg);
   --color-surface: var(--surface);
@@ -118,6 +156,10 @@
   --color-acorn: var(--acorn);
   --color-acorn-deep: var(--acorn-deep);
   --color-acorn-wash: var(--acorn-wash);
+
+  --color-app-accent: var(--app-accent);
+  --color-app-accent-deep: var(--app-accent-deep);
+  --color-app-accent-wash: var(--app-accent-wash);
 
   --color-in: var(--in);
   --color-out: var(--out);
@@ -260,12 +302,234 @@
   }
 }
 
+/*
+  The boot sequence.
+
+  Written as CSS rather than as a JavaScript animation on purpose: it runs on
+  the very first paint, before React has hydrated, which is exactly when an
+  opening animation needs to be on screen. It also means the thing that covers
+  the interface cannot get stuck there because a script failed.
+
+  The overlay is never unmounted. It ends at opacity 0 with visibility hidden,
+  which takes it out of the accessibility tree and stops it eating clicks,
+  without any script having to run to clean it up.
+*/
+.boot {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  place-items: center;
+  background: var(--bg);
+  animation: boot-lift 480ms cubic-bezier(0.4, 0, 0.2, 1) 900ms forwards;
+}
+
+@keyframes boot-lift {
+  to {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+
+.boot-mark {
+  animation: boot-rise 760ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes boot-rise {
+  from {
+    opacity: 0;
+    transform: scale(0.965) translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* A hairline drawing itself out from the centre, the way a rule is ruled. */
+.boot-rule {
+  height: 1px;
+  width: 0;
+  background: var(--line-strong);
+  animation: boot-rule 620ms cubic-bezier(0.16, 1, 0.3, 1) 260ms forwards;
+}
+
+@keyframes boot-rule {
+  to {
+    width: 3.5rem;
+  }
+}
+
+/*
+  The desk, and the sheet on it.
+
+  The lock screen is one sheet of paper lying on a lit surface. That gives the
+  screen a figure and a ground, which a form floating in the middle of a flat
+  fill does not have, and it does it with material rather than with decoration.
+
+  The desk carries a wide soft light from above and a fine grain, because a
+  large flat area with no tooth reads as dead plastic at any size. The sheet is
+  the one place on the page that is pure surface colour, edged with hairlines
+  and lifted by a real shadow, and it is faintly ruled, which is what a ledger
+  page is.
+*/
+.desk {
+  position: relative;
+  isolation: isolate;
+  /* Deeper than --bg on purpose. The sheet is pure --surface, and with the
+     desk at the app's usual near-white the two were the same value and the
+     paper did not read as paper. */
+  background-color: oklch(0.942 0.004 235);
+  background-image: radial-gradient(
+    ellipse 90% 62% at 50% -10%,
+    var(--desk-light) 0%,
+    oklch(1 0 0 / 0) 68%
+  );
+  --desk-light: oklch(1 0 0 / 0.8);
+}
+
+/*
+  The lamp over the desk keeps the hour.
+
+  Squirl runs on one person's own machine, in India, and the light in the room
+  they are actually sitting in changes through the day. So the desk does too:
+  cool and low at first light, plain and bright through the working day, warm
+  in the evening, dim at night. It is never announced and there is no control
+  for it. You are meant to feel that you came back at a particular time, not
+  read a label about it.
+
+  The hour is resolved in Asia/Kolkata on the server and handed down as an
+  attribute, so it does not depend on the browser's clock or its timezone.
+*/
+.desk[data-phase='dawn'] {
+  --desk-light: oklch(0.99 0.014 248 / 0.66);
+}
+
+.desk[data-phase='day'] {
+  --desk-light: oklch(1 0 0 / 0.88);
+}
+
+.desk[data-phase='dusk'] {
+  --desk-light: oklch(0.985 0.028 72 / 0.78);
+}
+
+.desk[data-phase='night'] {
+  background-color: oklch(0.918 0.005 245);
+  --desk-light: oklch(0.97 0.008 250 / 0.4);
+}
+
+.dark .desk {
+  background-color: oklch(0.132 0.007 235);
+  background-image: radial-gradient(
+    ellipse 90% 62% at 50% -10%,
+    var(--desk-light) 0%,
+    oklch(0.3 0.011 235 / 0) 68%
+  );
+  --desk-light: oklch(0.3 0.011 235 / 0.62);
+}
+
+.dark .desk[data-phase='dawn'] {
+  --desk-light: oklch(0.32 0.016 250 / 0.6);
+}
+
+.dark .desk[data-phase='day'] {
+  --desk-light: oklch(0.34 0.011 235 / 0.72);
+}
+
+.dark .desk[data-phase='dusk'] {
+  --desk-light: oklch(0.33 0.03 68 / 0.62);
+}
+
+.dark .desk[data-phase='night'] {
+  --desk-light: oklch(0.27 0.012 250 / 0.42);
+}
+
+.desk::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+  opacity: 0.03;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+.dark .desk::after {
+  mix-blend-mode: screen;
+  opacity: 0.05;
+}
+
+.sheet {
+  position: relative;
+  background-color: var(--surface);
+  box-shadow:
+    0 0 0 1px var(--line),
+    0 2px 4px oklch(0.22 0.012 265 / 0.04),
+    0 24px 60px -20px oklch(0.22 0.012 265 / 0.14);
+}
+
+.dark .sheet {
+  box-shadow:
+    0 0 0 1px var(--line),
+    0 24px 60px -20px oklch(0 0 0 / 0.6);
+}
+
+/*
+  Ruled, the way a ledger page is ruled, but only at the head and the foot.
+  Running the rules the whole way down put a line through every label and made
+  the sheet read as notebook paper competing with the form. Fading them out
+  across the middle keeps the reference and gives the content clean paper.
+*/
+.sheet::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0 33px,
+    var(--line) 33px 34px
+  );
+  opacity: 0.4;
+  mask-image: linear-gradient(
+    to bottom,
+    #000 0%,
+    transparent 24%,
+    transparent 76%,
+    #000 100%
+  );
+}
+
+/*
+  Everything on the lock screen arrives just as the boot overlay lifts, a beat
+  apart, so the screen assembles instead of appearing. `both` holds the opening
+  frame during the delay, which is what stops it flashing in first.
+*/
+.rise {
+  animation: rise 780ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 /* Reduced motion is not optional. Everything collapses to an instant swap. */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
+    /* Without this, a delayed animation still waits before snapping, which
+       leaves the boot overlay covering the interface for a full second. */
+    animation-delay: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;

@@ -27,6 +27,15 @@ const ROOT = process.cwd();
 const CHARCOAL = { r: 0x22, g: 0x26, b: 0x2b, alpha: 1 };
 const TRANSPARENT = { r: 0, g: 0, b: 0, alpha: 0 };
 
+/**
+ * libvips caches the result of every operation it performs. Across several
+ * multi-megapixel PNGs plus the icon composites, that cache reaches its
+ * allocation ceiling and the next trim dies with "vips_tracked: out of
+ * memory". This is a one-shot build script, so there is nothing to gain from
+ * caching and everything to gain from bounded memory.
+ */
+sharp.cache(false);
+
 const trim = (file) => sharp(join(ROOT, 'brand-assets', file)).trim({ background: TRANSPARENT, threshold: 0 });
 
 mkdirSync(join(ROOT, 'public', 'brand'), { recursive: true });
@@ -36,6 +45,10 @@ console.log('trimming artwork to its ink');
 for (const [source, name] of [
   ['squirl-mark.png', 'mark'],
   ['squirl-lockup.png', 'lockup'],
+  // Each application brings its own mark. Squirl's identity stays the
+  // squirrel; an application's mark is only ever used to identify that
+  // application, on its launcher card and in its own header.
+  ['Ledger_remove_bg.png', 'ledger-mark'],
 ]) {
   const { data, info } = await trim(source)
     .png({ compressionLevel: 9 })
