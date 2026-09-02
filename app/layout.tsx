@@ -3,6 +3,7 @@ import { GeistMono } from 'geist/font/mono';
 import { GeistSans } from 'geist/font/sans';
 
 
+import { BootScreen } from '@/components/squirl/boot-screen';
 import { ThemeScript } from '@/components/shell/theme-script';
 import { Toasts } from '@/components/ui/toasts';
 
@@ -14,7 +15,7 @@ export const metadata: Metadata = {
     template: '%s · Squirl',
   },
   description:
-    'A personal money ledger that knows the difference between money you spent, money you lent, and money you parked.',
+    'A local-first personal software environment. Its first application is Ledger, which knows the difference between money you spent, money you lent, and money you put away.',
   applicationName: 'Squirl',
   manifest: '/manifest.webmanifest',
   appleWebApp: { capable: true, title: 'Squirl', statusBarStyle: 'default' },
@@ -38,6 +39,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ThemeScript />
       </head>
       <body className="min-h-dvh">
+        <BootScreen />
         {children}
         <Toasts />
       </body>
