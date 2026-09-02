@@ -79,28 +79,41 @@ export function Lockup({
  */
 export const BRAND_NAME = 'Squirl';
 
-const LEDGER_RATIO = brand['ledger-mark'].width / brand['ledger-mark'].height;
-
 /**
- * Ledger's mark.
+ * An application's own mark.
  *
- * Squirl's squirrel is the environment; this is one application inside it. The
- * two are never shown as equals: the squirrel identifies the product, this
- * identifies a place within it. So it appears on Ledger's launcher card and in
- * Ledger's own header, and nowhere else.
+ * Squirl's squirrel is the environment; these identify one application inside
+ * it. The two are never shown as equals: the squirrel identifies the product,
+ * these identify a place within it. So they appear on an application's
+ * launcher card and in its own header, and nowhere else.
  */
-export function LedgerMark({ size = 28, className }: { size?: number; className?: string }) {
-  const width = Math.round(size * LEDGER_RATIO);
+export type AppMarkName = 'ledger-mark' | 'form-mark';
+
+export function AppMark({
+  name,
+  size = 28,
+  className,
+}: {
+  name: AppMarkName;
+  size?: number;
+  className?: string;
+}) {
+  const art = brand[name];
+  const width = Math.round(size * (art.width / art.height));
   return (
     <Image
-      src="/brand/ledger-mark.png"
+      src={`/brand/${name}.png`}
       alt=""
-      width={brand['ledger-mark'].width}
-      height={brand['ledger-mark'].height}
+      width={art.width}
+      height={art.height}
       quality={100}
       sizes={`${width * 2}px`}
       className={cn('shrink-0 object-contain', className)}
       style={{ width, height: size }}
     />
   );
+}
+
+export function LedgerMark({ size = 28, className }: { size?: number; className?: string }) {
+  return <AppMark name="ledger-mark" size={size} className={className} />;
 }

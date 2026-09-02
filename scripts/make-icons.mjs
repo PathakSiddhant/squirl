@@ -49,8 +49,12 @@ for (const [source, name] of [
   // squirrel; an application's mark is only ever used to identify that
   // application, on its launcher card and in its own header.
   ['Ledger_remove_bg.png', 'ledger-mark'],
+  ['form_bg_remove.png', 'form-mark'],
 ]) {
+  // Capped: nothing renders a mark taller than a launcher tile, and the Form
+  // artwork trims to 1519px and a megabyte, which is a silly thing to keep.
   const { data, info } = await trim(source)
+    .resize({ height: 640, fit: 'inside', withoutEnlargement: true, kernel: 'lanczos3' })
     .png({ compressionLevel: 9 })
     .toBuffer({ resolveWithObject: true });
 

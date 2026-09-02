@@ -33,6 +33,18 @@
   --acorn-wash: oklch(0.68 0.087 66 / 0.14);
 
   /*
+    Squirl's action colour: the acorn hue, taken up to a saturation that can
+    carry a filled button and a word set inside a headline.
+
+    Deeper than it looks like it wants to be. The bright version of this hue
+    carries about 3.2:1 against white and a button label has to clear 4.5:1,
+    so it is held at 6.3:1 instead. This is the only saturated fill in the
+    product, and it is confined to the threshold and to Squirl's own home.
+  */
+  --cta: oklch(0.505 0.163 42);
+  --cta-hover: oklch(0.455 0.152 41);
+
+  /*
     The application accent slot.
 
     Squirl owns the neutrals; each application fills this with its own hue so
@@ -96,6 +108,10 @@
   --acorn-deep: oklch(0.62 0.095 64);
   --acorn-wash: oklch(0.75 0.095 68 / 0.18);
 
+  /* 4.24:1 at the brightness this wanted to be, so it is held at 5.0:1. */
+  --cta: oklch(0.56 0.17 43);
+  --cta-hover: oklch(0.52 0.168 42);
+
   --app-accent: var(--acorn);
   --app-accent-deep: var(--acorn-deep);
   --app-accent-wash: var(--acorn-wash);
@@ -141,6 +157,24 @@
   --app-accent-wash: oklch(0.74 0.045 158 / 0.16);
 }
 
+/*
+  Form's accent, sampled from its own mark: the flame on the match reads
+  oklch(0.523 0.212 29). Unlike Ledger's, this one is genuinely hot, so it is
+  held to the smallest surfaces there are, its tile and its row, and never
+  allowed to spread into a fill.
+*/
+.app-form {
+  --app-accent: oklch(0.55 0.2 30);
+  --app-accent-deep: oklch(0.46 0.19 29);
+  --app-accent-wash: oklch(0.55 0.2 30 / 0.1);
+}
+
+.dark .app-form {
+  --app-accent: oklch(0.69 0.19 33);
+  --app-accent-deep: oklch(0.58 0.2 31);
+  --app-accent-wash: oklch(0.69 0.19 33 / 0.15);
+}
+
 @theme inline {
   --color-bg: var(--bg);
   --color-surface: var(--surface);
@@ -156,6 +190,9 @@
   --color-acorn: var(--acorn);
   --color-acorn-deep: var(--acorn-deep);
   --color-acorn-wash: var(--acorn-wash);
+
+  --color-cta: var(--cta);
+  --color-cta-hover: var(--cta-hover);
 
   --color-app-accent: var(--app-accent);
   --color-app-accent-deep: var(--app-accent-deep);
@@ -185,6 +222,7 @@
 
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --font-serif: var(--font-display-serif), ui-serif, Georgia, serif;
 
 }
 
@@ -288,6 +326,12 @@
   .z-sticky {
     z-index: 10;
   }
+  /* Fixed navigation. It has to clear page content, which sits at z-sticky and
+     comes later in the DOM: at the same level the content wins and swallows
+     every click meant for the rail. */
+  .z-rail {
+    z-index: 20;
+  }
   .z-dropdown {
     z-index: 30;
   }
@@ -361,6 +405,77 @@
 }
 
 /*
+  The threshold scene.
+
+  The lock screen is the one surface in Squirl that is a picture rather than a
+  tool, so it carries its own warm palette. That is not a second brand: it is
+  imagery, the way a photograph on a wall does not have to match the paint.
+  Everything you actually operate on this screen, the form and its labels, is
+  still on the product's own neutrals.
+
+  The scene keeps the hour, resolved in Asia/Kolkata on the server. At dusk the
+  sun sits low and heavy, at night it is a moon over near-black ridges, and at
+  first light the whole thing is cool and thin. Nothing announces it.
+*/
+.threshold {
+  --scene-sky: oklch(0.962 0.014 84);
+  --scene-sun: oklch(0.735 0.145 50);
+  --scene-far: oklch(0.868 0.019 140);
+  --scene-mid: oklch(0.706 0.028 146);
+  --scene-water: oklch(0.936 0.012 120);
+  --scene-near: oklch(0.352 0.021 152);
+  --scene-rock: oklch(0.258 0.014 152);
+  --scene-sprig: oklch(0.66 0.152 46);
+  --scene-bird: oklch(0.42 0.02 152);
+
+}
+
+.threshold[data-phase='dawn'] {
+  --scene-sky: oklch(0.94 0.018 62);
+  --scene-sun: oklch(0.82 0.075 44);
+  --scene-far: oklch(0.842 0.017 168);
+  --scene-mid: oklch(0.672 0.024 160);
+  --scene-water: oklch(0.912 0.012 190);
+  --scene-near: oklch(0.322 0.019 168);
+  --scene-rock: oklch(0.238 0.013 168);
+}
+
+.threshold[data-phase='dusk'] {
+  --scene-sky: oklch(0.905 0.048 68);
+  --scene-sun: oklch(0.672 0.175 42);
+  --scene-far: oklch(0.79 0.03 108);
+  --scene-mid: oklch(0.598 0.036 138);
+  --scene-water: oklch(0.878 0.032 80);
+  --scene-near: oklch(0.288 0.024 148);
+  --scene-rock: oklch(0.212 0.016 148);
+}
+
+.threshold[data-phase='night'] {
+  --scene-sky: oklch(0.322 0.038 268);
+  /* A moon, not a sun. Same circle, and nothing else has to change. */
+  --scene-sun: oklch(0.888 0.014 250);
+  --scene-far: oklch(0.352 0.026 232);
+  --scene-mid: oklch(0.272 0.024 236);
+  --scene-water: oklch(0.412 0.03 238);
+  --scene-near: oklch(0.185 0.018 240);
+  --scene-rock: oklch(0.138 0.014 240);
+  --scene-sprig: oklch(0.52 0.115 46);
+  --scene-bird: oklch(0.24 0.02 240);
+}
+
+.dark .threshold {
+  --scene-sky: oklch(0.278 0.032 264);
+  --scene-sun: oklch(0.812 0.06 58);
+  --scene-far: oklch(0.322 0.024 200);
+  --scene-mid: oklch(0.248 0.022 210);
+  --scene-water: oklch(0.372 0.026 226);
+  --scene-near: oklch(0.172 0.016 220);
+  --scene-rock: oklch(0.128 0.012 220);
+  --scene-sprig: oklch(0.6 0.14 46);
+  --scene-bird: oklch(0.22 0.018 220);
+}
+
+/*
   The desk, and the sheet on it.
 
   The sign-in card is a sheet of paper lying on a lit desk. That gives the
@@ -380,16 +495,16 @@
 .desk {
   position: relative;
   isolation: isolate;
-  /* Deeper than --bg on purpose. The sheet is pure --surface, and with the
-     desk at the app's usual near-white the two were the same value and the
-     paper did not read as paper. */
-  background-color: oklch(0.942 0.004 235);
+  /* A shade under --surface, and warm rather than the app's cool graphite.
+     The cards on it are pure white, and a desk on the same cool hue at the
+     same value left them with nothing to sit against. */
+  background-color: oklch(0.966 0.004 84);
   background-image: radial-gradient(
     ellipse 90% 62% at 50% -10%,
     var(--desk-light) 0%,
     oklch(1 0 0 / 0) 68%
   );
-  --desk-light: oklch(1 0 0 / 0.8);
+  --desk-light: oklch(1 0 0 / 0.85);
 }
 
 /*
@@ -418,8 +533,8 @@
 }
 
 .desk[data-phase='night'] {
-  background-color: oklch(0.918 0.005 245);
-  --desk-light: oklch(0.97 0.008 250 / 0.4);
+  background-color: oklch(0.944 0.005 78);
+  --desk-light: oklch(0.99 0.008 80 / 0.45);
 }
 
 .dark .desk {
@@ -525,6 +640,36 @@
   to {
     opacity: 1;
     transform: none;
+  }
+}
+
+/*
+  The launcher spark draws itself in once, then stops. It is the one moving
+  thing on the home screen, and it is there to say the figures beside it were
+  read just now rather than baked into the page.
+*/
+.spark-line {
+  stroke-dasharray: 1;
+  animation: spark-draw 900ms cubic-bezier(0.22, 1, 0.36, 1) 260ms both;
+}
+
+@keyframes spark-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.spark-area {
+  opacity: 0;
+  animation: spark-fill 700ms cubic-bezier(0.22, 1, 0.36, 1) 700ms forwards;
+}
+
+@keyframes spark-fill {
+  to {
+    opacity: 0.1;
   }
 }
 

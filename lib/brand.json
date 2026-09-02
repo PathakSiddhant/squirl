@@ -4,11 +4,15 @@
     "height": 608
   },
   "lockup": {
-    "width": 793,
-    "height": 771
+    "width": 658,
+    "height": 640
   },
   "ledger-mark": {
     "width": 348,
     "height": 500
+  },
+  "form-mark": {
+    "width": 358,
+    "height": 640
   }
 }
