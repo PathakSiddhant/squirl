@@ -363,14 +363,18 @@
 /*
   The desk, and the sheet on it.
 
-  The lock screen is one sheet of paper lying on a lit surface. That gives the
-  screen a figure and a ground, which a form floating in the middle of a flat
-  fill does not have, and it does it with material rather than with decoration.
+  The sign-in card is a sheet of paper lying on a lit desk. That gives the
+  screen a figure and a ground, which a form floating on a flat fill does not
+  have, and it does it with material rather than with decoration.
+
+  It is a card with proportions, not a column: an earlier version ran the sheet
+  the full height of the window, and a tall narrow band down the middle of a
+  wide screen reads as a strip rather than as a page.
 
   The desk carries a wide soft light from above and a fine grain, because a
   large flat area with no tooth reads as dead plastic at any size. The sheet is
-  the one place on the page that is pure surface colour, edged with hairlines
-  and lifted by a real shadow, and it is faintly ruled, which is what a ledger
+  the one place that is pure surface colour, edged with a hairline, lifted by a
+  real shadow, and faintly ruled at its head and foot, which is what a ledger
   page is.
 */
 .desk {
@@ -463,16 +467,18 @@
 .sheet {
   position: relative;
   background-color: var(--surface);
+  border-radius: var(--radius-3);
   box-shadow:
     0 0 0 1px var(--line),
-    0 2px 4px oklch(0.22 0.012 265 / 0.04),
-    0 24px 60px -20px oklch(0.22 0.012 265 / 0.14);
+    0 1px 2px oklch(0.22 0.012 265 / 0.05),
+    0 8px 16px -8px oklch(0.22 0.012 265 / 0.09),
+    0 32px 64px -24px oklch(0.22 0.012 265 / 0.22);
 }
 
 .dark .sheet {
   box-shadow:
     0 0 0 1px var(--line),
-    0 24px 60px -20px oklch(0 0 0 / 0.6);
+    0 32px 64px -24px oklch(0 0 0 / 0.66);
 }
 
 /*
@@ -491,12 +497,13 @@
     transparent 0 33px,
     var(--line) 33px 34px
   );
-  opacity: 0.4;
+  border-radius: inherit;
+  opacity: 0.32;
   mask-image: linear-gradient(
     to bottom,
     #000 0%,
-    transparent 24%,
-    transparent 76%,
+    transparent 26%,
+    transparent 74%,
     #000 100%
   );
 }

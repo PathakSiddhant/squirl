@@ -20,9 +20,7 @@ const TILT = 2.4;
 /**
  * The threshold.
  *
- * Not a card floating on a background, which is the shape every sign-in page
- * takes. One sheet of ledger paper lying on a lit desk, with the form set on
- * it.
+ * A sheet of ledger paper on a lit desk, with the form set on it.
  *
  * The sheet is a physical object. It leans a little towards the pointer and a
  * highlight travels across it, so moving the mouse feels like tilting paper
@@ -86,7 +84,7 @@ export function LockScreen({ phase }: { phase: DeskPhase }) {
   return (
     <main
       data-phase={phase}
-      className="desk flex min-h-dvh justify-center [perspective:1500px]"
+      className="desk grid min-h-dvh place-items-center px-5 py-12 [perspective:1500px]"
       onPointerMove={track}
       onPointerLeave={settle}
     >
@@ -95,7 +93,7 @@ export function LockScreen({ phase }: { phase: DeskPhase }) {
         style={live ? { rotateX, rotateY, transformStyle: 'preserve-3d' } : undefined}
         animate={{ opacity: pending ? 0.6 : 1, scale: pending ? 1.008 : 1 }}
         transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-        className="sheet flex w-full max-w-[27rem] flex-col justify-center overflow-hidden px-8 py-16"
+        className="sheet w-full max-w-[25rem] overflow-hidden px-7 py-11 sm:px-10"
       >
         {live ? (
           <motion.span
@@ -105,7 +103,7 @@ export function LockScreen({ phase }: { phase: DeskPhase }) {
           />
         ) : null}
 
-        <div className="relative z-10 mx-auto w-full max-w-[18.5rem]">
+        <div className="relative z-10 mx-auto w-full max-w-[19rem]">
           {/* Lifted off the page in real 3D. With the sheet tilting under a
               perspective, depth alone makes the mark travel further than the
               form beneath it, which is what sells the sheet as a solid thing. */}
@@ -114,15 +112,15 @@ export function LockScreen({ phase }: { phase: DeskPhase }) {
             style={{ animationDelay: '900ms', transform: live ? 'translateZ(34px)' : undefined }}
           >
             <Lockup size={104} alt="Squirl" />
-            <span className="mt-7 h-px w-14 bg-line-strong" />
-            <p className="mt-6 text-center text-[0.8125rem] leading-relaxed text-ink-2">
+            <span className="mt-6 h-px w-14 bg-line-strong" />
+            <p className="mt-5 text-center text-[0.8125rem] leading-relaxed text-ink-2">
               Everything you keep here stays on this machine.
             </p>
           </div>
 
           <form
             action={formAction}
-            className="rise mt-9"
+            className="rise mt-7"
             style={{ animationDelay: '990ms', transform: live ? 'translateZ(14px)' : undefined }}
           >
             <div className="flex flex-col gap-4">
@@ -180,7 +178,7 @@ export function LockScreen({ phase }: { phase: DeskPhase }) {
           </form>
 
           <p
-            className="rise mt-10 text-center text-[0.75rem] leading-relaxed text-ink-3"
+            className="rise mt-8 text-center text-[0.75rem] leading-relaxed text-ink-3"
             style={{ animationDelay: '1080ms' }}
           >
             A lock, not encryption. It keeps the tab shut, not the file.
