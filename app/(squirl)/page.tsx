@@ -1,22 +1,58 @@
+import { statSync } from 'node:fs';
+import { join } from 'node:path';
+
+import { ClockCounterClockwise } from '@phosphor-icons/react/dist/ssr/ClockCounterClockwise';
+import { Database } from '@phosphor-icons/react/dist/ssr/Database';
+import { HardDrives } from '@phosphor-icons/react/dist/ssr/HardDrives';
 import { Lock } from '@phosphor-icons/react/dist/ssr/Lock';
-import Link from 'next/link';
 
 import { signOut } from '@/app/actions/session';
-import { LedgerMark, Lockup } from '@/components/brand/logo';
+import { Lockup } from '@/components/brand/logo';
 import { ThemeToggle } from '@/components/shell/theme-toggle';
+import { AppCard } from '@/components/squirl/app-card';
+import { Orbit } from '@/components/squirl/orbit';
+import { Rail } from '@/components/squirl/rail';
 import { Button } from '@/components/ui/button';
-import { formatDayLong, today } from '@/lib/date';
-import { APPS, type AppSignal, type SquirlApp } from '@/lib/squirl/apps';
+import { formatDayLong, IST_TIME_ZONE, today } from '@/lib/date';
+import { APPS, type AppSnapshot, type SquirlApp } from '@/lib/squirl/apps';
+import { deskPhase } from '@/lib/squirl/phase';
 
 export const metadata = { title: 'Home' };
 
 /**
- * An application's own figure must never take the launcher down with it. A
- * failed read means that card shows no number, not that Squirl fails to open.
+ * An application's own figures must never take the launcher down with them. A
+ * failed read means that card shows no numbers, not that Squirl fails to open.
  */
-async function readSignal(app: SquirlApp): Promise<AppSignal | null> {
+async function readSnapshot(app: SquirlApp): Promise<AppSnapshot | null> {
+  if (!app.snapshot) return null;
   try {
-    return await app.signal();
+    return await app.snapshot();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Facts about the file everything lives in.
+ *
+ * Read off disk, not asserted. There is no backup system here, so this does
+ * not claim one: it reports where the file is, how big it has got, and when it
+ * was last written, which is what you would want to know before copying it.
+ */
+function storage(): { size: string; written: string } | null {
+  try {
+    const file = statSync(join(process.cwd(), 'data', 'squirl.db'));
+    const mb = file.size / (1024 * 1024);
+    return {
+      size: mb < 1 ? `${Math.round(file.size / 1024)} KB` : `${mb.toFixed(1)} MB`,
+      written: new Intl.DateTimeFormat('en-IN', {
+        timeZone: IST_TIME_ZONE,
+        day: 'numeric',
+        month: 'short',
+        hour: 'numeric',
+        minute: '2-digit',
+      }).format(file.mtime),
+    };
   } catch {
     return null;
   }
@@ -25,22 +61,50 @@ async function readSignal(app: SquirlApp): Promise<AppSignal | null> {
 /**
  * Squirl's home.
  *
- * Not a dashboard. A dashboard answers questions, and this screen has no
- * questions to answer: the applications answer them. So it is a room with the
- * things Squirl keeps sitting on a shelf in it, with enough air that opening
- * one is the only thing there is to do.
- *
- * Each application sits on a hairline rather than inside a card, and the
- * hairline under it takes that application's own colour when you reach for it.
- * That is the accent doing identification, which is the only job it has.
+ * Not a dashboard: it has no subject of its own to report on. It is the place
+ * the applications live, so it shows each of them exactly as it stands right
+ * now and then gets out of the way. Every figure here is read live from the
+ * application it belongs to, and an application with nothing behind it shows
+ * nothing rather than a convincing placeholder.
  */
 export default async function SquirlHome() {
-  const cards = await Promise.all(APPS.map(async (app) => ({ app, signal: await readSignal(app) })));
+  const cards = await Promise.all(
+    APPS.map(async (app) => ({ app, snapshot: await readSnapshot(app) })),
+  );
+  const file = storage();
+
+  const facts = [
+    {
+      icon: Database,
+      label: 'Where it lives',
+      value: 'data/squirl.db',
+      note: 'On this machine, nowhere else',
+      mono: true,
+    },
+    {
+      icon: HardDrives,
+      label: 'Size on disk',
+      value: file ? file.size : 'not created yet',
+      note: 'Everything, across every application',
+      mono: false,
+    },
+    {
+      icon: ClockCounterClockwise,
+      label: 'Last written',
+      value: file ? file.written : 'never',
+      note: 'Copy the file and you have a backup',
+      mono: false,
+    },
+  ];
 
   return (
-    <main className="lock-bg flex min-h-dvh flex-col">
-      <header className="relative z-10 mx-auto flex w-full max-w-[50rem] items-center justify-between px-6 pt-7">
-        <Lockup size={58} alt="Squirl" />
+    <main data-phase={deskPhase()} className="desk min-h-dvh">
+      <Rail />
+
+      {/* The rail is desktop only, so the controls it holds need a home on a
+          phone. This bar is that, and nothing else. */}
+      <header className="relative z-10 flex items-center justify-between px-5 pt-4 lg:hidden">
+        <Lockup size={44} alt="Squirl" />
         <div className="flex items-center gap-1.5">
           <ThemeToggle />
           <form action={signOut}>
@@ -51,68 +115,70 @@ export default async function SquirlHome() {
         </div>
       </header>
 
-      <div className="relative z-10 mx-auto flex w-full max-w-[50rem] flex-1 flex-col justify-center px-6 py-14">
-        <p className="rise text-[0.8125rem] text-ink-3" style={{ animationDelay: '60ms' }}>
-          {formatDayLong(today())}
-        </p>
+      <div className="relative z-10 lg:pl-[8.75rem]">
+        <div className="mx-auto w-full max-w-[72rem] px-5 py-10 sm:px-8 lg:py-14">
+          <div className="flex items-start justify-between gap-10">
+            <div className="rise min-w-0" style={{ animationDelay: '40ms' }}>
+              <h1 className="font-serif text-[2.75rem] font-normal leading-[1.04] tracking-[-0.02em] text-ink sm:text-[3.25rem]">
+                Welcome to
+                <br />
+                <span className="text-[var(--cta)]">Squirl.</span>
+              </h1>
+              <span className="mt-5 block h-px w-10 bg-line-strong" />
+              <p className="mt-5 text-[1.0625rem] leading-relaxed text-ink-2">
+                Your space. Your data.
+                <br />
+                All of it lives with <span className="text-[var(--cta)]">you.</span>
+              </p>
+              <p className="mt-6 text-[0.8125rem] text-ink-3">{formatDayLong(today())}</p>
+            </div>
 
-        <ul className="rise mt-7 border-t border-line" style={{ animationDelay: '140ms' }}>
-          {cards.map(({ app, signal }) => (
-            <li key={app.id} className={app.accentClass}>
-              <Link
-                href={app.href}
-                className="group relative flex items-center gap-5 py-6 transition-transform duration-[var(--t-move)] ease-[var(--ease)] hover:-translate-y-px"
-              >
-                <span className="flex size-[3.25rem] shrink-0 items-center justify-center rounded-md bg-[var(--app-accent-wash)]">
-                  <LedgerMark size={30} />
-                </span>
+            <div className="rise hidden xl:block" style={{ animationDelay: '150ms' }}>
+              <Orbit />
+            </div>
+          </div>
 
-                <span className="min-w-0 flex-1">
-                  <span className="block text-[1.375rem] font-semibold leading-tight tracking-[-0.01em] text-ink">
-                    {app.name}
-                  </span>
-                  <span className="mt-1 block text-[0.875rem] leading-relaxed text-ink-3">
-                    {app.tagline}
-                  </span>
-                </span>
+          <div className="mt-10 grid grid-cols-1 items-stretch gap-4 lg:grid-cols-2">
+            {cards.map(({ app, snapshot }, index) => (
+              <AppCard key={app.id} app={app} snapshot={snapshot} delay={220 + index * 90} />
+            ))}
+          </div>
 
-                {signal ? (
-                  <span className="shrink-0 pl-4 text-right">
-                    <span
-                      className={`money block text-[1.25rem] leading-tight ${
-                        signal.tone === 'attention' ? 'text-[var(--i-owe-text)]' : 'text-ink'
-                      }`}
-                    >
-                      {signal.value}
+          <section
+            className="rise mt-4 rounded-xl border border-line bg-surface p-6"
+            style={{ animationDelay: `${220 + cards.length * 90 + 70}ms` }}
+          >
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,15rem)_1fr] lg:gap-10">
+              <p className="font-serif text-[1.125rem] leading-snug text-ink">
+                Nothing here is guessed. Every number is replayed from what you wrote down.
+              </p>
+
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-3 sm:divide-x sm:divide-line">
+                {facts.map((fact, index) => (
+                  <div
+                    key={fact.label}
+                    className={`flex items-start gap-3 ${index === 0 ? 'sm:pr-5' : 'sm:px-5'}`}
+                  >
+                    <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-surface-2 text-ink-2">
+                      <fact.icon size={16} />
                     </span>
-                    <span className="mt-1 block text-[0.75rem] text-ink-3">{signal.label}</span>
-                  </span>
-                ) : null}
-
-                {/* The shelf the application stands on, which lights up in that
-                    application's own colour when you reach for it. */}
-                <span
-                  aria-hidden="true"
-                  className="absolute inset-x-0 bottom-0 h-px bg-line transition-colors duration-[var(--t-move)] group-hover:bg-[var(--app-accent)] group-focus-visible:bg-[var(--app-accent)]"
-                />
-              </Link>
-            </li>
-          ))}
-        </ul>
-
-        <footer
-          className="rise mt-12 max-w-[34rem] text-[0.75rem] leading-relaxed text-ink-3"
-          style={{ animationDelay: `${140 + cards.length * 70 + 60}ms` }}
-        >
-          <p>
-            One application so far. Squirl is the place they live, not a bundle of things you did
-            not ask for, so the next one arrives when there is something worth building.
-          </p>
-          <p className="mt-2">
-            Everything is in <code className="font-mono text-ink-2">data/squirl.db</code> on this
-            machine. No account, no server, nothing leaves.
-          </p>
-        </footer>
+                    <span className="min-w-0">
+                      <span className="block text-[0.75rem] text-ink-3">{fact.label}</span>
+                      <span
+                        className={`mt-1 block truncate text-[0.875rem] text-ink ${fact.mono ? 'font-mono text-[0.8125rem]' : ''}`}
+                      >
+                        {fact.value}
+                      </span>
+                      <span className="mt-1 block text-[0.75rem] leading-relaxed text-ink-3">
+                        {fact.note}
+                      </span>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+        </div>
       </div>
     </main>
   );
