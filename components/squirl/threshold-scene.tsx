@@ -40,18 +40,15 @@ export function ThresholdScene({
 
   const nightByHour = phase === 'night';
 
-  // Anchored to the sky, not the middle.
-  //
-  // Centring the crop looked right on a tall window and fell apart on a short
-  // one: the horizon climbed into the headline and the words ended up sitting
-  // on the sun. Anchoring the top means the clear sky is always the first
-  // thing in frame, so the text has somewhere to be at any height, and it is
-  // the empty foreground that gets trimmed instead.
+  // On a desktop the column that holds this is capped so it never gets wider
+  // than three quarters of its height, which is the illustration's own shape.
+  // Cover then fits by width and the whole picture is on screen: sky, sun,
+  // river, rock and squirrel, with nothing trimmed off the bottom.
   //
   // A phone is the exception. There the scene is a short band with nothing set
-  // over it but the wordmark, so it can sit lower and keep the sun and the
-  // squirrel in view.
-  const art = 'object-cover object-[50%_38%] lg:object-top';
+  // over it but the wordmark, so it is cropped, anchored below the middle to
+  // keep the sun and the squirrel in view.
+  const art = 'object-cover object-[50%_38%] lg:object-center';
 
   return (
     <motion.div

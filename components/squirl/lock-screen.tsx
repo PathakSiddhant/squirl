@@ -111,7 +111,7 @@ export function LockScreen({ phase }: { phase: DeskPhase }) {
     >
       <div
         ref={scene}
-        className="relative h-[34vh] w-full shrink-0 overflow-hidden lg:h-auto lg:min-h-dvh lg:w-[54%]"
+        className="relative h-[34vh] w-full shrink-0 overflow-hidden lg:h-auto lg:min-h-dvh lg:w-[min(54%,75vh)]"
       >
         <ThresholdScene pointerX={pointerX} pointerY={pointerY} live={live} phase={phase} />
 
@@ -123,7 +123,7 @@ export function LockScreen({ phase }: { phase: DeskPhase }) {
         >
           <div className="rise" style={{ animationDelay: '880ms' }}>
             <Lockup size={54} alt="Squirl" className={cn('lg:hidden', markOnDark)} />
-            <Lockup size={74} alt="Squirl" className={cn('hidden lg:block', markOnDark)} />
+            <Lockup size={64} alt="Squirl" className={cn('hidden lg:block', markOnDark)} />
           </div>
 
           {/* Sized against the viewport height rather than a fixed scale. The
@@ -131,7 +131,7 @@ export function LockScreen({ phase }: { phase: DeskPhase }) {
               short window the type has to come down with it. */}
           <div className="mt-[min(3.5rem,5vh)] hidden max-w-[26rem] lg:block">
             <h1
-              className="rise font-serif text-[min(3.5rem,6.2vh)] font-normal leading-[1.04] tracking-[-0.02em] text-ink"
+              className="rise font-serif text-[min(3.5rem,4.85vh)] font-normal leading-[1.04] tracking-[-0.02em] text-ink"
               style={{ animationDelay: '960ms' }}
             >
               Your space.
