@@ -55,16 +55,44 @@ components/
   today/ ledger/ people/ loans/ …   Ledger's own feature components
 ```
 
-Squirl has no settings screen of its own yet. Theme, lock, and the panel
-showing where the database file actually sits live on the launcher rail (and in
-the header on a phone, where there is no rail); Ledger's own preferences live
-inside Ledger. A Squirl-level settings page gets built when there is a second
-thing to put on it, rather than now, to look symmetrical.
+Squirl has no settings screen of its own yet. Ledger's own preferences live
+inside Ledger, and everything Squirl-level, the theme, the lock, and where the
+database file sits, is reachable from the command bar on its home. A
+Squirl-level settings page gets built when there is a second thing to put on
+it, rather than now, to look symmetrical.
 
-The launcher is sized to be read without scrolling. It is the screen that
-answers "what do I have, and does any of it need me", and an answer you have to
-scroll for is a worse answer, so reference material that does not serve that
-question opens from a control rather than occupying the page.
+### The launcher has no rail and no corners
+
+Squirl's home used to be a rail of application icons down the left plus a grid
+of cards. That is the shape every tool on a laptop already has, and it is also
+the shape that fails first: it draws every destination at all times, so the
+fourth and fifth application turn the rail into a column with its own scrollbar.
+A launcher whose own navigation needs scrolling has stopped being a launcher.
+
+What replaced it is three things and a dock:
+
+- **The hour and the orbit**, side by side. The orbit is Squirl's own model
+  drawn literally: the mark still in the middle, one dot per application in its
+  own accent, the rings turning slowly. Built applications ride the inner ring
+  because they are the ones you reach for. Hovering a dot names its application
+  and draws a line back to the centre; clicking one opens it. They are side by
+  side rather than stacked because stacked they cost the sum of their heights
+  and the applications fell below the fold.
+- **One tile per application**, all the same size, built or not. A tile says
+  whether its application wants you; it does not try to be the application.
+- **A dock along the foot**, spread rather than clustered: the file on the
+  left, how to draw the shelf in the middle, the theme and the lock together on
+  the right. Nothing sits in a corner, and the five controls are not one lump.
+
+Two things are deliberately absent. There is no search field, because Ctrl-K
+opens the palette and a permanent input would spend the best space on the
+screen implying a catalogue too big to look at. And the layout switch is a
+preference, not a fixture, so it is small and at the foot rather than parked
+above the thing it governs.
+
+The whole screen fits without scrolling, at laptop heights as well as monitor
+ones. The orbit is what gives up room when the window is short, because it is
+the one element here that can afford to.
 
 ## Rules
 
@@ -95,17 +123,39 @@ contract. Squirl does not import an application's domain logic.
 
 ## The design contract
 
-Squirl provides the neutral chrome: graphite ink, hairlines, the type scale,
-the motion curves, the primitives. This is shared and applications should not
-fight it.
+**Every application looks like itself.** Squirl is not a design system that
+applications are poured into. It owns the threshold, the launcher and the
+frame around them, and that is where its own look stops. Inside an
+application, the type, the palette, the density, the motion and the shape
+language are that application's to choose, and two applications are expected
+to look genuinely different from each other rather than like two tabs of the
+same product.
 
-Each application provides its own **accent**, exposed as `--app-accent`, and
-its own semantic colours where its domain demands them. Ledger sets forest
-green as its accent and keeps the validated money palette (in / out / owed to
-me / I owe / stashed) because that palette encodes meaning specific to money.
+The bar that does not move is quality. Different must mean *considered*
+different: a face chosen because the domain reads better in it, a palette
+chosen because that subject has those meanings. It must never mean the
+nearest default that a generator reaches for first. An application that looks
+like every other dashboard has failed this contract just as surely as one that
+looks like a ransom note.
 
-The rule from DESIGN.md still holds inside every application: **colour is data,
-chrome is ink.** An accent identifies an application; it does not decorate it.
+What is genuinely shared is small, and it is shared because divergence would be
+a bug rather than a style:
+
+- **The tokens exist for every application to override.** `--app-accent` and
+  its `-deep` / `-wash` companions are the minimum; an application is free to
+  restate the ink ramp, the surfaces, the radii and the fonts inside its own
+  layout class.
+- **Storage, identity, the lock and the launcher registry** are Squirl's. An
+  application never draws its own lock screen or invents its own place to put
+  data.
+- **Meaning-bearing colour stays honest.** The rule from DESIGN.md holds
+  inside every application: **colour is data, chrome is ink.** Ledger keeps the
+  validated money palette (in / out / owed to me / I owe / stashed) because
+  that palette encodes meaning specific to money, not because it is decorative.
+
+Squirl's own surfaces stay graphite and quiet on purpose. The shell should be
+the least loud thing on screen, so that stepping into an application feels like
+walking into a different room rather than opening a different tab.
 
 ## Local-first, and honest about it
 

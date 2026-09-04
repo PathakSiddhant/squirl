@@ -174,12 +174,22 @@ everything nested inside inherits it.
 |---|---|---|---|
 | Squirl itself | acorn | `oklch(0.68 0.087 66)` | `oklch(0.75 0.095 68)` |
 | Ledger | forest | `oklch(0.42 0.045 165)` | `oklch(0.74 0.045 158)` |
+| Form | flame | `oklch(0.55 0.2 30)` | `oklch(0.69 0.19 33)` |
+| Signal | signal blue | `oklch(0.5 0.14 262)` | `oklch(0.72 0.13 264)` |
 
 Ledger's green is sampled from its own mark, whose body reads
 `oklch(0.374 0.028 175)` and whose pages read `oklch(0.82 0.025 147)`. That is
 a genuinely desaturated green and it is kept that way. Raising the chroma to
 make it "pop" would put a second loud colour next to money data that has
-already earned its palette.
+already earned its palette. Form's flame is sampled the same way, off the
+match it draws.
+
+Signal's is the exception: nothing in its own mark sat more than about ten
+degrees from a hue already claimed, the chair and cherry crowding Form's 30
+and the crown nearly sitting on Squirl's own acorn at 66. Taking any of them
+would make the accent say "Form" or "nothing in particular" instead of
+"Signal", which is the one job the token has, so this hue is held rather than
+found: a blue with nothing else on the wheel near it.
 
 An accent is allowed in exactly four places:
 

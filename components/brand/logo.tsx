@@ -128,7 +128,7 @@ export const BRAND_NAME = 'Squirl';
  * these identify a place within it. So they appear on an application's
  * launcher card and in its own header, and nowhere else.
  */
-export type AppMarkName = 'ledger-mark' | 'form-mark';
+export type AppMarkName = 'ledger-mark' | 'form-mark' | 'signal-mark';
 
 export function AppMark({
   name,

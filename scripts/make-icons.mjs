@@ -50,6 +50,10 @@ for (const [source, name] of [
   // application, on its launcher card and in its own header.
   ['Ledger_remove_bg.png', 'ledger-mark'],
   ['form_bg_remove.png', 'form-mark'],
+  // The "_full" file is the tighter crop, oddly: the plain one still carries
+  // the SIGNAL wordmark at low opacity, baked into the art rather than
+  // trimmable as separate ink. This one is the icon alone.
+  ['signal_bg_remove_full.png', 'signal-mark'],
 ]) {
   // Capped: nothing renders a mark taller than a launcher tile, and the Form
   // artwork trims to 1519px and a megabyte, which is a silly thing to keep.

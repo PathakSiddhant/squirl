@@ -110,6 +110,18 @@ export const APPS: SquirlApp[] = [
     status: 'planned',
     note: 'It has a place here so the shape of Squirl is honest. Nothing is stored for it, and nothing is counted from it, until there is something real behind it.',
   },
+  {
+    id: 'signal',
+    name: 'Signal',
+    // Unlike Form, which already knows its own subject, what Signal is for has
+    // not been decided yet. Writing it up as though it had would be exactly
+    // the invented number this card exists to refuse elsewhere on the page.
+    tagline: 'Not decided yet.',
+    mark: 'signal-mark',
+    accentClass: 'app-signal',
+    status: 'planned',
+    note: 'Its place is held before its idea is. Nothing about what Signal does has been settled, so nothing about what it does is claimed here either.',
+  },
 ];
 
 export function findApp(id: string): SquirlApp | undefined {

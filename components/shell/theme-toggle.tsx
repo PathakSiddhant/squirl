@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react';
 
 import { cn } from '@/lib/cn';
 
-type Theme = 'light' | 'dark' | 'system';
+export type Theme = 'light' | 'dark' | 'system';
 
 const OPTIONS: Array<{ value: Theme; label: string; Icon: typeof Sun }> = [
   { value: 'light', label: 'Light', Icon: Sun },
@@ -15,12 +15,19 @@ const OPTIONS: Array<{ value: Theme; label: string; Icon: typeof Sun }> = [
   { value: 'dark', label: 'Dark', Icon: Moon },
 ];
 
-/** Writes the resolved theme onto the document. The stored choice is kept
- *  beside it, because the threshold treats a chosen Light differently from an
- *  OS that merely happens to be light. */
-function paint(choice: Theme) {
+/**
+ * Writes the resolved theme onto the document and remembers the choice.
+ *
+ * The choice is stored beside the resolved class because the threshold treats
+ * a chosen Light differently from an OS that merely happens to be light.
+ *
+ * Exported because the command bar sets the theme too, and a second copy of
+ * this would drift from the first.
+ */
+export function applyTheme(choice: Theme) {
   const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
   const dark = choice === 'dark' || (choice === 'system' && prefersDark);
+  localStorage.setItem('squirl-theme', choice);
   document.documentElement.classList.toggle('dark', dark);
   document.documentElement.dataset.theme = choice;
   document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
@@ -41,15 +48,14 @@ export function ThemeToggle({ className }: { className?: string }) {
   useEffect(() => {
     if (theme !== 'system') return;
     const query = window.matchMedia('(prefers-color-scheme: dark)');
-    const sync = () => paint('system');
+    const sync = () => applyTheme('system');
     query.addEventListener('change', sync);
     return () => query.removeEventListener('change', sync);
   }, [theme]);
 
   const apply = (next: Theme) => {
     setTheme(next);
-    localStorage.setItem('squirl-theme', next);
-    paint(next);
+    applyTheme(next);
   };
 
   return (

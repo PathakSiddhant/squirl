@@ -37,9 +37,14 @@ export interface StorageFacts {
 export function StorageSheet({
   facts,
   children,
+  open,
+  onOpenChange,
 }: {
   facts: StorageFacts | null;
-  children: React.ReactNode;
+  /** Omitted when the sheet is opened from somewhere else, such as the command bar. */
+  children?: React.ReactNode;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
   const rows = [
     {
@@ -66,8 +71,8 @@ export function StorageSheet({
   ];
 
   return (
-    <Dialog.Root>
-      <Dialog.Trigger asChild>{children}</Dialog.Trigger>
+    <Dialog.Root open={open} onOpenChange={onOpenChange}>
+      {children ? <Dialog.Trigger asChild>{children}</Dialog.Trigger> : null}
       <Dialog.Portal>
         <Dialog.Overlay className="z-overlay fixed inset-0 bg-black/40 backdrop-blur-[2px] data-[state=open]:animate-[scrim-in_180ms_var(--ease)]" />
         <Dialog.Content
@@ -126,10 +131,25 @@ export function StorageSheet({
             ))}
           </dl>
 
-          <p className="flex items-start gap-2 border-t border-line bg-surface-2 px-6 py-3.5 text-[0.75rem] leading-relaxed text-ink-3">
-            <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-[var(--in)]" aria-hidden="true" />
-            No sync, no cloud, no account. Nothing here has ever left this device.
-          </p>
+          <div className="border-t border-line bg-surface-2 px-6 py-3.5">
+            <p className="flex items-start gap-2 text-[0.75rem] leading-relaxed text-ink-3">
+              <span
+                className="mt-1.5 size-1.5 shrink-0 rounded-full bg-[var(--in)]"
+                aria-hidden="true"
+              />
+              No sync, no cloud, no account. Nothing here has ever left this device.
+            </p>
+            {/* The shortcut is written down here rather than on the launcher.
+                A permanent search field would spend the best space on the
+                screen on a control you already know the key for. */}
+            <p className="mt-2 pl-3.5 text-[0.75rem] leading-relaxed text-ink-3">
+              <kbd className="rounded-[4px] border border-line px-1 py-px font-mono text-[0.6875rem]">
+                Ctrl K
+              </kbd>{' '}
+              opens the command palette from anywhere: applications, every screen inside them, the
+              theme and the lock.
+            </p>
+          </div>
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
