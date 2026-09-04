@@ -1,21 +1,22 @@
 'use client';
 
-import { Info } from '@phosphor-icons/react/dist/csr/Info';
-import { Lock } from '@phosphor-icons/react/dist/csr/Lock';
 import { Rows } from '@phosphor-icons/react/dist/csr/Rows';
 import { SquaresFour } from '@phosphor-icons/react/dist/csr/SquaresFour';
+import { useRouter } from 'next/navigation';
 import { useEffect, useState, useTransition } from 'react';
 
 import { signOut } from '@/app/actions/session';
-import { LockupRow } from '@/components/brand/logo';
-import { ThemeToggle } from '@/components/shell/theme-toggle';
-import { cn } from '@/lib/cn';
+
+import { Lockup } from '@/components/brand/logo';
 
 import { AppTile } from './app-tile';
 import { CommandPalette } from './command-palette';
+import { ConsolePanel } from './console-panel';
+import { Dock } from './dock';
 import { IconGrid } from './icon-grid';
 import type { LauncherApp } from './launcher-app';
 import { Orbit } from './orbit';
+import { StatusBar } from './status-bar';
 import { StorageSheet, type StorageFacts } from './storage-sheet';
 
 const VIEWS = [
@@ -26,6 +27,7 @@ const VIEWS = [
 type ViewId = (typeof VIEWS)[number]['id'];
 
 const STORED_VIEW = 'squirl-launcher-view';
+const STORED_ORDER = 'squirl-app-order';
 
 /**
  * Squirl's home.
@@ -50,13 +52,27 @@ export function Launcher({
   storage,
   greeting,
   date,
+  phase,
 }: {
   apps: LauncherApp[];
   storage: StorageFacts | null;
   greeting: string;
   date: string;
+  phase: string;
 }) {
+  const router = useRouter();
   const [view, setView] = useState<ViewId>('cards');
+  const [theme, setTheme] = useState<'light' | 'dark' | 'system'>('system');
+  // One application at a time can be the subject, and both the orbit and the
+  // tiles answer to it. Pointing at a node lights its tile and pointing at a
+  // tile lights its node, which is what turns two separate pictures of the
+  // same three things into one.
+  const [focused, setFocused] = useState<string | null>(null);
+  // The order the applications are kept in, which is the reader's business
+  // rather than the registry's. Held as ids so an application that is removed
+  // simply drops out and a new one appends.
+  const [order, setOrder] = useState<string[] | null>(null);
+  const [carried, setCarried] = useState<string | null>(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [storageOpen, setStorageOpen] = useState(false);
   const [orbit, setOrbit] = useState(210);
@@ -65,6 +81,19 @@ export function Launcher({
   useEffect(() => {
     const stored = localStorage.getItem(STORED_VIEW) as ViewId | null;
     if (stored && VIEWS.some((entry) => entry.id === stored)) setView(stored);
+    setTheme((localStorage.getItem('squirl-theme') as 'light' | 'dark' | 'system') ?? 'system');
+
+    const storedOrder = localStorage.getItem(STORED_ORDER);
+    if (storedOrder) {
+      try {
+        const parsed: unknown = JSON.parse(storedOrder);
+        if (Array.isArray(parsed) && parsed.every((id) => typeof id === 'string')) {
+          setOrder(parsed as string[]);
+        }
+      } catch {
+        // A corrupt preference is not worth a broken launcher.
+      }
+    }
   }, []);
 
   // The orbit is the one element here that can afford to give up room, so it
@@ -72,12 +101,39 @@ export function Launcher({
   useEffect(() => {
     const fit = () => {
       const height = window.innerHeight;
-      setOrbit(height < 700 ? 158 : height < 800 ? 186 : height < 900 ? 210 : 232);
+      setOrbit(height < 700 ? 330 : height < 800 ? 380 : height < 900 ? 430 : 470);
     };
     fit();
     window.addEventListener('resize', fit);
     return () => window.removeEventListener('resize', fit);
   }, []);
+
+  /*
+    Digits open applications.
+
+    The fastest thing a launcher can be is one keystroke, and the numbers are
+    already implied by the row: the first tile is the first application. Held
+    to plain digits with no modifier, and ignored while a field or the palette
+    has focus, so typing a 1 into a search box never launches anything.
+  */
+  useEffect(() => {
+    const onDigit = (event: KeyboardEvent) => {
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
+      const target = event.target as HTMLElement | null;
+      if (target && /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return;
+      if (target?.isContentEditable) return;
+
+      const index = Number(event.key) - 1;
+      if (!Number.isInteger(index) || index < 0) return;
+      const app = arranged[index];
+      if (app?.href) {
+        event.preventDefault();
+        router.push(app.href);
+      }
+    };
+    window.addEventListener('keydown', onDigit);
+    return () => window.removeEventListener('keydown', onDigit);
+  });
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -95,123 +151,131 @@ export function Launcher({
     localStorage.setItem(STORED_VIEW, next);
   };
 
-  const dockButton =
-    'flex size-9 items-center justify-center rounded-lg text-ink-3 transition-[color,background-color,transform] duration-[var(--t-state)] hover:-translate-y-0.5 hover:bg-surface-2 hover:text-ink';
+  /*
+    Applications in the reader's own order.
+
+    Sorted by the stored list, with anything the list has not heard of kept in
+    registry order at the end. That way installing a fourth application adds it
+    without disturbing the three you have already arranged, and clearing the
+    preference falls back to the registry rather than to nothing.
+  */
+  const arranged = order
+    ? [...apps].sort((a, b) => {
+        const ai = order.indexOf(a.id);
+        const bi = order.indexOf(b.id);
+        return (ai === -1 ? apps.length : ai) - (bi === -1 ? apps.length : bi);
+      })
+    : apps;
+
+  const carry = (id: string | null) => setCarried(id);
+
+  const dropOn = (movedId: string, targetId: string) => {
+    const moved = movedId || carried;
+    setCarried(null);
+    if (!moved || moved === targetId) return;
+    const ids = arranged.map((app) => app.id);
+    const from = ids.indexOf(moved);
+    const to = ids.indexOf(targetId);
+    if (from === -1 || to === -1) return;
+    ids.splice(to, 0, ids.splice(from, 1)[0]);
+    setOrder(ids);
+    localStorage.setItem(STORED_ORDER, JSON.stringify(ids));
+  };
+
+  const chooseTheme = (next: 'light' | 'dark' | 'system') => {
+    setTheme(next);
+    localStorage.setItem('squirl-theme', next);
+  };
 
   return (
     <div className="flex min-h-dvh flex-col px-5 sm:px-8">
-      <div className="flex flex-1 flex-col justify-center py-4 lg:py-[min(1.25rem,2vh)]">
-        {/* Side by side, not stacked.
+      <div className="pt-3">
+        <StatusBar />
+      </div>
 
-            Stacked, this screen could not be made to fit: the mark, the hour,
-            the claim, the orbit and its caption ran to well over half the
-            window before a single application had been drawn, and the only way
-            to land the tiles above the fold was to shrink the orbit until it
-            was a smudge. Set beside each other they cost the height of the
-            taller one instead of the sum, which is what buys the orbit its
-            size back. */}
-        <section className="flex items-center justify-between gap-10">
-          <header className="rise min-w-0" style={{ animationDelay: '40ms' }}>
-            <LockupRow size={48} alt="Squirl" className="dark:brightness-0 dark:invert" />
+      <div className="flex flex-1 flex-col justify-center gap-3 py-2 lg:gap-[min(0.875rem,1.5vh)] lg:py-[min(0.5rem,1vh)]">
+        {/*
+          Three columns, and the middle one is the subject.
 
-            <h1 className="mt-4 font-serif text-[2.25rem] font-normal leading-[1.05] tracking-[-0.02em] text-ink sm:text-[2.75rem] lg:text-[min(2.75rem,4.4vh)]">
+          Identity on the left, the system itself in the middle, and what is
+          true right now on the right. The orbit had been sitting under a
+          centred header, which left the brand looking wedged into the gap
+          above it and the two sides of the window empty; set beside the object
+          instead, the lockup anchors the composition rather than hovering over
+          it, and the whole row costs the height of the orbit alone.
+        */}
+        <section className="flex items-center justify-between gap-6">
+          <header className="rise w-[11rem] shrink-0" style={{ animationDelay: '40ms' }}>
+            <Lockup size={72} alt="Squirl" className="dark:brightness-0 dark:invert" />
+
+            <h1 className="mt-4 font-serif text-[1.5rem] font-normal leading-[1.08] tracking-[-0.02em] text-ink lg:text-[min(1.5rem,2.5vh)]">
               {greeting}.
             </h1>
-            <p className="mt-2 text-[0.9375rem] text-ink-2">
-              {date} · all of it lives with <span className="text-[var(--cta)]">you.</span>
-            </p>
-
-            {/* The claim the product rests on, said once and left with the
-                screen's own words rather than parked in the dock. */}
-            <p className="mt-2.5 flex items-center gap-2 text-[0.75rem] text-ink-3">
-              <span className="size-1.5 rounded-full bg-[var(--in)]" aria-hidden="true" />
-              All local · no sync, no cloud, no account
+            <p className="mt-1.5 text-[0.75rem] leading-relaxed text-ink-3">
+              {date}
+              <br />
+              all of it lives with <span className="text-[var(--cta)]">you.</span>
             </p>
           </header>
 
-          <div className="rise hidden shrink-0 md:block" style={{ animationDelay: '180ms' }}>
-            <Orbit apps={apps} size={orbit} />
+          <div className="rise min-w-0 flex-1" style={{ animationDelay: '180ms' }}>
+            <div className="flex justify-center">
+              <Orbit apps={arranged} size={orbit} focused={focused} onFocus={setFocused} />
+            </div>
           </div>
+
+          <ConsolePanel
+            apps={apps.length}
+            built={apps.filter((app) => app.status === 'ready').length}
+            size={storage ? storage.size : 'not created'}
+            written={storage ? storage.written : 'never'}
+          />
         </section>
 
         {/* Keyed on the view, so switching re-runs the entrance rather than
             swapping contents underneath a static frame. */}
         <div
           key={view}
-          className="mt-4 w-full lg:mt-[min(1.25rem,2vh)]"
+          className="w-full"
           style={{ animation: 'stage-in 220ms var(--ease) both' }}
         >
           {view === 'icons' ? (
-            <IconGrid apps={apps} />
+            <IconGrid apps={arranged} />
           ) : (
-            <div className="grid grid-cols-1 items-stretch gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {apps.map((app, index) => (
-                <AppTile key={app.id} app={app} snapshot={app.snapshot} delay={index * 80} />
+            <div className="grid grid-cols-1 items-stretch gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {arranged.map((app, index) => (
+                <AppTile
+                  key={app.id}
+                  app={app}
+                  snapshot={app.snapshot}
+                  delay={index * 80}
+                  index={index}
+                  focused={focused}
+                  onFocus={setFocused}
+                  carried={carried}
+                  onCarry={carry}
+                  onDrop={dropOn}
+                />
               ))}
             </div>
           )}
         </div>
+
       </div>
 
-      <footer
-        className="rise flex items-center justify-between gap-3 pb-4 lg:pb-[min(1.25rem,2vh)]"
-        style={{ animationDelay: '520ms' }}
-      >
-        <button
-          type="button"
-          onClick={() => setStorageOpen(true)}
-          title="Where your data lives"
-          aria-label="Where your data lives"
-          className={dockButton}
-        >
-          <Info size={17} />
-        </button>
-
-        <div
-          role="radiogroup"
-          aria-label="How to show applications"
-          className="inline-flex items-center gap-0.5 rounded-xl border border-line bg-surface p-1"
-        >
-          {VIEWS.map(({ id, label, Icon, blurb }) => {
-            const active = view === id;
-            return (
-              <button
-                key={id}
-                type="button"
-                role="radio"
-                aria-checked={active}
-                title={blurb}
-                aria-label={label}
-                onClick={() => choose(id)}
-                className={cn(
-                  'flex size-8 items-center justify-center rounded-lg',
-                  'transition-colors duration-[var(--t-state)]',
-                  active ? 'bg-surface-2 text-ink' : 'text-ink-3 hover:text-ink-2',
-                )}
-              >
-                <Icon size={15} weight={active ? 'fill' : 'regular'} />
-              </button>
-            );
-          })}
-        </div>
-
-        {/* The pair. Set the light, then shut the door. */}
-        <div className="flex items-center gap-1.5">
-          <ThemeToggle />
-          <button
-            type="button"
-            onClick={() => startTransition(() => void signOut())}
-            title="Lock Squirl"
-            aria-label="Lock Squirl"
-            className={dockButton}
-          >
-            <Lock size={17} />
-          </button>
-        </div>
-      </footer>
+      {/* Fixed to a wall of the window rather than sitting in the page, so it
+          costs the launcher no height at all. */}
+      <Dock
+        view={view}
+        onChooseView={(next) => choose(next as ViewId)}
+        onOpenStorage={() => setStorageOpen(true)}
+        onLock={() => startTransition(() => void signOut())}
+        theme={theme}
+        onChooseTheme={chooseTheme}
+      />
 
       <CommandPalette
-        apps={apps}
+        apps={arranged}
         open={paletteOpen}
         onOpenChange={setPaletteOpen}
         onOpenStorage={() => setStorageOpen(true)}

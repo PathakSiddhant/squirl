@@ -13,26 +13,35 @@ export interface StorageFacts {
   written: string;
 }
 
+const KEYS = [
+  {
+    keys: ['Ctrl', 'K'],
+    what: 'Open the command palette: applications, every screen inside them, the theme and the lock.',
+  },
+  {
+    keys: ['Ctrl', '\\'],
+    what: 'Hide the dock, and bring it back. It leaves the screen entirely rather than shrinking.',
+  },
+  {
+    keys: ['1', '2', '3'],
+    what: 'Open an application by its place in the row. The number is on its tile.',
+  },
+];
+
 /**
- * Where the data lives, on demand.
+ * Two cards on a string.
  *
- * This used to be a full-width card under the application cards, which meant
- * the launcher could not be read without scrolling: the one screen whose whole
- * job is "here is everything you have" did not fit on a screen. These are
- * reference facts. You want them available and checkable, not occupying the
- * bottom third of the page every time you open the app.
+ * These are two different kinds of thing. One is where the data sits, which is
+ * a claim about this machine; the other is which keys do what, which is a claim
+ * about this interface. Stacked in a single column they became a panel long
+ * enough to need scrolling, and a modal you have to scroll is a modal that
+ * should have been two.
  *
- * So the claim stays permanently visible on the rail, where it always was, and
- * the evidence for it opens from that same claim. That is the point of the
- * arrangement: the sentence you are asked to trust is the control that proves
- * itself, rather than a badge with the proof parked somewhere else.
- *
- * Centred, not anchored to the rail. A panel hung off a control in the bottom
- * left corner has to open across the application cards, and it reads as
- * something that got loose rather than something that was opened: pinned to
- * the edge of the window, half over the thing you were just looking at. The
- * middle of the screen, over a dimmed page, is the honest shape for a panel
- * that is asking for your full attention for two seconds.
+ * So they are two, tied together. The cord is not decoration for its own sake:
+ * it says these are one pair rather than two windows that happened to open
+ * together, and it is drawn as a real hanging curve with a knot at each end,
+ * because a straight line between two boxes reads as a diagram and a slack one
+ * reads as an object.
  */
 export function StorageSheet({
   facts,
@@ -41,10 +50,9 @@ export function StorageSheet({
   onOpenChange,
 }: {
   facts: StorageFacts | null;
-  /** Omitted when the sheet is opened from somewhere else, such as the command bar. */
   children?: React.ReactNode;
   open?: boolean;
-  onOpenChange?: (open: boolean) => void;
+  onOpenChange?: (next: boolean) => void;
 }) {
   const rows = [
     {
@@ -70,6 +78,8 @@ export function StorageSheet({
     },
   ];
 
+  const card = 'flex flex-col rounded-xl border border-line bg-surface shadow-[var(--shadow-pop)]';
+
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       {children ? <Dialog.Trigger asChild>{children}</Dialog.Trigger> : null}
@@ -77,78 +87,148 @@ export function StorageSheet({
         <Dialog.Overlay className="z-overlay fixed inset-0 bg-black/40 backdrop-blur-[2px] data-[state=open]:animate-[scrim-in_180ms_var(--ease)]" />
         <Dialog.Content
           className={cn(
-            'z-modal fixed left-1/2 top-1/2 max-h-[88dvh] w-[calc(100vw-2rem)] max-w-[26.5rem]',
-            '-translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-xl border border-line bg-surface',
-            'shadow-[var(--shadow-pop)] focus:outline-none',
+            'z-modal fixed left-1/2 top-1/2 w-[calc(100vw-2rem)] max-w-[47rem]',
+            '-translate-x-1/2 -translate-y-1/2 focus:outline-none',
             'data-[state=open]:animate-[sheet-in_180ms_var(--ease)]',
           )}
         >
-          <div className="flex items-start justify-between gap-4 px-6 pt-5">
-            <Dialog.Title className="text-[0.9375rem] font-semibold text-ink">
-              Where your data lives
-            </Dialog.Title>
-            <Dialog.Close className="-mr-1 rounded-sm p-1 text-ink-3 transition-colors duration-[var(--t-state)] hover:bg-surface-2 hover:text-ink">
-              <X size={15} />
-              <span className="sr-only">Close</span>
-            </Dialog.Close>
-          </div>
+          <div className="flex flex-col items-stretch gap-0 lg:flex-row lg:items-stretch">
+            {/* Where it lives. */}
+            <section className={cn(card, 'relative flex-1')}>
+              <div className="flex items-start justify-between gap-4 px-5 pt-4">
+                <Dialog.Title className="text-[0.9375rem] font-semibold text-ink">
+                  Where your data lives
+                </Dialog.Title>
+                <Dialog.Close className="-mr-1 rounded-sm p-1 text-ink-3 transition-colors duration-[var(--t-state)] hover:bg-surface-2 hover:text-ink lg:hidden">
+                  <X size={15} />
+                  <span className="sr-only">Close</span>
+                </Dialog.Close>
+              </div>
 
-          {/* The claim first, in the display face, because it is the reason the
-              rest of the panel is worth reading. */}
-          <Dialog.Description asChild>
-            <p className="mt-4 px-6 font-serif text-[1.125rem] leading-snug text-ink">
-              Nothing here is guessed. Every number is replayed from what you wrote down.
-            </p>
-          </Dialog.Description>
+              <Dialog.Description asChild>
+                <p className="mt-3 px-5 font-serif text-[1.0625rem] leading-snug text-ink">
+                  Nothing here is guessed. Every number is replayed from what you wrote down.
+                </p>
+              </Dialog.Description>
 
-          <span className="ml-6 mt-5 block h-px w-10 bg-[var(--cta)]" />
+              <span className="ml-5 mt-4 block h-px w-10 bg-[var(--cta)]" />
 
-          <dl className="mt-5 flex flex-col">
-            {rows.map((row, index) => (
-              <div
-                key={row.label}
-                className={cn(
-                  'flex items-start gap-3.5 px-6 py-3.5',
-                  index > 0 && 'border-t border-line',
-                )}
-              >
-                <span className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-full bg-surface-2 text-ink-2">
-                  <row.icon size={16} />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <dt className="text-[0.75rem] text-ink-3">{row.label}</dt>
-                  <dd
+              <dl className="mt-4 flex flex-1 flex-col">
+                {rows.map((row, index) => (
+                  <div
+                    key={row.label}
                     className={cn(
-                      'mt-1 truncate text-[0.9375rem] text-ink',
-                      row.mono && 'font-mono text-[0.8125rem]',
+                      'flex items-start gap-3 px-5 py-3',
+                      index > 0 && 'border-t border-line',
                     )}
                   >
-                    {row.value}
-                  </dd>
-                  <dd className="mt-1 text-[0.75rem] leading-relaxed text-ink-3">{row.note}</dd>
-                </span>
-              </div>
-            ))}
-          </dl>
+                    <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-surface-2 text-ink-2">
+                      <row.icon size={15} />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <dt className="text-[0.6875rem] text-ink-3">{row.label}</dt>
+                      <dd
+                        className={cn(
+                          'mt-0.5 truncate text-[0.875rem] text-ink',
+                          row.mono && 'font-mono text-[0.8125rem]',
+                        )}
+                      >
+                        {row.value}
+                      </dd>
+                      <dd className="mt-0.5 text-[0.6875rem] leading-relaxed text-ink-3">
+                        {row.note}
+                      </dd>
+                    </span>
+                  </div>
+                ))}
+              </dl>
 
-          <div className="border-t border-line bg-surface-2 px-6 py-3.5">
-            <p className="flex items-start gap-2 text-[0.75rem] leading-relaxed text-ink-3">
-              <span
-                className="mt-1.5 size-1.5 shrink-0 rounded-full bg-[var(--in)]"
-                aria-hidden="true"
-              />
-              No sync, no cloud, no account. Nothing here has ever left this device.
-            </p>
-            {/* The shortcut is written down here rather than on the launcher.
-                A permanent search field would spend the best space on the
-                screen on a control you already know the key for. */}
-            <p className="mt-2 pl-3.5 text-[0.75rem] leading-relaxed text-ink-3">
-              <kbd className="rounded-[4px] border border-line px-1 py-px font-mono text-[0.6875rem]">
-                Ctrl K
-              </kbd>{' '}
-              opens the command palette from anywhere: applications, every screen inside them, the
-              theme and the lock.
-            </p>
+              <p className="flex items-start gap-2 rounded-b-xl border-t border-line bg-surface-2 px-5 py-3 text-[0.6875rem] leading-relaxed text-ink-3">
+                <span
+                  className="mt-1.5 size-1.5 shrink-0 rounded-full bg-[var(--in)]"
+                  aria-hidden="true"
+                />
+                No sync, no cloud, no account. Nothing here has ever left this device.
+              </p>
+            </section>
+
+            {/*
+              The cord.
+
+              Horizontal between the cards on a wide window and vertical when
+              they stack, because a hanging line has to hang in the direction
+              the pair is actually arranged. It sags: a straight connector reads
+              as a wire in a diagram, and the slack is the whole difference
+              between a diagram and a thing with weight.
+            */}
+            <span aria-hidden="true" className="hidden w-16 shrink-0 items-center justify-center lg:flex">
+              <svg viewBox="0 0 64 40" className="h-10 w-16 overflow-visible">
+                <path
+                  d="M2,14 C18,34 46,34 62,14"
+                  fill="none"
+                  stroke="var(--line-strong)"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  className="cord-sway"
+                />
+                <circle cx="2" cy="14" r="3.5" fill="var(--acorn)" />
+                <circle cx="62" cy="14" r="3.5" fill="var(--acorn)" />
+              </svg>
+            </span>
+
+            <span aria-hidden="true" className="flex h-10 w-full shrink-0 items-center justify-center lg:hidden">
+              <svg viewBox="0 0 40 64" className="h-10 w-10 overflow-visible">
+                <path
+                  d="M14,2 C34,18 34,46 14,62"
+                  fill="none"
+                  stroke="var(--line-strong)"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                />
+                <circle cx="14" cy="2" r="3.5" fill="var(--acorn)" />
+                <circle cx="14" cy="62" r="3.5" fill="var(--acorn)" />
+              </svg>
+            </span>
+
+            {/* Which keys do what. */}
+            <section className={cn(card, 'relative flex-1')}>
+              <div className="flex items-start justify-between gap-4 border-b border-line px-5 py-4">
+                <h2 className="text-[0.9375rem] font-semibold text-ink">The keys</h2>
+                <Dialog.Close className="-mr-1 hidden rounded-sm p-1 text-ink-3 transition-colors duration-[var(--t-state)] hover:bg-surface-2 hover:text-ink lg:block">
+                  <X size={15} />
+                  <span className="sr-only">Close</span>
+                </Dialog.Close>
+              </div>
+
+              <dl className="flex flex-1 flex-col">
+                {KEYS.map((row, index) => (
+                  <div
+                    key={row.keys.join()}
+                    className={cn(
+                      'flex items-start gap-3 px-5 py-3',
+                      index > 0 && 'border-t border-line',
+                    )}
+                  >
+                    <dt className="flex shrink-0 items-center gap-1 pt-px">
+                      {row.keys.map((key) => (
+                        <kbd
+                          key={key}
+                          className="rounded-[4px] border border-line bg-surface-2 px-1.5 py-0.5 font-mono text-[0.6875rem] text-ink-2"
+                        >
+                          {key}
+                        </kbd>
+                      ))}
+                    </dt>
+                    <dd className="text-[0.75rem] leading-relaxed text-ink-3">{row.what}</dd>
+                  </div>
+                ))}
+              </dl>
+
+              <p className="rounded-b-xl border-t border-line bg-surface-2 px-5 py-3 text-[0.6875rem] leading-relaxed text-ink-3">
+                Drag the dock by its grip to any edge of the window. It settles centred on the wall
+                you drop it nearest, upright on the left and right, and stays there next time.
+              </p>
+            </section>
           </div>
         </Dialog.Content>
       </Dialog.Portal>

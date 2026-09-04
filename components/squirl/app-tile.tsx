@@ -1,6 +1,7 @@
 'use client';
 
 import { ArrowRight } from '@phosphor-icons/react/dist/csr/ArrowRight';
+import { DotsSixVertical } from '@phosphor-icons/react/dist/csr/DotsSixVertical';
 import Link from 'next/link';
 import { useRef } from 'react';
 
@@ -56,10 +57,22 @@ export function AppTile({
   app,
   snapshot,
   delay,
+  index,
+  focused,
+  onFocus,
+  carried,
+  onCarry,
+  onDrop,
 }: {
   app: LauncherApp;
   snapshot: AppSnapshot | null;
   delay: number;
+  index: number;
+  focused: string | null;
+  onFocus: (id: string | null) => void;
+  carried: string | null;
+  onCarry: (id: string | null) => void;
+  onDrop: (movedId: string, targetId: string) => void;
 }) {
   const surface = useRef<HTMLElement>(null);
 
@@ -70,8 +83,22 @@ export function AppTile({
     const node = surface.current;
     if (!node) return;
     const box = node.getBoundingClientRect();
-    node.style.setProperty('--mx', `${event.clientX - box.left}px`);
-    node.style.setProperty('--my', `${event.clientY - box.top}px`);
+    const x = event.clientX - box.left;
+    const y = event.clientY - box.top;
+    node.style.setProperty('--mx', `${x}px`);
+    node.style.setProperty('--my', `${y}px`);
+
+    // Held to three degrees. Past about four this stops reading as a surface
+    // tipping under a finger and starts reading as a card doing a trick.
+    node.style.setProperty('--tilt-y', `${((x / box.width) * 2 - 1) * 3}deg`);
+    node.style.setProperty('--tilt-x', `${((y / box.height) * 2 - 1) * -3}deg`);
+  };
+
+  const release = () => {
+    const node = surface.current;
+    if (!node) return;
+    node.style.setProperty('--tilt-x', '0deg');
+    node.style.setProperty('--tilt-y', '0deg');
   };
 
   const href = app.href;
@@ -98,6 +125,43 @@ export function AppTile({
         }}
       />
 
+      {/* Picked up by the grip alone. The tile is a link, and a tile you can
+          start dragging from anywhere is a link you cannot reliably click. */}
+      <span
+        draggable
+        onDragStart={(event) => {
+          event.dataTransfer.effectAllowed = 'move';
+          // The id travels in the drag itself as well as in state. State is
+          // what dims the other tiles while the drag is live; the payload is
+          // what the drop actually reads, because a drop that depends on a
+          // React update having already flushed is a drop that sometimes does
+          // nothing.
+          event.dataTransfer.setData('text/squirl-app', app.id);
+          onCarry(app.id);
+        }}
+        onDragEnd={() => onCarry(null)}
+        onClick={(event) => event.preventDefault()}
+        title="Drag to reorder"
+        className={cn(
+          'absolute right-2 top-2 z-10 flex size-6 cursor-grab items-center justify-center rounded-md',
+          'text-ink-3 opacity-0 transition-opacity duration-[var(--t-hover)]',
+          'hover:bg-surface-2 hover:text-ink-2 active:cursor-grabbing group-hover:opacity-100',
+        )}
+      >
+        <DotsSixVertical size={13} weight="bold" />
+      </span>
+
+      {/* The key that opens it. Shown only under the pointer, because it is a
+          shortcut worth discovering rather than a label worth wearing. */}
+      {open ? (
+        <span
+          aria-hidden="true"
+          className="absolute left-2 top-2 z-10 rounded-md border border-line bg-surface px-1.5 text-[0.625rem] font-medium text-ink-3 opacity-0 transition-opacity duration-[var(--t-hover)] group-hover:opacity-100"
+        >
+          {index + 1}
+        </span>
+      ) : null}
+
       <div className="relative flex items-start justify-between gap-3">
         <span className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-[var(--app-accent-wash)]">
           <AppMark name={app.mark} size={26} />
@@ -117,7 +181,7 @@ export function AppTile({
         )}
       </div>
 
-      <h2 className="relative mt-3.5 text-[1.1875rem] font-semibold leading-tight tracking-[-0.015em] text-ink">
+      <h2 className="relative mt-3 text-[1.1875rem] font-semibold leading-tight tracking-[-0.015em] text-ink">
         {app.name}
       </h2>
       <p className="relative mt-1 line-clamp-1 text-[0.8125rem] leading-relaxed text-ink-3">
@@ -125,12 +189,12 @@ export function AppTile({
       </p>
 
       {headline ? (
-        <div className="relative mt-3.5 border-t border-line pt-3">
+        <div className="relative mt-3 border-t border-line pt-2.5">
           <p className="text-[0.75rem] text-ink-3">{headline.label}</p>
           <CountUp
             value={headline.value}
             className={cn(
-              'money mt-1 block truncate text-[1.375rem] leading-none',
+              'money mt-1 block truncate text-[1.25rem] leading-none',
               snapshot?.tone === 'attention' ? 'text-[var(--i-owe-text)]' : 'text-ink',
             )}
           />
@@ -139,7 +203,7 @@ export function AppTile({
           ) : null}
 
           {rest.length ? (
-            <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-1.5">
+            <dl className="mt-2.5 grid grid-cols-2 gap-x-3 gap-y-1.5">
               {rest.map((stat) => (
                 <div key={stat.label} className="min-w-0">
                   <dt className="truncate text-[0.6875rem] text-ink-3">{stat.label}</dt>
@@ -150,7 +214,7 @@ export function AppTile({
           ) : null}
 
           {snapshot?.trend && snapshot.trend.length > 1 ? (
-            <div className="mt-3 flex items-end gap-3 border-t border-line pt-2.5 [@media(max-height:700px)]:hidden">
+            <div className="mt-2.5 flex items-end gap-3 border-t border-line pt-2 [@media(max-height:820px)]:hidden">
               <div className="min-w-0 flex-1">
                 <p className="truncate text-[0.6875rem] text-ink-3">{snapshot.trendLabel}</p>
                 <div className="mt-1.5 h-6">
@@ -168,7 +232,7 @@ export function AppTile({
            at the foot. Pushing it to the bottom instead opened a hole through
            the middle of the tile, which read as something that failed to load
            rather than as an application with nothing to report yet. */
-        <div className="relative mt-3.5 border-t border-line pt-3">
+        <div className="relative mt-3 border-t border-line pt-2.5">
           <p className="text-[0.8125rem] font-medium text-ink">
             {open ? 'Figures unavailable' : 'Not built yet'}
           </p>
@@ -182,16 +246,37 @@ export function AppTile({
     </>
   );
 
+  // Dimmed only while some other application is the subject. Nothing is
+  // dimmed when nothing is pointed at, so the resting page is never faded.
+  const muted = focused !== null && focused !== app.id;
+  const lifted = carried === app.id;
+
   const shell = cn(
-    'rise group relative flex h-full min-h-[13.5rem] flex-col overflow-hidden rounded-2xl border border-line bg-surface p-4',
+    'rise group relative flex h-full min-h-[10.5rem] flex-col overflow-hidden rounded-2xl border bg-surface p-4',
+    'transition-[opacity,border-color] duration-[var(--t-hover)]',
+    focused === app.id ? 'border-[var(--app-accent)]' : 'border-line',
+    muted && 'opacity-55',
+    lifted && 'opacity-40',
+    carried && !lifted && 'ring-1 ring-[var(--app-accent)]/30',
     app.accentClass,
   );
 
   if (!open || !href) {
     return (
       <section
+        data-app={app.id}
         ref={surface}
+        onDragOver={(event) => event.preventDefault()}
+        onDrop={(event) => {
+          event.preventDefault();
+          onDrop(event.dataTransfer.getData('text/squirl-app'), app.id);
+        }}
+        onPointerEnter={() => onFocus(app.id)}
         onPointerMove={track}
+        onPointerLeave={() => {
+          onFocus(null);
+          release();
+        }}
         className={shell}
         style={{ animationDelay: `${delay}ms` }}
       >
@@ -203,12 +288,22 @@ export function AppTile({
   return (
     <Link
       href={href}
+      data-app={app.id}
       ref={surface as React.Ref<HTMLAnchorElement>}
+      onDragOver={(event) => event.preventDefault()}
+      onDrop={(event) => {
+        event.preventDefault();
+        onDrop(event.dataTransfer.getData('text/squirl-app'), app.id);
+      }}
+      onPointerEnter={() => onFocus(app.id)}
       onPointerMove={track}
+      onPointerLeave={() => {
+        onFocus(null);
+        release();
+      }}
       className={cn(
         shell,
-        'transition-[transform,border-color,box-shadow] duration-[var(--t-move)] ease-[var(--ease)]',
-        'hover:-translate-y-1 hover:border-line-strong hover:shadow-[0_18px_44px_-20px_oklch(0.22_0.012_265/0.28)]',
+        'tile-lift',
       )}
       style={{ animationDelay: `${delay}ms` }}
     >

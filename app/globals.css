@@ -834,6 +834,166 @@ html.dark .threshold .mark-over-art {
 }
 
 /*
+  Motion, the second pass.
+
+  The first version of this screen moved at --t-state and --t-move, 120 and
+  180ms, which are the right numbers for a control acknowledging a click and
+  the wrong ones for a surface responding to a pointer. At 180ms a card has
+  finished lifting before the eye has finished arriving, so the whole thing
+  reads as a flicker rather than as a response.
+
+  These are the launcher's own durations. They are slower than the product's
+  because nothing here is urgent: this screen is the pause before the work.
+*/
+:root {
+  --t-hover: 420ms;
+  --t-settle: 640ms;
+  /* Overshoots by about four percent and comes back. The only place in Squirl
+     anything overshoots at all, and it is held to a hair on purpose: enough
+     that a lift feels sprung, not enough to read as a bounce. */
+  --ease-spring: cubic-bezier(0.34, 1.32, 0.44, 1);
+  --ease-soft: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* A panel arriving: up, and out of a slight blur, so it resolves rather than
+   slides. */
+.panel-in {
+  animation: panel-in var(--t-settle) var(--ease-soft) 520ms both;
+}
+
+@keyframes panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+    filter: blur(3px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: blur(0);
+  }
+}
+
+.queue-row {
+  animation: queue-row 420ms var(--ease-soft) both;
+}
+
+@keyframes queue-row {
+  from {
+    opacity: 0;
+    transform: translateX(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Grows to the value written on it, once. */
+.meter-fill {
+  width: 0;
+  animation: meter-fill 900ms var(--ease-soft) both;
+}
+
+@keyframes meter-fill {
+  from {
+    width: 0;
+  }
+  to {
+    width: var(--fill, 0%);
+  }
+}
+
+.dock-in {
+  animation: dock-in var(--t-settle) var(--ease-spring) 700ms both;
+}
+
+@keyframes dock-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/*
+  A tile under the pointer.
+
+  It lifts, and it tips very slightly towards the cursor. The tilt is the piece
+  that makes the difference between a rectangle changing colour and a surface
+  being touched, and it is held to three degrees, because the version that
+  reads as delightful at three reads as a gimmick at eight.
+
+  Rotation is composed here with the lift in one transform, and the tilt angles
+  arrive as custom properties written by the pointer handler. Perspective sits
+  on the element itself so no wrapper is needed.
+*/
+.tile-lift {
+  perspective: 900px;
+  transform: perspective(900px) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg))
+    translateY(0);
+  transition:
+    transform var(--t-hover) var(--ease-spring),
+    border-color var(--t-hover) var(--ease-soft),
+    box-shadow var(--t-hover) var(--ease-soft);
+}
+
+.tile-lift:hover {
+  transform: perspective(900px) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg))
+    translateY(-6px);
+  border-color: var(--line-strong);
+  box-shadow: 0 22px 50px -24px oklch(0.22 0.012 265 / 0.3);
+}
+
+/* The pointer writes new angles every frame, so the transform must not chase
+   them on a 420ms curve as well: that lags the tilt a third of a second behind
+   the cursor. The slow curve is for the lift, which only happens on enter. */
+.tile-lift:hover {
+  transition:
+    transform 90ms linear,
+    border-color var(--t-hover) var(--ease-soft),
+    box-shadow var(--t-hover) var(--ease-soft);
+}
+
+/* The dock's own hover: a lift with a little spring in it. */
+.dock-item {
+  transition:
+    color var(--t-hover) var(--ease-soft),
+    background-color var(--t-hover) var(--ease-soft),
+    transform var(--t-hover) var(--ease-spring);
+}
+
+.dock-item:hover {
+  transform: translateY(-3px);
+}
+
+.dock-item:active {
+  transform: translateY(-1px) scale(0.96);
+  transition-duration: 90ms;
+}
+
+/* The live indicator on the status bar. One slow ring, so the strip reads as
+   something being watched rather than something printed. */
+.live-ping {
+  animation: live-ping 2.6s var(--ease-soft) infinite;
+}
+
+@keyframes live-ping {
+  0% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+  70%,
+  100% {
+    opacity: 0;
+    transform: scale(2.6);
+  }
+}
+
+/*
   The light in the room.
 
   A very wide, very soft wash that crosses the launcher on a long loop, in the
@@ -935,5 +1095,97 @@ html.dark .threshold .mark-over-art {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+  }
+}
+
+/*
+  The dock, arriving at and leaving a wall.
+
+  Position is animated through `left/top/right/bottom` transitions rather than
+  transforms, because the anchor classes change which of those four is set when
+  the bar changes wall, and a transform tween cannot express "was centred on the
+  bottom, is now centred on the left".
+*/
+.dock-shell {
+  transition:
+    opacity 260ms var(--ease-soft),
+    filter 260ms var(--ease-soft),
+    transform 320ms var(--ease-spring);
+}
+
+/*
+  Hidden with Ctrl-\. It leaves as a ghost: down into the wall it is attached
+  to, out of focus, and gone. The pointer events go with it, so a hidden dock
+  cannot be clicked by accident, and nothing about the page under it moves,
+  because the bar was never in the layout to begin with.
+*/
+.dock-gone {
+  pointer-events: none;
+  opacity: 0;
+  filter: blur(6px);
+}
+
+.dock-gone[data-edge='bottom'] {
+  transform: translate(-50%, 14px) scale(0.96);
+}
+.dock-gone[data-edge='top'] {
+  transform: translate(-50%, -14px) scale(0.96);
+}
+.dock-gone[data-edge='left'] {
+  transform: translate(-14px, -50%) scale(0.96);
+}
+.dock-gone[data-edge='right'] {
+  transform: translate(14px, -50%) scale(0.96);
+}
+
+/*
+  The acorns, for the one person who clicks the squirrel.
+
+  Thrown out and down under something like gravity: the horizontal distance is
+  covered evenly, the fall is eased in, and both are folded into a single
+  transform so the whole thing is one composited animation per seed.
+*/
+.acorn-seed {
+  position: absolute;
+  width: 7px;
+  height: 9px;
+  border-radius: 46% 46% 50% 50% / 38% 38% 62% 62%;
+  background: var(--acorn-deep);
+  pointer-events: none;
+  z-index: 5;
+  animation: acorn-seed 900ms cubic-bezier(0.32, 0, 0.67, 0) both;
+}
+
+@keyframes acorn-seed {
+  from {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(var(--seed-scale, 1)) rotate(0deg);
+  }
+  to {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy)))
+      scale(var(--seed-scale, 1)) rotate(var(--spin));
+  }
+}
+
+/*
+  The cord between the two cards of the storage sheet.
+
+  It sways very slightly, on a long loop, as a hanging thing does when the air
+  moves. The transform origin is the two knots it is tied to, so the ends stay
+  put and only the slack moves, which is the difference between a rope and a
+  wiper blade.
+*/
+.cord-sway {
+  transform-origin: 50% 0;
+  animation: cord-sway 6s ease-in-out infinite alternate;
+}
+
+@keyframes cord-sway {
+  from {
+    transform: scaleY(0.94);
+  }
+  to {
+    transform: scaleY(1.06);
   }
 }

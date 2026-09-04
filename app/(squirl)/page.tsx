@@ -40,8 +40,9 @@ function storage(): StorageFacts | null {
         timeZone: IST_TIME_ZONE,
         day: 'numeric',
         month: 'short',
-        hour: 'numeric',
+        hour: '2-digit',
         minute: '2-digit',
+        hour12: false,
       }).format(file.mtime),
     };
   } catch {
@@ -108,6 +109,7 @@ export default async function SquirlHome() {
           storage={file}
           greeting={GREETING[phase]}
           date={formatDayLong(today())}
+          phase={phase}
         />
       </div>
     </main>

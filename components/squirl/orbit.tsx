@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { Mark } from '@/components/brand/logo';
 import { cn } from '@/lib/cn';
@@ -9,149 +9,330 @@ import { cn } from '@/lib/cn';
 import type { LauncherApp } from './launcher-app';
 
 /**
- * Squirl, with its applications around it.
+ * Squirl, with its applications going round it. In three dimensions, and you
+ * can push it.
  *
- * The platform model drawn small and left running: the mark in the middle is
- * the environment, each dot on a ring is one installed application in its own
- * accent, and the rings turn slowly in opposite directions. Squirl itself does
- * not move, which is the whole point of the picture.
+ * This is the one object on the screen that is not a rectangle, and it is the
+ * product's own model drawn literally: the mark is the environment, each body
+ * orbiting it is an installed application, and built ones ride the inner ring
+ * because those are the ones you reach for.
  *
- * Dots rather than marks. At this size an application's mark is a smudge, and
- * a dot in that application's own colour says "one environment, these things
- * inside it" just as well without pretending to be an icon.
+ * It is genuinely dimensional rather than a flat ring pretending. Each body is
+ * placed in a real orbital plane, tilted away from the viewer, then spun about
+ * the vertical axis; what you see is that position projected. So a body passes
+ * behind the mark and is occluded by it, comes round the front larger and
+ * brighter, and the ellipse you read is the perspective rather than a drawn
+ * oval.
  *
- * It is not decoration only. A dot names its application on hover and opens it
- * on click, so the drawing that explains the product is also the shortest way
- * into it. The ring never stops for a hover: freezing it made a calm drawing
- * feel like it had hitched.
+ * Everything is computed straight to transforms inside one animation frame.
+ * There is no state per frame and no React render per frame: sixty renders a
+ * second to move four dots would cost more than the whole rest of the page.
  */
 
-const LANES = [
-  { radius: 96, seconds: 64, reverse: false, offset: 0 },
-  { radius: 132, seconds: 92, reverse: true, offset: 40 },
-];
+/** Degrees the orbital plane is tipped away from face-on. */
+const TILT = (61 * Math.PI) / 180;
+/** Idle drift. Slow enough to be noticed only if you look for it. */
+const DRIFT = 0.0022;
+/** How much of its speed the spin keeps each frame after you let go. */
+const FRICTION = 0.955;
 
-export function Orbit({ apps, size = 168 }: { apps: LauncherApp[]; size?: number }) {
+/**
+ * Three rings, drawn whether or not they are all occupied.
+ *
+ * The object has to survive Squirl growing. Two rings with three applications
+ * on them is a picture that has to be redrawn the moment there are five, and a
+ * ring that appears out of nowhere reads as a bug. Drawing the system's full
+ * shape from the start means new applications arrive into a place that was
+ * already there.
+ */
+const RINGS = [0.24, 0.35, 0.46];
+
+interface Body {
+  app: LauncherApp;
+  radius: number;
+  phase: number;
+}
+
+export function Orbit({
+  apps,
+  size,
+  focused,
+  onFocus,
+}: {
+  apps: LauncherApp[];
+  size: number;
+  focused: string | null;
+  onFocus: (id: string | null) => void;
+}) {
+  /*
+    The box is the shape of the orbit, not a square around it.
+
+    A tilted ring is a wide, shallow ellipse: at this angle it is about half as
+    tall as it is wide. Reserving a square meant a third of the height of this
+    section was empty sky above and below the rings, which is what pushed the
+    applications off the bottom of the window. Reserving the ellipse instead
+    buys the object real width, which is the dimension it is actually read in.
+  */
+  const height = Math.round(size * 2 * RINGS[RINGS.length - 1] * Math.cos(TILT)) + 44;
   const router = useRouter();
-  const [hovered, setHovered] = useState<LauncherApp | null>(null);
+  const frame = useRef<HTMLDivElement>(null);
+  const stage = useRef<HTMLDivElement>(null);
+  const dots = useRef<Array<HTMLButtonElement | null>>([]);
+  const [held, setHeld] = useState(false);
 
-  // Built applications ride the inner ring because they are the ones you
-  // actually reach for. Planned ones sit further out, which is where they are.
-  const lanes = [
-    { ...LANES[0], apps: apps.filter((app) => app.status === 'ready') },
-    { ...LANES[1], apps: apps.filter((app) => app.status !== 'ready') },
-  ];
+  // Spin, velocity, and the pointer's last position. Refs because the loop
+  // writes them every frame and nothing about them belongs in a render.
+  const spin = useRef(0);
+  const velocity = useRef(0);
+  const dragging = useRef(false);
+  const lastX = useRef(0);
+
+  // Built applications take the inner ring, because those are the ones you
+  // reach for. Everything still to come is spread over the outer two rather
+  // than crowded onto one, so a body never has to share an orbit until there
+  // are genuinely more applications than rings.
+  let planned = 0;
+  const bodies: Body[] = apps.map((app, index) => {
+    const ring = app.status === 'ready' ? 0 : 1 + (planned++ % (RINGS.length - 1));
+    return {
+      app,
+      radius: RINGS[ring] * size,
+      // Offset per ring as well as per application, so two bodies on different
+      // rings are never caught on the same spoke.
+      phase: (index / Math.max(apps.length, 1)) * Math.PI * 2 + ring * 0.9,
+    };
+  });
+
+  useEffect(() => {
+    const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let raf = 0;
+
+    const draw = () => {
+      if (!dragging.current) {
+        // Coast, then settle back to the idle drift rather than to a stop, so
+        // the object never reads as switched off.
+        velocity.current *= FRICTION;
+        if (Math.abs(velocity.current) < DRIFT) velocity.current = still ? 0 : DRIFT;
+        spin.current += velocity.current;
+      }
+
+      for (let index = 0; index < bodies.length; index++) {
+        const node = dots.current[index];
+        if (!node) continue;
+        const body = bodies[index];
+
+        const angle = body.phase + spin.current;
+        // Position in the orbital plane, then tip the plane towards the viewer.
+        const x = Math.cos(angle) * body.radius;
+        const z = Math.sin(angle) * body.radius;
+        const y = z * Math.cos(TILT);
+        const depth = z * Math.sin(TILT);
+
+        // Depth reads as size and as air: further away is smaller and paler,
+        // which is what makes a flat circle of dots resolve into an orbit.
+        const near = (depth / body.radius + 1) / 2;
+        const scale = 0.72 + near * 0.5;
+
+        node.style.transform = `translate3d(${x}px, ${y}px, 0) scale(${scale})`;
+        node.style.opacity = String(0.5 + near * 0.5);
+        // Behind the mark, or in front of it.
+        node.style.zIndex = String(depth < 0 ? 1 : 3);
+      }
+
+      raf = requestAnimationFrame(draw);
+    };
+
+    raf = requestAnimationFrame(draw);
+    return () => cancelAnimationFrame(raf);
+    // Rebuilt when the ring geometry changes, which is what `size` and the app
+    // list between them describe.
+  }, [size, apps.length]);
+
+  const onPointerDown = (event: React.PointerEvent) => {
+    dragging.current = true;
+    setHeld(true);
+    lastX.current = event.clientX;
+    (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+  };
+
+  const onPointerMove = (event: React.PointerEvent) => {
+    if (!dragging.current) return;
+    const dx = event.clientX - lastX.current;
+    lastX.current = event.clientX;
+    // Straight to the angle while held, and remembered as speed so letting go
+    // hands the object its momentum instead of stopping it dead.
+    const step = dx * 0.008;
+    spin.current += step;
+    velocity.current = step;
+  };
+
+  const release = () => {
+    dragging.current = false;
+    setHeld(false);
+  };
+
+  /*
+    The object leans towards the pointer even when you are not holding it.
+
+    A few degrees, driven from the whole section rather than from the rings, so
+    approaching the orbit tips it before you touch it. This is the cheapest
+    dimensionality on the page: the rings are already an ellipse in perspective,
+    and moving that perspective slightly is what stops it reading as a drawing
+    of an ellipse.
+  */
+  const lean = (event: React.PointerEvent) => {
+    const node = stage.current;
+    if (!node) return;
+    const box = node.getBoundingClientRect();
+    const px = (event.clientX - box.left) / box.width - 0.5;
+    const py = (event.clientY - box.top) / box.height - 0.5;
+    node.style.setProperty('--lean-y', `${px * 10}deg`);
+    node.style.setProperty('--lean-x', `${py * -7}deg`);
+  };
+
+  const straighten = () => {
+    const node = stage.current;
+    if (!node) return;
+    node.style.setProperty('--lean-y', '0deg');
+    node.style.setProperty('--lean-x', '0deg');
+  };
+
+  /*
+    The acorn burst.
+
+    Clicking the mark scatters a handful of acorns that fall under gravity and
+    fade. It does nothing, stores nothing and is never mentioned anywhere, which
+    is the entire point of it: this is the screen you open six times a day, and
+    a place you live in is allowed exactly one thing that exists only because it
+    is a pleasure to find.
+  */
+  const burst = (event: React.MouseEvent) => {
+    const host = stage.current;
+    if (!host) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+    const box = host.getBoundingClientRect();
+    const originX = event.clientX - box.left;
+    const originY = event.clientY - box.top;
+
+    for (let index = 0; index < 14; index++) {
+      const seed = document.createElement('span');
+      const scale = 0.5 + Math.random() * 0.7;
+      seed.className = 'acorn-seed';
+      seed.style.left = `${originX}px`;
+      seed.style.top = `${originY}px`;
+      seed.style.setProperty('--dx', `${(Math.random() - 0.5) * 260}px`);
+      seed.style.setProperty('--dy', `${90 + Math.random() * 130}px`);
+      seed.style.setProperty('--spin', `${(Math.random() - 0.5) * 540}deg`);
+      seed.style.setProperty('--seed-scale', String(scale));
+      seed.style.animationDelay = `${Math.random() * 90}ms`;
+      seed.addEventListener('animationend', () => seed.remove());
+      host.appendChild(seed);
+    }
+  };
 
   return (
-    <div className="flex flex-col items-center">
-      <div className="relative select-none" style={{ width: size, height: size }}>
-        <svg viewBox="0 0 280 280" className="absolute inset-0 size-full overflow-visible">
-          <circle cx="140" cy="140" r="132" fill="none" stroke="var(--line)" strokeWidth="1" />
-          <circle cx="140" cy="140" r="96" fill="none" stroke="var(--line)" strokeWidth="1" />
-          <circle cx="140" cy="140" r="58" fill="var(--surface-2)" />
-
-          {lanes.map((lane, laneIndex) => (
-            <g
-              key={laneIndex}
-              style={{
-                transformOrigin: '140px 140px',
-                animation: `orbit-turn ${lane.seconds}s linear infinite`,
-                animationDirection: lane.reverse ? 'reverse' : 'normal',
-              }}
-            >
-              {lane.apps.map((app, index) => {
-                const angle =
-                  ((360 / Math.max(lane.apps.length, 1)) * index + lane.offset) * (Math.PI / 180);
-                const cx = 140 + lane.radius * Math.cos(angle);
-                const cy = 140 + lane.radius * Math.sin(angle);
-                const live = app.status === 'ready';
-                const lit = hovered?.id === app.id;
-
-                return (
-                  <g
-                    key={app.id}
-                    className={cn(app.accentClass, live ? 'cursor-pointer' : 'cursor-default')}
-                    onMouseEnter={() => setHovered(app)}
-                    onMouseLeave={() => setHovered(null)}
-                    onClick={() => live && app.href && router.push(app.href)}
-                  >
-                    {/* Drawn from the middle out to the dot while it is under
-                        the pointer. The picture's whole claim is that these
-                        things belong to the thing in the centre, and this is
-                        that sentence drawn for one of them at a time. */}
-                    <line
-                      x1="140"
-                      y1="140"
-                      x2={cx}
-                      y2={cy}
-                      stroke="var(--app-accent)"
-                      strokeWidth="1"
-                      strokeDasharray="3 4"
-                      className={cn(
-                        'transition-opacity duration-[var(--t-move)]',
-                        lit ? 'opacity-55' : 'opacity-0',
-                      )}
-                    />
-
-                    {/* A quiet halo that only appears under the pointer, and a
-                        generous invisible target so a 7px dot is still easy to
-                        hit while it is moving. */}
-                    <circle
-                      cx={cx}
-                      cy={cy}
-                      r="20"
-                      fill="var(--app-accent)"
-                      className={cn(
-                        'transition-opacity duration-[var(--t-move)]',
-                        lit ? 'opacity-15' : 'opacity-0',
-                      )}
-                    />
-                    <circle
-                      cx={cx}
-                      cy={cy}
-                      r={live ? 7 : 5.5}
-                      fill="var(--app-accent)"
-                      className={cn(
-                        'origin-center transition-[opacity,r] duration-[var(--t-move)]',
-                        live ? 'opacity-100' : 'opacity-45',
-                      )}
-                      style={{
-                        // Only the built ones breathe. A planned application
-                        // with a pulse would be claiming a heartbeat it has not
-                        // got.
-                        animation: live ? `dot-breathe 3.6s var(--ease) ${index * 0.7}s infinite` : undefined,
-                        transformOrigin: `${cx}px ${cy}px`,
-                      }}
-                    />
-                  </g>
-                );
-              })}
-            </g>
+    <div
+      ref={stage}
+      onPointerMove={lean}
+      onPointerLeave={straighten}
+      className="orbit-stage relative select-none"
+      aria-hidden="true"
+    >
+      {/* The caption sits outside the sized box on purpose. Inside it, the
+          absolutely positioned orbit takes itself out of flow and the caption
+          rises to the top of the box, printing itself over the rings. */}
+      <div className="relative" style={{ width: size, height }}>
+      <div
+        ref={frame}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={release}
+        onPointerCancel={release}
+        className={cn(
+          'absolute inset-0 touch-none',
+          held ? 'cursor-grabbing' : 'cursor-grab',
+        )}
+      >
+        {/* The rings, drawn as the ellipses the tilt actually produces rather
+            than as circles hoping to be read as depth. */}
+        <svg viewBox={`0 0 ${size} ${height}`} className="absolute inset-0 size-full">
+          {RINGS.map((ratio) => (
+            <ellipse
+              key={ratio}
+              cx={size / 2}
+              cy={height / 2}
+              rx={ratio * size}
+              ry={ratio * size * Math.cos(TILT)}
+              fill="none"
+              stroke="var(--line)"
+              strokeWidth="1"
+            />
           ))}
         </svg>
 
-        <span className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-          <Mark size={Math.round(size * 0.17)} />
-        </span>
+        {/* Squirl itself, between the far half of the orbit and the near half,
+            so the applications pass behind it and come back round the front. */}
+        <button
+          type="button"
+          tabIndex={-1}
+          // The frame takes pointer capture to keep a spin alive when the
+          // cursor outruns it, and a captured pointer delivers its click to
+          // the capturing element rather than to what was underneath. Both
+          // pressable things here have to keep their own pointerdown.
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={burst}
+          className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 cursor-pointer active:scale-95"
+          style={{ zIndex: 2, transition: 'transform 120ms var(--ease-spring)' }}
+        >
+          {/* The squirrel alone. The wordmark belongs under the mark when
+              the lockup is set as a lockup, but at the centre of a ring of
+              orbiting nodes it is a line of small type competing with them,
+              and the mark alone is what the rings want around them. */}
+          <Mark size={Math.round(size * 0.135)} />
+        </button>
+
+        {bodies.map((body, index) => (
+          <button
+            key={body.app.id}
+            ref={(node) => {
+              dots.current[index] = node;
+            }}
+            type="button"
+            tabIndex={-1}
+            onPointerDown={(event) => event.stopPropagation()}
+            onPointerEnter={() => onFocus(body.app.id)}
+            onPointerLeave={() => onFocus(null)}
+            onClick={() => {
+              // A drag that ends on a body should not also open it.
+              if (Math.abs(velocity.current) > 0.01) return;
+              if (body.app.href) router.push(body.app.href);
+            }}
+            className={cn(
+              'absolute left-1/2 top-1/2 -ml-4 -mt-4 flex size-8 items-center justify-center rounded-full',
+              body.app.status === 'ready' ? 'cursor-pointer' : 'cursor-grab',
+              body.app.accentClass,
+            )}
+          >
+            {/* The node is the application's colour and nothing else. A mark
+                shrunk to twenty pixels and set on a moving ellipse is not
+                legible as a mark; it is legible as a smudge, and three smudges
+                orbiting a squirrel read as clutter. Colour survives the size. */}
+            <span
+              className={cn(
+                'block rounded-full bg-[var(--app-accent)]',
+                'transition-[transform,box-shadow] duration-[var(--t-hover)] ease-[var(--ease-spring)]',
+                focused === body.app.id
+                  ? 'scale-[1.45] shadow-[0_0_0_6px_var(--app-accent-wash)]'
+                  : 'shadow-[0_0_0_0_var(--app-accent-wash)]',
+                body.app.status === 'ready' ? 'size-3.5' : 'size-2.5 opacity-70',
+              )}
+            />
+          </button>
+        ))}
+      </div>
       </div>
 
-      {/* Reserved height, so naming what you are pointing at never nudges the
-          drawing above it. */}
-      <p className="mt-2.5 flex h-5 items-center text-center text-[0.8125rem]">
-        {hovered ? (
-          <span className="font-medium text-ink">
-            {hovered.name}
-            <span className="font-normal text-ink-3">
-              {' · '}
-              {hovered.status === 'ready' ? 'open it' : 'not built yet'}
-            </span>
-          </span>
-        ) : (
-          <span className="text-ink-3">
-            {lanes[0].apps.length} built, {lanes[1].apps.length} on the way
-          </span>
-        )}
-      </p>
     </div>
   );
 }
