@@ -8,6 +8,7 @@ import { Moon } from '@phosphor-icons/react/dist/csr/Moon';
 import { Rows } from '@phosphor-icons/react/dist/csr/Rows';
 import { SquaresFour } from '@phosphor-icons/react/dist/csr/SquaresFour';
 import { Sun } from '@phosphor-icons/react/dist/csr/Sun';
+import * as Tooltip from '@radix-ui/react-tooltip';
 import { useEffect, useRef, useState } from 'react';
 
 import { cn } from '@/lib/cn';
@@ -85,40 +86,44 @@ function DockItem({
   hovered: string | null;
   onHover: (id: string | null) => void;
 }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      onPointerEnter={() => onHover(id)}
-      onPointerLeave={() => onHover(null)}
-      onFocus={() => onHover(id)}
-      onBlur={() => onHover(null)}
-      aria-label={label}
-      aria-pressed={active}
-      className={cn(
-        'dock-item relative flex size-9 items-center justify-center rounded-xl',
-        active ? 'bg-surface-3 text-ink' : 'text-ink-3 hover:text-ink',
-      )}
-    >
-      {children}
+  const side = edge === 'bottom' ? 'top' : edge === 'top' ? 'bottom' : edge === 'left' ? 'right' : 'left';
 
-      {/* The label leaves from whichever side has the room. On a wall-mounted
-          dock it must not fly out over the wall. */}
-      <span
-        className={cn(
-          'pointer-events-none absolute whitespace-nowrap rounded-md border border-line bg-surface',
-          'px-2 py-1 text-[0.625rem] font-medium text-ink-2 shadow-[var(--shadow-pop)]',
-          'transition-[opacity,transform] duration-[var(--t-move)] ease-[var(--ease)]',
-          edge === 'bottom' && '-top-8 left-1/2 -translate-x-1/2',
-          edge === 'top' && '-bottom-8 left-1/2 -translate-x-1/2',
-          edge === 'left' && 'left-11 top-1/2 -translate-y-1/2',
-          edge === 'right' && 'right-11 top-1/2 -translate-y-1/2',
-          hovered === id ? 'opacity-100' : 'opacity-0',
-        )}
-      >
-        {label}
-      </span>
-    </button>
+  return (
+    <Tooltip.Root open={hovered === id} onOpenChange={(next) => onHover(next ? id : null)}>
+      <Tooltip.Trigger asChild>
+        <button
+          type="button"
+          onClick={onClick}
+          aria-label={label}
+          aria-pressed={active}
+          className={cn(
+            'dock-item relative flex size-9 items-center justify-center rounded-xl',
+            active ? 'bg-surface-3 text-ink' : 'text-ink-3 hover:text-ink',
+          )}
+        >
+          {children}
+        </button>
+      </Tooltip.Trigger>
+
+      <Tooltip.Portal>
+        {/* Leaves from whichever side has the room, so a wall-mounted dock
+            never throws its labels out over the wall. Radix keeps them the
+            right way up and out of the window's edges without any of that
+            being arithmetic here. */}
+        <Tooltip.Content
+          side={side}
+          sideOffset={10}
+          collisionPadding={10}
+          className={cn(
+            'z-[62] rounded-md border border-line bg-surface px-2 py-1',
+            'text-[0.625rem] font-medium text-ink-2 shadow-[var(--shadow-pop)]',
+            'data-[state=delayed-open]:animate-[sheet-in_140ms_var(--ease)]',
+          )}
+        >
+          {label}
+        </Tooltip.Content>
+      </Tooltip.Portal>
+    </Tooltip.Root>
   );
 }
 
@@ -203,7 +208,7 @@ export function Dock({
   );
 
   return (
-    <>
+    <Tooltip.Provider delayDuration={260} skipDelayDuration={400}>
       {/* While the bar is in the air, the wall it would land on is lit. Without
           it the drop is a guess. */}
       {drag && target ? (
@@ -323,6 +328,6 @@ export function Dock({
           <Lock size={16} />
         </DockItem>
       </div>
-    </>
+    </Tooltip.Provider>
   );
 }

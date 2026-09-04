@@ -2,7 +2,9 @@
 
 import { Rows } from '@phosphor-icons/react/dist/csr/Rows';
 import { SquaresFour } from '@phosphor-icons/react/dist/csr/SquaresFour';
+import { Reorder } from 'motion/react';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 import { useEffect, useState, useTransition } from 'react';
 
 import { signOut } from '@/app/actions/session';
@@ -108,33 +110,6 @@ export function Launcher({
     return () => window.removeEventListener('resize', fit);
   }, []);
 
-  /*
-    Digits open applications.
-
-    The fastest thing a launcher can be is one keystroke, and the numbers are
-    already implied by the row: the first tile is the first application. Held
-    to plain digits with no modifier, and ignored while a field or the palette
-    has focus, so typing a 1 into a search box never launches anything.
-  */
-  useEffect(() => {
-    const onDigit = (event: KeyboardEvent) => {
-      if (event.metaKey || event.ctrlKey || event.altKey) return;
-      const target = event.target as HTMLElement | null;
-      if (target && /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return;
-      if (target?.isContentEditable) return;
-
-      const index = Number(event.key) - 1;
-      if (!Number.isInteger(index) || index < 0) return;
-      const app = arranged[index];
-      if (app?.href) {
-        event.preventDefault();
-        router.push(app.href);
-      }
-    };
-    window.addEventListener('keydown', onDigit);
-    return () => window.removeEventListener('keydown', onDigit);
-  });
-
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
@@ -169,18 +144,69 @@ export function Launcher({
 
   const carry = (id: string | null) => setCarried(id);
 
-  const dropOn = (movedId: string, targetId: string) => {
-    const moved = movedId || carried;
+  /*
+    Called continuously while a tile is being carried, not once at the end.
+    The group hands back the order the row is in at this instant, which is what
+    lets the other tiles move out of the way as it passes them rather than
+    jumping into place after the drop.
+  */
+  const rearrange = (ids: string[]) => setOrder(ids);
+
+  // Written down only when the gesture finishes. Saving on every frame would
+  // put a hundred writes through localStorage for one drag.
+  const settle = () => {
     setCarried(null);
-    if (!moved || moved === targetId) return;
     const ids = arranged.map((app) => app.id);
-    const from = ids.indexOf(moved);
-    const to = ids.indexOf(targetId);
-    if (from === -1 || to === -1) return;
-    ids.splice(to, 0, ids.splice(from, 1)[0]);
-    setOrder(ids);
     localStorage.setItem(STORED_ORDER, JSON.stringify(ids));
+    toast('Order saved', {
+      description: ids
+        .map((id) => apps.find((app) => app.id === id)?.name ?? id)
+        .join(' · '),
+    });
   };
+
+  const moveFirst = (id: string) => {
+    const ids = arranged.map((app) => app.id);
+    const next = [id, ...ids.filter((other) => other !== id)];
+    setOrder(next);
+    localStorage.setItem(STORED_ORDER, JSON.stringify(next));
+    toast('Moved to the front', {
+      description: apps.find((app) => app.id === id)?.name,
+    });
+  };
+
+  const resetOrder = () => {
+    setOrder(null);
+    localStorage.removeItem(STORED_ORDER);
+    toast('Order reset', { description: 'Back to the order they were installed in.' });
+  };
+
+  /*
+    Digits open applications.
+
+    The fastest thing a launcher can be is one keystroke, and the numbers are
+    already implied by the row: the first tile is the first application. Held
+    to plain digits with no modifier, and ignored while a field or the palette
+    has focus, so typing a 1 into a search box never launches anything.
+  */
+  useEffect(() => {
+    const onDigit = (event: KeyboardEvent) => {
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
+      const target = event.target as HTMLElement | null;
+      if (target && /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return;
+      if (target?.isContentEditable) return;
+
+      const index = Number(event.key) - 1;
+      if (!Number.isInteger(index) || index < 0) return;
+      const app = arranged[index];
+      if (app?.href) {
+        event.preventDefault();
+        router.push(app.href);
+      }
+    };
+    window.addEventListener('keydown', onDigit);
+    return () => window.removeEventListener('keydown', onDigit);
+  }, [arranged, router]);
 
   const chooseTheme = (next: 'light' | 'dark' | 'system') => {
     setTheme(next);
@@ -242,7 +268,14 @@ export function Launcher({
           {view === 'icons' ? (
             <IconGrid apps={arranged} />
           ) : (
-            <div className="grid grid-cols-1 items-stretch gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <Reorder.Group
+              as="div"
+              axis="x"
+              values={arranged.map((app) => app.id)}
+              onReorder={rearrange}
+              onPointerUp={carried ? settle : undefined}
+              className="flex flex-col items-stretch gap-3 sm:flex-row"
+            >
               {arranged.map((app, index) => (
                 <AppTile
                   key={app.id}
@@ -254,10 +287,11 @@ export function Launcher({
                   onFocus={setFocused}
                   carried={carried}
                   onCarry={carry}
-                  onDrop={dropOn}
+                  onFirst={moveFirst}
+                  onReset={resetOrder}
                 />
               ))}
-            </div>
+            </Reorder.Group>
           )}
         </div>
 

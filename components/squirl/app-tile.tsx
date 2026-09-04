@@ -2,6 +2,8 @@
 
 import { ArrowRight } from '@phosphor-icons/react/dist/csr/ArrowRight';
 import { DotsSixVertical } from '@phosphor-icons/react/dist/csr/DotsSixVertical';
+import { Reorder, useDragControls } from 'motion/react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useRef } from 'react';
 
@@ -12,6 +14,7 @@ import type { AppSnapshot } from '@/lib/squirl/apps';
 import { CountUp } from './count-up';
 import type { LauncherApp } from './launcher-app';
 import { Spark } from './spark';
+import { TileMenu } from './tile-menu';
 
 /**
  * Contour bands in the application's own accent, bled off the top right.
@@ -62,7 +65,8 @@ export function AppTile({
   onFocus,
   carried,
   onCarry,
-  onDrop,
+  onFirst,
+  onReset,
 }: {
   app: LauncherApp;
   snapshot: AppSnapshot | null;
@@ -72,9 +76,12 @@ export function AppTile({
   onFocus: (id: string | null) => void;
   carried: string | null;
   onCarry: (id: string | null) => void;
-  onDrop: (movedId: string, targetId: string) => void;
+  onFirst: (id: string) => void;
+  onReset: () => void;
 }) {
   const surface = useRef<HTMLElement>(null);
+  const controls = useDragControls();
+  const router = useRouter();
 
   // Written as custom properties rather than through state: this fires on
   // every pointer move, and a re-render per frame would cost more than the
@@ -128,18 +135,16 @@ export function AppTile({
       {/* Picked up by the grip alone. The tile is a link, and a tile you can
           start dragging from anywhere is a link you cannot reliably click. */}
       <span
-        draggable
-        onDragStart={(event) => {
-          event.dataTransfer.effectAllowed = 'move';
-          // The id travels in the drag itself as well as in state. State is
-          // what dims the other tiles while the drag is live; the payload is
-          // what the drop actually reads, because a drop that depends on a
-          // React update having already flushed is a drop that sometimes does
-          // nothing.
-          event.dataTransfer.setData('text/squirl-app', app.id);
+        onPointerDown={(event) => {
+          // Hands the gesture to the reorder group, which then moves this tile
+          // under the pointer and animates the others out of its way as it
+          // goes. The browser's own drag-and-drop did none of that: it showed a
+          // translucent screenshot of the tile and rearranged nothing until the
+          // drop, so there was no way to see what the drop was going to do.
+          event.preventDefault();
+          controls.start(event);
           onCarry(app.id);
         }}
-        onDragEnd={() => onCarry(null)}
         onClick={(event) => event.preventDefault()}
         title="Drag to reorder"
         className={cn(
@@ -261,16 +266,36 @@ export function AppTile({
     app.accentClass,
   );
 
+  const wrap = (inner: React.ReactNode) => (
+    <Reorder.Item
+      value={app.id}
+      dragListener={false}
+      dragControls={controls}
+      onDragEnd={() => onCarry(null)}
+      className="min-w-0 flex-1"
+      // Lifted clear of its neighbours while it travels, and settled back on a
+      // spring rather than a curve, because the thing being moved is a card
+      // being picked up rather than a value being tweened.
+      whileDrag={{ scale: 1.03, zIndex: 30 }}
+      transition={{ type: 'spring', stiffness: 520, damping: 42, mass: 0.7 }}
+    >
+      <TileMenu
+        name={app.name}
+        canOpen={open}
+        onOpen={() => href && router.push(href)}
+        onFirst={() => onFirst(app.id)}
+        onReset={onReset}
+      >
+        {inner}
+      </TileMenu>
+    </Reorder.Item>
+  );
+
   if (!open || !href) {
-    return (
+    return wrap(
       <section
         data-app={app.id}
         ref={surface}
-        onDragOver={(event) => event.preventDefault()}
-        onDrop={(event) => {
-          event.preventDefault();
-          onDrop(event.dataTransfer.getData('text/squirl-app'), app.id);
-        }}
         onPointerEnter={() => onFocus(app.id)}
         onPointerMove={track}
         onPointerLeave={() => {
@@ -281,20 +306,15 @@ export function AppTile({
         style={{ animationDelay: `${delay}ms` }}
       >
         {body}
-      </section>
+      </section>,
     );
   }
 
-  return (
+  return wrap(
     <Link
       href={href}
       data-app={app.id}
       ref={surface as React.Ref<HTMLAnchorElement>}
-      onDragOver={(event) => event.preventDefault()}
-      onDrop={(event) => {
-        event.preventDefault();
-        onDrop(event.dataTransfer.getData('text/squirl-app'), app.id);
-      }}
       onPointerEnter={() => onFocus(app.id)}
       onPointerMove={track}
       onPointerLeave={() => {
@@ -308,6 +328,6 @@ export function AppTile({
       style={{ animationDelay: `${delay}ms` }}
     >
       {body}
-    </Link>
+    </Link>,
   );
 }
