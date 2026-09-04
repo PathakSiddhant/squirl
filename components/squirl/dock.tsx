@@ -191,6 +191,49 @@ export function Dock({
     };
   }, [drag]);
 
+  /*
+    Magnification.
+
+    The icons swell as the pointer approaches and settle as it leaves, on a
+    smooth falloff rather than a hit test, so the whole bar breathes around
+    wherever you are rather than one icon popping when you happen to cross it.
+    This is the oldest good idea in docks and it is still the most satisfying
+    one, and it earns its place here beyond the pleasure: at nine icons in a
+    row the thing under the cursor is genuinely easier to be sure of.
+
+    Written straight to transforms on pointermove. There are nine nodes and the
+    browser already throttles the event to the frame, so a rAF loop and a React
+    render per frame would both be more machinery than this needs.
+  */
+  const magnify = (event: React.PointerEvent) => {
+    const host = bar.current;
+    if (!host || drag) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+    host.dataset.mag = 'on';
+    const along = upright ? event.clientY : event.clientX;
+
+    for (const node of host.querySelectorAll<HTMLElement>('.dock-item')) {
+      const box = node.getBoundingClientRect();
+      const centre = upright ? box.top + box.height / 2 : box.left + box.width / 2;
+      // Squared falloff: near the pointer the change is gentle, and it reaches
+      // zero smoothly instead of stopping at the edge of its reach.
+      const pull = Math.max(0, 1 - Math.abs(along - centre) / 96);
+      const eased = pull * pull;
+      const lift = upright ? `translateX(${eased * 5}px)` : `translateY(${eased * -7}px)`;
+      node.style.transform = `${lift} scale(${1 + eased * 0.42})`;
+    }
+  };
+
+  const settle = () => {
+    const host = bar.current;
+    if (!host) return;
+    delete host.dataset.mag;
+    for (const node of host.querySelectorAll<HTMLElement>('.dock-item')) {
+      node.style.transform = '';
+    }
+  };
+
   const upright = edge === 'left' || edge === 'right';
 
   const anchor: Record<DockEdge, string> = {
@@ -228,6 +271,8 @@ export function Dock({
       <div
         ref={bar}
         data-edge={edge}
+        onPointerMove={magnify}
+        onPointerLeave={settle}
         className={cn(
           'dock-shell fixed z-[61] flex items-center gap-0.5 rounded-2xl border border-line',
           'bg-surface/90 p-1.5 shadow-[var(--shadow-pop)] backdrop-blur-md',

@@ -268,6 +268,7 @@ export function AppTile({
 
   const wrap = (inner: React.ReactNode) => (
     <Reorder.Item
+      as="div"
       value={app.id}
       dragListener={false}
       dragControls={controls}

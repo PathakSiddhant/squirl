@@ -37,6 +37,17 @@ const DRIFT = 0.0022;
 const FRICTION = 0.955;
 
 /**
+ * How many ghosts trail each body, and how far apart they sit.
+ *
+ * A dot moving slowly around an ellipse reads as a dot that happens to be in a
+ * different place each time you look. A short tail behind it reads as travel,
+ * and it also says which way round the thing is going, which the dot alone
+ * cannot. Kept to four: more becomes a smear and stops being a direction.
+ */
+const TRAIL = 4;
+const TRAIL_GAP = 0.075;
+
+/**
  * Three rings, drawn whether or not they are all occupied.
  *
  * The object has to survive Squirl growing. Two rings with three applications
@@ -78,6 +89,7 @@ export function Orbit({
   const frame = useRef<HTMLDivElement>(null);
   const stage = useRef<HTMLDivElement>(null);
   const dots = useRef<Array<HTMLButtonElement | null>>([]);
+  const trails = useRef<Array<HTMLSpanElement | null>>([]);
   const [held, setHeld] = useState(false);
 
   // Spin, velocity, and the pointer's last position. Refs because the loop
@@ -137,6 +149,27 @@ export function Orbit({
         node.style.opacity = String(0.5 + near * 0.5);
         // Behind the mark, or in front of it.
         node.style.zIndex = String(depth < 0 ? 1 : 3);
+
+        // The tail. Each ghost is the same body a moment earlier, so it is
+        // placed at the angle this one held a moment ago rather than smeared
+        // backwards in a straight line: on a curve those are different places.
+        const backwards = velocity.current < 0 ? 1 : -1;
+        for (let step = 0; step < TRAIL; step++) {
+          const ghost = trails.current[index * TRAIL + step];
+          if (!ghost) continue;
+
+          const behind = angle + backwards * TRAIL_GAP * (step + 1);
+          const gx = Math.cos(behind) * body.radius;
+          const gz = Math.sin(behind) * body.radius;
+          const gy = gz * Math.cos(TILT);
+          const gdepth = gz * Math.sin(TILT);
+          const gnear = (gdepth / body.radius + 1) / 2;
+          const fade = 1 - (step + 1) / (TRAIL + 1);
+
+          ghost.style.transform = `translate3d(${gx}px, ${gy}px, 0) scale(${(0.5 + gnear * 0.34) * fade})`;
+          ghost.style.opacity = String(fade * (0.18 + gnear * 0.3));
+          ghost.style.zIndex = String(gdepth < 0 ? 1 : 3);
+        }
       }
 
       raf = requestAnimationFrame(draw);
@@ -291,6 +324,26 @@ export function Orbit({
               and the mark alone is what the rings want around them. */}
           <Mark size={Math.round(size * 0.135)} />
         </button>
+
+        {/* The tails are siblings of the bodies rather than children, so a
+            body scaling under the pointer does not drag its own history with
+            it. */}
+        {bodies.map((body, index) =>
+          Array.from({ length: TRAIL }, (_, step) => (
+            <span
+              key={`${body.app.id}-trail-${step}`}
+              ref={(node) => {
+                trails.current[index * TRAIL + step] = node;
+              }}
+              aria-hidden="true"
+              className={cn(
+                'pointer-events-none absolute left-1/2 top-1/2 -ml-1.5 -mt-1.5 block size-3 rounded-full',
+                'bg-[var(--app-accent)]',
+                body.app.accentClass,
+              )}
+            />
+          )),
+        )}
 
         {bodies.map((body, index) => (
           <button

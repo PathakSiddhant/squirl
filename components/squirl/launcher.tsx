@@ -4,7 +4,6 @@ import { Rows } from '@phosphor-icons/react/dist/csr/Rows';
 import { SquaresFour } from '@phosphor-icons/react/dist/csr/SquaresFour';
 import { Reorder } from 'motion/react';
 import { useRouter } from 'next/navigation';
-import { toast } from 'sonner';
 import { useEffect, useState, useTransition } from 'react';
 
 import { signOut } from '@/app/actions/session';
@@ -158,11 +157,6 @@ export function Launcher({
     setCarried(null);
     const ids = arranged.map((app) => app.id);
     localStorage.setItem(STORED_ORDER, JSON.stringify(ids));
-    toast('Order saved', {
-      description: ids
-        .map((id) => apps.find((app) => app.id === id)?.name ?? id)
-        .join(' · '),
-    });
   };
 
   const moveFirst = (id: string) => {
@@ -170,15 +164,11 @@ export function Launcher({
     const next = [id, ...ids.filter((other) => other !== id)];
     setOrder(next);
     localStorage.setItem(STORED_ORDER, JSON.stringify(next));
-    toast('Moved to the front', {
-      description: apps.find((app) => app.id === id)?.name,
-    });
   };
 
   const resetOrder = () => {
     setOrder(null);
     localStorage.removeItem(STORED_ORDER);
-    toast('Order reset', { description: 'Back to the order they were installed in.' });
   };
 
   /*

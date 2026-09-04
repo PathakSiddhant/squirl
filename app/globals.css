@@ -1189,3 +1189,19 @@ html.dark .threshold .mark-over-art {
     transform: scaleY(1.06);
   }
 }
+
+/*
+  The dock while the pointer is over it.
+
+  The resting transition is a slow spring, which is right for an icon settling
+  back after the pointer leaves and completely wrong for one tracking it: at
+  420ms the magnification lags a third of a second behind the cursor and the
+  bar feels like it is made of syrup. While the pointer is inside, the scale
+  follows immediately and the spring is kept for the way out.
+*/
+.dock-shell[data-mag='on'] .dock-item {
+  transition:
+    transform 70ms linear,
+    color var(--t-hover) var(--ease-soft),
+    background-color var(--t-hover) var(--ease-soft);
+}
