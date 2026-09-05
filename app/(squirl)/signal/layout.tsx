@@ -1,7 +1,7 @@
 import { CaretLeft } from '@phosphor-icons/react/dist/ssr/CaretLeft';
 import Link from 'next/link';
 
-import { AppMark } from '@/components/brand/logo';
+import { AppMark, SignalWordmark } from '@/components/brand/logo';
 import { SignalNav } from '@/components/signal/signal-nav';
 
 /**
@@ -30,16 +30,16 @@ export default function SignalLayout({ children }: { children: React.ReactNode }
             <CaretLeft size={14} weight="bold" />
           </Link>
 
+          {/* The mark and its own drawn word, unhoused. Sitting the mark in a
+              filled chip made the product's own logo read as a button, which is
+              the one thing a logo must not look like. */}
           <Link
             href="/signal"
-            className="flex shrink-0 items-center gap-2.5 text-ink transition-opacity duration-[var(--t-state)] hover:opacity-70"
+            aria-label="Signal"
+            className="flex shrink-0 items-center gap-2 text-ink transition-opacity duration-[var(--t-state)] hover:opacity-70"
           >
-            <span className="flex size-8 items-center justify-center rounded-lg bg-[var(--app-accent-wash)]">
-              <AppMark name="signal-mark" size={18} />
-            </span>
-            <span className="hidden text-[0.9375rem] font-semibold tracking-[-0.01em] sm:block">
-              Signal
-            </span>
+            <AppMark name="signal-mark" size={22} />
+            <SignalWordmark size={11} className="hidden sm:block" />
           </Link>
 
           <SignalNav />

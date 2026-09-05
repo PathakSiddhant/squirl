@@ -115,6 +115,68 @@ for (const [source, name] of [
   console.log(`  wordmark.png  ${size.width}x${size.height}`);
 }
 
+/*
+  Signal's wordmark, cut from its own lockup.
+
+  Same technique as Squirl's above, and for the same reason: those letterforms
+  are drawn, and the nearest available typeface set beside the mark is visibly
+  not-quite-right. The artwork stacks the icon over the word, so the widest run
+  of empty rows below the halfway point is the gap between them, and everything
+  under it is the word.
+*/
+{
+  const source = join(ROOT, 'brand-assets', 'Signal_full.png');
+  if (existsSync(source)) {
+    // This source has a cream background rather than transparency, so the ink
+    // is found by darkness instead of by alpha.
+    const { data, info } = await sharp(source).greyscale().raw().toBuffer({ resolveWithObject: true });
+
+    const inked = [];
+    for (let y = 0; y < info.height; y++) {
+      let n = 0;
+      for (let x = 0; x < info.width; x++) if (data[y * info.width + x] < 150) n++;
+      inked.push(n);
+    }
+
+    let best = null;
+    let run = null;
+    for (let y = Math.floor(info.height * 0.4); y < info.height; y++) {
+      if (inked[y] === 0) run = run ?? y;
+      else if (run !== null) {
+        const len = y - run;
+        if (!best || len > best.len) best = { start: run, len };
+        run = null;
+      }
+    }
+
+    if (best) {
+      const top = best.start + best.len;
+      const word = await sharp(source)
+        .extract({ left: 0, top, width: info.width, height: info.height - top })
+        .toBuffer();
+
+      // Cream to transparent, so the word sits on any surface in either theme.
+      const { data: px, info: shape } = await sharp(word).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+      for (let i = 0; i < px.length; i += 4) {
+        const light = (px[i] + px[i + 1] + px[i + 2]) / 3;
+        // Ink stays opaque, paper goes clear, and the edge in between keeps a
+        // proportional alpha so the letterforms do not come out jagged.
+        px[i + 3] = light > 235 ? 0 : light < 120 ? 255 : Math.round(255 * (235 - light) / 115);
+      }
+
+      const cut = await sharp(px, { raw: { width: shape.width, height: shape.height, channels: 4 } })
+        .trim({ background: TRANSPARENT, threshold: 0 })
+        .png({ compressionLevel: 9 })
+        .toBuffer();
+
+      const size = await sharp(cut).metadata();
+      writeFileSync(join(ROOT, 'public', 'brand', 'signal-wordmark.png'), cut);
+      meta['signal-wordmark'] = { width: size.width, height: size.height };
+      console.log(`  signal-wordmark.png  ${size.width}x${size.height}`);
+    }
+  }
+}
+
 writeFileSync(join(ROOT, 'lib', 'brand.json'), `${JSON.stringify(meta, null, 2)}\n`);
 
 /*

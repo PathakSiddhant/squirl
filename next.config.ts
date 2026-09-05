@@ -14,6 +14,11 @@ const nextConfig: NextConfig = {
   // falls back to 75 and only warns, which is why the logo looked soft.
   images: { qualities: [75, 90, 100] },
   typedRoutes: true,
+  // No dev badge floating over the corner of the product. Squirl is something
+  // its owner opens six times a day, not a project being demoed, and a
+  // framework's logo hovering on top of it is the one thing on screen that
+  // says "this is a local build of somebody's side project".
+  devIndicators: false,
 };
 
 export default nextConfig;

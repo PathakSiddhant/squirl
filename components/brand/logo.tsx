@@ -158,3 +158,35 @@ export function AppMark({
 export function LedgerMark({ size = 28, className }: { size?: number; className?: string }) {
   return <AppMark name="ledger-mark" size={size} className={className} />;
 }
+
+const SIGNAL_WORD_RATIO = brand['signal-wordmark']
+  ? brand['signal-wordmark'].width / brand['signal-wordmark'].height
+  : 8.6;
+
+/**
+ * Signal's own word, cut from its own artwork.
+ *
+ * Set as the drawn letterforms rather than in a typeface, for the same reason
+ * Squirl's is: the word in that logo is drawn, widely tracked and slightly
+ * flared, and no available face sits beside the mark without looking like a
+ * near-miss. `npm run brand:build` lifts it straight out of the lockup.
+ *
+ * The artwork is charcoal on nothing, so it inverts in the dark theme the way
+ * every other mark in the product does.
+ */
+export function SignalWordmark({ size = 13, className }: { size?: number; className?: string }) {
+  const width = Math.round(size * SIGNAL_WORD_RATIO);
+  return (
+    <Image
+      src="/brand/signal-wordmark.png"
+      alt="Signal"
+      width={brand['signal-wordmark']?.width ?? 734}
+      height={brand['signal-wordmark']?.height ?? 85}
+      quality={100}
+      priority
+      sizes={`${width * 2}px`}
+      className={cn('shrink-0 object-contain dark:brightness-0 dark:invert', className)}
+      style={{ width, height: size }}
+    />
+  );
+}
