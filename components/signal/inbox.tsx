@@ -5,7 +5,7 @@ import { Check } from '@phosphor-icons/react/dist/csr/Check';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useState } from 'react';
 
 import { decide, snoozeUntil } from '@/app/actions/signal';
 import { cn } from '@/lib/cn';
@@ -24,11 +24,15 @@ import { SnoozeMenu } from './snooze-menu';
  * So the rows are dense, the type carries the hierarchy, and the picture is
  * small enough to identify a video without being large enough to sell one.
  *
- * Every decision is optimistic. The row leaves the moment you press the key,
+ * Every decision is optimistic. The row leaves the moment it is clicked,
  * because the local database is the authority and the write cannot fail in any
- * way the reader could act on; waiting for a round trip to remove a row you
- * already decided about would make the fast path feel slow, and the fast path
- * is the product.
+ * way the reader could act on; waiting for a round trip to remove a row already
+ * decided about would make the whole screen feel slow.
+ *
+ * There is no keyboard layer, and that is deliberate. A window-level key
+ * handler assumes this screen has the reader's attention, which a page you
+ * leave open in a tab does not: a stray keystroke meant for something else
+ * would dismiss a video. Everything here is done by pointing at it.
  */
 export function Inbox({
   groups,
@@ -49,9 +53,7 @@ export function Inbox({
   // Rows removed here but not yet re-fetched from the server. Without this the
   // row sits there until the refresh lands and every keystroke feels ignored.
   const [resolved, setResolved] = useState<Set<string>>(new Set());
-  const [cursor, setCursor] = useState(0);
   const [snoozing, setSnoozing] = useState<QueueItem | null>(null);
-  const listRef = useRef<HTMLDivElement>(null);
 
   // One flat list in visual order, which is what the keyboard walks. The day
   // headings are a way of drawing it, not a level of nesting to navigate.
@@ -69,73 +71,6 @@ export function Inbox({
     window.open(`https://www.youtube.com/watch?v=${item.youtubeId}`, '_blank', 'noopener,noreferrer');
   }, []);
 
-  // Keyboard. The whole point of the screen is processing a lot of items
-  // quickly, and reaching for a mouse forty times is what makes that slow.
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      const target = event.target as HTMLElement | null;
-      if (target && /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName)) return;
-      if (target?.isContentEditable) return;
-      if (event.metaKey || event.ctrlKey || event.altKey) return;
-      if (snoozing) return;
-
-      const item = flat[cursor];
-
-      switch (event.key.toLowerCase()) {
-        case 'j':
-        case 'arrowdown':
-          event.preventDefault();
-          setCursor((c) => Math.min(c + 1, Math.max(flat.length - 1, 0)));
-          break;
-        case 'k':
-        case 'arrowup':
-          event.preventDefault();
-          setCursor((c) => Math.max(c - 1, 0));
-          break;
-        case 'enter':
-          if (item) {
-            event.preventDefault();
-            open(item);
-          }
-          break;
-        case 'w':
-          if (item) {
-            event.preventDefault();
-            settle(item, 'done');
-          }
-          break;
-        case 'd':
-          if (item) {
-            event.preventDefault();
-            settle(item, 'dismissed');
-          }
-          break;
-        case 'l':
-          if (item) {
-            event.preventDefault();
-            setSnoozing(item);
-          }
-          break;
-      }
-    };
-
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [flat, cursor, settle, open, snoozing]);
-
-  // The cursor is an index into a list that shrinks under it. Clamping keeps it
-  // on the item that took the removed one's place, which is what you want when
-  // clearing a run of items with one key.
-  useEffect(() => {
-    if (cursor > flat.length - 1) setCursor(Math.max(flat.length - 1, 0));
-  }, [flat.length, cursor]);
-
-  useEffect(() => {
-    listRef.current
-      ?.querySelector(`[data-index="${cursor}"]`)
-      ?.scrollIntoView({ block: 'nearest', behavior: reduceMotion ? 'auto' : 'smooth' });
-  }, [cursor, reduceMotion]);
-
   if (channelCount === 0) {
     return <EmptyQueue kind="no-channels" baselineAt={baselineAt} />;
   }
@@ -144,10 +79,8 @@ export function Inbox({
     return <EmptyQueue kind={baselineAt ? 'before-baseline' : 'caught-up'} baselineAt={baselineAt} />;
   }
 
-  let index = -1;
-
   return (
-    <div ref={listRef}>
+    <div>
       {/* Live sits above the dated list, because "happening now" is not a date
           and putting it under Today would bury the one thing that expires. */}
       {live.length > 0 ? (
@@ -163,7 +96,6 @@ export function Inbox({
                 <ContentRow
                   key={item.id}
                   item={item}
-                  active={false}
                   onOpen={() => open(item)}
                   onDone={() => settle(item, 'done')}
                   onDismiss={() => settle(item, 'dismissed')}
@@ -195,12 +127,9 @@ export function Inbox({
               <div className="flex flex-col gap-px overflow-hidden rounded-2xl border border-line bg-line">
                 <AnimatePresence initial={false}>
                   {visible.map((item) => {
-                    index += 1;
-                    const at = index;
                     return (
                       <motion.div
                         key={item.id}
-                        data-index={at}
                         layout={!reduceMotion}
                         exit={
                           reduceMotion
@@ -214,9 +143,7 @@ export function Inbox({
                       >
                         <ContentRow
                           item={item}
-                          active={at === cursor}
                           onOpen={() => open(item)}
-                          onFocus={() => setCursor(at)}
                           onDone={() => settle(item, 'done')}
                           onDismiss={() => settle(item, 'dismissed')}
                           onSnooze={() => setSnoozing(item)}
@@ -231,28 +158,13 @@ export function Inbox({
         })}
       </div>
 
-      <footer className="mt-10 flex items-center justify-between gap-4 border-t border-line pt-4 text-[0.6875rem] text-ink-3">
-        <span>
-          {flat.length} waiting
-          {summary.snoozed > 0 ? ` · ${summary.snoozed} snoozed` : ''}
-        </span>
-        <span className="hidden items-center gap-3 sm:flex">
-          {[
-            ['J K', 'move'],
-            ['↵', 'open'],
-            ['W', 'done'],
-            ['D', 'dismiss'],
-            ['L', 'later'],
-          ].map(([key, what]) => (
-            <span key={key} className="flex items-center gap-1.5">
-              <kbd className="rounded-[4px] border border-line px-1 py-px font-mono text-[0.625rem]">
-                {key}
-              </kbd>
-              {what}
-            </span>
-          ))}
-        </span>
-      </footer>
+      {/* A count, and nothing else. No rule above it: a hairline drawn to the
+          window edge is a divider announcing itself. No key legend either,
+          because this screen no longer has keys to announce. */}
+      <p className="mt-8 text-[0.8125rem] text-ink-3">
+        {flat.length} waiting
+        {summary.snoozed > 0 ? ` · ${summary.snoozed} snoozed` : ''}
+      </p>
 
       {snoozing ? (
         <SnoozeMenu

@@ -66,17 +66,13 @@ function when(item: QueueItem): string | null {
 
 export function ContentRow({
   item,
-  active,
   onOpen,
-  onFocus,
   onDone,
   onDismiss,
   onSnooze,
 }: {
   item: QueueItem;
-  active: boolean;
   onOpen: () => void;
-  onFocus?: () => void;
   onDone: () => void;
   onDismiss: () => void;
   onSnooze: () => void;
@@ -90,22 +86,10 @@ export function ContentRow({
     'flex size-9 items-center justify-center rounded-lg text-ink-3 transition-colors duration-[var(--t-state)] hover:bg-surface-3 hover:text-ink';
 
   return (
-    <div
-      onMouseEnter={onFocus}
-      className={cn(
-        'group/row relative flex items-start gap-5 bg-surface p-4 transition-colors duration-[var(--t-state)]',
-        active ? 'bg-surface-2' : 'hover:bg-surface-2',
-      )}
-    >
-      {/* The cursor as a bar rather than a ring: it marks a position in a list
-          rather than selecting an object. */}
-      <span
-        aria-hidden="true"
-        className={cn(
-          'absolute inset-y-2 left-0 w-[3px] rounded-full bg-[var(--app-accent)] transition-opacity duration-[var(--t-state)]',
-          active ? 'opacity-100' : 'opacity-0',
-        )}
-      />
+    // Highlighted while the pointer is on it, and not a moment longer. An
+    // earlier version kept a cursor on the last row touched, which left the
+    // screen permanently marked at wherever the mouse happened to stop.
+    <div className="group/row relative flex items-start gap-5 bg-surface p-4 transition-colors duration-[var(--t-state)] hover:bg-surface-2">
 
       {/*
         The picture is the only thing that opens the video, and only on a double
@@ -177,19 +161,14 @@ export function ContentRow({
 
       {/* Quiet until the row is reached, so forty rows do not draw a hundred
           and sixty buttons at rest. */}
-      <div
-        className={cn(
-          'flex shrink-0 items-center gap-1 self-center transition-opacity duration-[var(--t-state)]',
-          active ? 'opacity-100' : 'opacity-0 group-hover/row:opacity-100',
-        )}
-      >
-        <button type="button" onClick={onSnooze} title="Later  (L)" aria-label="Later" className={action}>
+      <div className="flex shrink-0 items-center gap-1 self-center opacity-0 transition-opacity duration-[var(--t-state)] group-hover/row:opacity-100">
+        <button type="button" onClick={onSnooze} title="Later" aria-label="Later" className={action}>
           <Clock size={17} />
         </button>
         <button
           type="button"
           onClick={onDismiss}
-          title="Dismiss  (D)"
+          title="Dismiss"
           aria-label="Dismiss"
           // The two irreversible-feeling actions each take their own colour on
           // hover, so the hand knows which one it is over before it commits.
@@ -200,13 +179,13 @@ export function ContentRow({
         <button
           type="button"
           onClick={onDone}
-          title="Done  (W)"
+          title="Done"
           aria-label="Done"
           className={cn(action, 'hover:bg-[var(--in-wash)] hover:text-[var(--in-text)]')}
         >
           <Check size={17} weight="bold" />
         </button>
-        <button type="button" onClick={onOpen} title="Open  (↵)" aria-label="Open" className={action}>
+        <button type="button" onClick={onOpen} title="Open on YouTube" aria-label="Open" className={action}>
           <ArrowUpRight size={17} />
         </button>
       </div>
