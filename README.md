@@ -52,12 +52,11 @@ Squirl knows Ledger exists. Ledger does not know Squirl has other plans.
 |---|---|---|---|
 | <img src="public/brand/ledger-mark.png" width="26"> | **Ledger** | Built | Money. What you spent, what you lent, what you owe, what is safe to spend. |
 | <img src="public/brand/form-mark.png" width="26"> | **Form** | Planned | Training, and what it is actually doing to you. |
-| <img src="public/brand/signal-mark.png" width="26"> | **Signal** | Planned | Not decided yet. |
+| <img src="public/brand/signal-mark.png" width="26"> | **Signal** | Built | Attention. What the channels you chose have published, as a queue that ends. |
 
-One of those three is real. The other two hold a place and say so, on the
-screen as well as here: they show no figures, they have no route to open, and
-their cards say "not built yet" rather than filling the space with a plausible
-number. Signal goes further and admits its subject has not been chosen.
+Two of those three are real. Form holds a place and says so, on the screen as
+well as here: it shows no figures, it has no route to open, and its card says
+"not built yet" rather than filling the space with a plausible number.
 
 That is deliberate. A launcher that quietly invents data for the applications
 it has not written yet teaches you not to trust the ones it has, and the first
@@ -288,10 +287,115 @@ always resolves in IST no matter what the machine thinks.
 
 ---
 
+## Signal, the second application
+
+YouTube's home page is very good at one thing, and it is not the thing you
+opened it for. You went to see whether a particular person had posted, and
+forty minutes later you have watched four things you were never looking for.
+The subscriptions feed does not help: it is infinite, it mixes Shorts and
+community posts in with the videos, and nothing on it is ever finished.
+
+Signal is the other shape. It watches only the channels you name, it holds what
+they published in a list that **gets shorter**, and when the list is empty it
+says so and stops.
+
+| | YouTube | Signal |
+|---|---|---|
+| What you see | what it decided you would watch | what the channels you chose published |
+| How it ends | it does not | when the list is empty |
+| Shorts and posts | mixed in | never imported |
+| What it remembers | everything you watched, forever | that you dealt with an item, and never counts it |
+| Where it runs | their servers | your machine, from one SQLite file |
+
+There is no YouTube account involved. Signal never signs in as you, so it can
+neither read your history nor write to it. It reads the public upload feed of
+public channels with an ordinary API key, which is the same thing a browser
+does when it loads a channel page.
+
+### Two screens, and they answer different questions
+
+**The inbox** is the queue: how many things are waiting, at the top, and then
+those things in the order they happened, cut into days. Every row can be dealt
+with three ways and all three end it — **done**, **dismiss**, or **open on
+YouTube**. There is no fourth option, and there used to be: a "later" button
+that put an item back at a chosen hour. It was removed. YouTube already has
+Watch Later and is welcome to it. A queue whose entire promise is that it gets
+shorter should not ship the one control that lets you avoid deciding.
+
+**The shelf** is the channels: every one you follow drawn as its avatar,
+because that is how you actually recognise a creator, grouped however you like.
+Drag a face to move it, drag a group to reorder it, and everything shifts live
+so the drop confirms an arrangement you can already see. There are two layouts —
+faces for recognising, rows for auditing — and it remembers which you last used.
+
+Groups are told apart by colour rather than by rules drawn across the page. The
+hue comes from the group's own name, so it is the same colour on every machine
+and after every reload without a colour ever being stored.
+
+### It only ever knows about days that have already started
+
+Signal has a **baseline**: an instant before which nothing is ever imported, on
+any sync, ever. It is a floor inside the sync engine and not a filter on a
+screen — the rows are never written down at all — so "how far back does this
+go" is a fact about the data rather than a habit of whichever query you
+happened to write. A queue that opens with four hundred unread items is the
+exact thing this exists to prevent.
+
+Livestreams are filed by when they **started**, not when they were published.
+YouTube stamps a broadcast as published the moment it *ends*, so a show that ran
+from ten at night until half past one would otherwise land on the following day
+and be filed under a date nobody watched it on.
+
+### It syncs itself, and cannot open a gap
+
+The background sync runs inside the Squirl process — no cron, no cloud
+scheduler, nothing to keep running when the app is not. It goes every three
+hours, and also on startup, on the machine coming back online, when the last
+run is stale, and whenever you press the button.
+
+It is **checkpoint-based and idempotent**, which together mean offline time
+cannot cost you anything. Each channel remembers the last video it saw; a sync
+asks for everything after that. A failed sync is itself the connectivity probe,
+so there is no separate health check to get wrong, and the first success after
+a failure is automatically the catch-up because it resumes from the checkpoint
+rather than from the clock. Running it twice writes nothing twice: the YouTube
+id is unique, and the upsert has **no permission** to write the state column, so
+no sync can ever resurrect something you already dealt with.
+
+### The quota is a design constraint, not an afterthought
+
+YouTube gives a free key 10,000 units a day. `search.list` costs **100 units**
+and is separately capped at 100 calls a day; `channels.list`,
+`playlistItems.list` and `videos.list` cost **one unit** each for up to 50 items.
+
+So Signal never searches during monitoring. Adding a channel resolves the handle
+directly for one unit rather than searching for a hundred, and the routine
+three-hourly pass costs roughly one unit per channel. Thirty-eight channels cost
+about 38 units a pass, or a few hundred a day against an allowance of ten
+thousand.
+
+Keys are pooled and rotated, and an exhausted one is rested until quota reset
+rather than retried into the ground.
+
+### Filing, with a model and without one
+
+New channels are filed into groups by a keyword heuristic, and by Gemini when a
+key is available. The heuristic alone was wrong in a way worth recording:
+several comedians filed themselves under Business, because their channel
+descriptions contain the phrase "business enquiries". The classifier now strips
+contact boilerplate before matching.
+
+Anything you file by hand is locked and never re-classified. A "sort them for
+me" button that undid your own corrections would be a button nobody presses
+twice.
+
+---
+
 ## Run it
 
-You need **Node 20.9 or newer**. Nothing else. No database to install, no
-Docker, no API keys, no sign-up.
+You need **Node 20.9 or newer**. Nothing else to install, no Docker, no
+sign-up. Ledger needs no keys at all; Signal needs a free YouTube key to fetch
+anything.
 
 ```bash
 git clone https://github.com/PathakSiddhant/squirl.git
@@ -303,6 +407,29 @@ npm run dev
 ```
 
 Open **http://localhost:3000** and sign in with the credentials above.
+
+### Signal's keys, if you want Signal
+
+Ledger needs nothing. Signal needs a YouTube Data API v3 key to read public
+channels, and optionally a Gemini key to file them into groups. Both are free.
+Put them in `.env.local`, which is gitignored and never committed:
+
+```bash
+# Comma-separated pools. Each key is a separate Google project with its own
+# daily allowance, so rotating across them multiplies the ceiling and one
+# exhausted key never stops the application.
+YOUTUBE_API_KEYS=AIza...,AIza...
+GEMINI_API_KEYS=AIza...,AIza...
+```
+
+Get a YouTube key from the [Google Cloud console](https://console.cloud.google.com/apis/library/youtube.googleapis.com)
+(create a project, enable **YouTube Data API v3**, create an API key) and a
+Gemini one from [Google AI Studio](https://aistudio.google.com/apikey).
+
+Without a YouTube key Signal still runs, still draws, and still holds whatever
+is already in the database. It simply cannot fetch anything new, and says so
+rather than failing quietly. Without a Gemini key the keyword heuristic files
+new channels instead.
 
 ### Want to look around before committing to it?
 
@@ -326,6 +453,7 @@ loan. Delete `data/squirl.db` whenever you want a clean start.
 | `npm test` | Run the test suite |
 | `npm run typecheck` | Type-check without building |
 | `npm run brand:build` | Regenerate marks and icons from the artwork |
+| `SIGNAL_SYNC_INTERVAL_MS=…` | Override Signal's three-hour sync interval |
 | `npm run build && npm start` | Production build |
 
 ### Where your data lives
@@ -404,7 +532,11 @@ app/
       page.tsx            Today
       history/ accounts/ repeating/ people/ loans/
       insights/ progress/ guide/ settings/
+    signal/             the second, equally self-contained
+      page.tsx            the inbox: what is waiting
+      channels/           the shelf: who is watched, and how it is arranged
   actions/              server actions, validated at the boundary
+instrumentation.ts      starts Signal's background sync with the server
 
 lib/
   squirl/               the platform. small on purpose.
@@ -419,6 +551,15 @@ lib/
     capture.ts          the natural-language parser
     recurring.ts        billing schedules, drift-free at month end
     achievements.ts     milestones, evaluated from real position
+  signal/               the second application's domain
+    youtube.ts          the only file that talks to YouTube. Zod at the edge.
+    sync.ts             checkpoint-based, idempotent, baseline-floored
+    scheduler.ts        the three-hour loop, living in this process only
+    queue.ts            what is waiting, and the ways it can end
+    channels.ts         the shelf, and filing new arrivals
+    intelligence.ts     Gemini, when there is a key. Optional by design.
+    keys.ts             key pools, round-robin, rest an exhausted one
+    epoch.ts            the baseline. Nothing before it is ever imported.
   db/                   schema, migrations, seed, demo data
   queries/              read models composed from the pure engines above
 
@@ -432,6 +573,8 @@ components/
     command-palette.tsx   Ctrl-K, over every screen in the product
     storage-sheet.tsx     where the data lives, and which keys do what
     lock-screen.tsx       the threshold
+  ledger/ today/ people/ loans/ …   Ledger's own feature components
+  signal/               Signal's: the inbox, the rows, the shelf, the faces
   brand/                the marks, Squirl's and each application's
   ui/                   primitives any application may use
 ```
@@ -439,8 +582,9 @@ components/
 `lib/squirl/apps.ts` is the entire coupling between the shell and the things it
 hosts. An application declares a name, a mark, a route, an accent, and
 optionally one live figure for its card. Squirl renders that and nothing else:
-it does not know what a transaction is. Adding the second application means
-adding an entry there and a directory under `app/(squirl)`.
+it does not know what a transaction is, and it did not need to learn what a
+video is. Signal was added by writing an entry there and a directory under
+`app/(squirl)` — no change to the launcher, the lock, or the shell.
 
 More on that split in [ARCHITECTURE.md](ARCHITECTURE.md).
 
@@ -507,6 +651,12 @@ Details in [DESIGN.md](DESIGN.md), and the product thinking in
 No bank sync, no cloud account, no multiple users, no receipt scanning, no
 investment tracking, no hard budget limits, and no notifications telling you
 off. It reports. It does not moralise.
+
+Signal holds the same line on the other side of the house: no YouTube sign-in,
+no recommendations, no "you might also like", no watch history, no streaks, no
+Shorts, and no infinite anything. It will not tell you how many videos you got
+through this week, because that is a statistic about your own attention and
+keeping it is how a tool becomes a scoreboard.
 
 And no app store. Squirl holds the applications built for it, not a marketplace
 of other people's.

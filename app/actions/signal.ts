@@ -11,7 +11,7 @@ import {
   setChannelEnabled,
   type ChannelCandidate,
 } from '@/lib/signal/channels';
-import { dismiss, markDone, restore, snooze } from '@/lib/signal/queue';
+import { dismiss, markDone, restore } from '@/lib/signal/queue';
 import { syncNow } from '@/lib/signal/scheduler';
 import { YouTubeError } from '@/lib/signal/youtube';
 
@@ -125,24 +125,6 @@ export async function decide(
   return { error: null };
 }
 
-/**
- * Snooze until an absolute instant.
- *
- * The instant is computed in the browser, where the reader's idea of "tomorrow
- * morning" lives, and only validated here. Recomputing it on the server would
- * mean the server's clock deciding what tomorrow means.
- */
-export async function snoozeUntil(contentId: string, until: number): Promise<{ error: string | null }> {
-  const parsed = id.safeParse(contentId);
-  if (!parsed.success) return { error: 'Unknown item.' };
-
-  const when = z.number().int().positive().safeParse(until);
-  if (!when.success || when.data <= Date.now()) return { error: 'That time has already passed.' };
-
-  await snooze(parsed.data, when.data);
-  revalidatePath('/signal', 'layout');
-  return { error: null };
-}
 
 // ------------------------------------------------------------------- syncing
 
@@ -189,6 +171,32 @@ export async function createCategory(name: string): Promise<{ id: string | null;
   await db.insert(signalCategories).values({ id, name: clean, slug, position: 100 });
   revalidatePath('/signal', 'layout');
   return { id, error: null };
+}
+
+/**
+ * Rename a group.
+ *
+ * The slug moves with the name, because the slug is how a category is looked
+ * up by hand and a stale one is a lie. Nothing else references it: channels
+ * point at the id, which never changes.
+ */
+export async function renameCategory(categoryId: string, name: string): Promise<void> {
+  const parsed = id.safeParse(categoryId);
+  const clean = name.trim().slice(0, 32);
+  if (!parsed.success || !clean) return;
+
+  const { db } = await import('@/lib/db/client');
+  const { signalCategories } = await import('@/lib/signal/schema');
+  const { eq } = await import('drizzle-orm');
+
+  const slug = clean.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  if (!slug) return;
+
+  await db
+    .update(signalCategories)
+    .set({ name: clean, slug })
+    .where(eq(signalCategories.id, parsed.data));
+  revalidatePath('/signal', 'layout');
 }
 
 /** Remove a category. Channels in it fall back to uncategorised, never deleted. */

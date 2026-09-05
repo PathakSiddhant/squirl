@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gt, inArray, isNotNull, lte, or, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, inArray, isNotNull, lte, or, sql, type SQL } from 'drizzle-orm';
 
 import { db } from '@/lib/db/client';
 import { IST_TIME_ZONE } from '@/lib/date';
@@ -16,21 +16,20 @@ import { signalChannels, signalContent, type ContentKind, type ContentState } fr
  */
 
 /**
- * An item is waiting if it is unseen, or if it was snoozed until a moment that
- * has now passed.
+ * An item is waiting if it is unseen. That is the whole rule.
  *
- * The second half is why no background job is needed to wake a snoozed item.
- * Nothing has to run at the appointed time and nothing has to be rescheduled
- * if the machine was asleep: the queue simply asks, every time it is read,
- * whether the moment has arrived. A snooze that expired overnight is in the
- * queue the next morning because the question is asked then, not because
- * something fired at 3am.
+ * There used to be a second half: an item snoozed until a moment that had since
+ * passed also counted as waiting. Snoozing is gone — YouTube has Watch Later
+ * and a queue whose promise is that it gets shorter should not ship the control
+ * that lets you defer forever — and the rule got simpler with it.
+ *
+ * The `snoozed` state stays in the schema because dropping a column in SQLite
+ * means rebuilding the table, and rebuilding a table holding the reader's data
+ * to delete a value nothing writes any more is a bad trade. Nothing can reach
+ * that state now, so nothing can be stranded in it.
  */
-function waitingClause(now: number) {
-  return or(
-    eq(signalContent.state, 'unseen'),
-    and(eq(signalContent.state, 'snoozed'), lte(signalContent.snoozedUntil, now)),
-  );
+function waitingClause() {
+  return eq(signalContent.state, 'unseen');
 }
 
 export interface QueueItem {
@@ -69,8 +68,10 @@ export interface QueueFilters {
  * well the product is working for you.
  */
 export async function getQueue(filters: QueueFilters = {}): Promise<QueueItem[]> {
-  const now = Date.now();
-  const conditions = [waitingClause(now)];
+  // Typed rather than inferred: `or()` is declared as possibly undefined when
+  // handed no clauses, and an array inferred from the first element would then
+  // refuse the ones pushed below.
+  const conditions: Array<SQL | undefined> = [waitingClause()];
 
   if (filters.channelId) conditions.push(eq(signalContent.channelId, filters.channelId));
   if (filters.categoryId) conditions.push(eq(signalChannels.categoryId, filters.categoryId));
@@ -132,7 +133,6 @@ export async function getLive(): Promise<QueueItem[]> {
 
 /** Scheduled broadcasts that have not started, soonest first. */
 export async function getUpcoming(): Promise<QueueItem[]> {
-  const now = Date.now();
   const rows = await db
     .select({
       id: signalContent.id,
@@ -154,7 +154,7 @@ export async function getUpcoming(): Promise<QueueItem[]> {
     .innerJoin(signalChannels, eq(signalContent.channelId, signalChannels.id))
     .where(
       and(
-        waitingClause(now),
+        waitingClause(),
         eq(signalContent.kind, 'upcoming'),
         isNotNull(signalContent.scheduledAt),
       ),
@@ -184,24 +184,10 @@ export const markDone = (contentId: string) => resolve(contentId, 'done');
 export const dismiss = (contentId: string) => resolve(contentId, 'dismissed');
 
 /**
- * Put it down and pick it up later.
- *
- * The distinction from a watch-later list is that this has an end. A list you
- * add to forever becomes the backlog it was meant to solve; a postponement
- * returns on its own and has to be dealt with again.
- */
-export async function snooze(contentId: string, until: number): Promise<void> {
-  await db
-    .update(signalContent)
-    .set({ state: 'snoozed', snoozedUntil: until, processedAt: null, updatedAt: Date.now() })
-    .where(eq(signalContent.id, contentId));
-}
-
-/**
  * Undo. Straight back to unseen, whatever it was.
  *
- * Exists because dismissal is one keystroke and fingers slip. Without it the
- * fast path is frightening, and a frightening fast path does not get used.
+ * Exists because dismissal is one click and fingers slip. Without it the fast
+ * path is frightening, and a frightening fast path does not get used.
  */
 export async function restore(contentId: string): Promise<void> {
   await db
@@ -286,24 +272,17 @@ export interface QueueSummary {
   waiting: number;
   live: number;
   upcoming: number;
-  snoozed: number;
 }
 
 /** The one number the launcher tile shows, plus what the home screen needs. */
 export async function getSummary(): Promise<QueueSummary> {
-  const now = Date.now();
-
   const [row] = await db
     .select({
-      waiting: sql<number>`sum(case when ${signalContent.state} = 'unseen'
-        or (${signalContent.state} = 'snoozed' and ${signalContent.snoozedUntil} <= ${now})
-        then 1 else 0 end)`,
+      waiting: sql<number>`sum(case when ${signalContent.state} = 'unseen' then 1 else 0 end)`,
       live: sql<number>`sum(case when ${signalContent.kind} = 'live'
         and ${signalContent.state} = 'unseen' then 1 else 0 end)`,
       upcoming: sql<number>`sum(case when ${signalContent.kind} = 'upcoming'
         and ${signalContent.state} = 'unseen' then 1 else 0 end)`,
-      snoozed: sql<number>`sum(case when ${signalContent.state} = 'snoozed'
-        and ${signalContent.snoozedUntil} > ${now} then 1 else 0 end)`,
     })
     .from(signalContent);
 
@@ -311,6 +290,5 @@ export async function getSummary(): Promise<QueueSummary> {
     waiting: Number(row?.waiting ?? 0),
     live: Number(row?.live ?? 0),
     upcoming: Number(row?.upcoming ?? 0),
-    snoozed: Number(row?.snoozed ?? 0),
   };
 }

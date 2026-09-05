@@ -3,7 +3,6 @@
 import { ArrowUpRight } from '@phosphor-icons/react/dist/csr/ArrowUpRight';
 import { Broadcast } from '@phosphor-icons/react/dist/csr/Broadcast';
 import { Check } from '@phosphor-icons/react/dist/csr/Check';
-import { Clock } from '@phosphor-icons/react/dist/csr/Clock';
 import { X } from '@phosphor-icons/react/dist/csr/X';
 import Image from 'next/image';
 
@@ -69,13 +68,11 @@ export function ContentRow({
   onOpen,
   onDone,
   onDismiss,
-  onSnooze,
 }: {
   item: QueueItem;
   onOpen: () => void;
   onDone: () => void;
   onDismiss: () => void;
-  onSnooze: () => void;
 }) {
   const length = runtime(item.durationSeconds);
   const soon = when(item);
@@ -160,11 +157,14 @@ export function ContentRow({
       </div>
 
       {/* Quiet until the row is reached, so forty rows do not draw a hundred
-          and sixty buttons at rest. */}
+          and twenty buttons at rest.
+
+          There was a fourth button here, "later", which put an item back in the
+          queue at a chosen hour. It is gone. YouTube already has Watch Later
+          and is welcome to it: a queue whose whole promise is that it gets
+          shorter should not ship the one control that lets you avoid making a
+          decision. Three buttons, and each of them ends the item. */}
       <div className="flex shrink-0 items-center gap-1 self-center opacity-0 transition-opacity duration-[var(--t-state)] group-hover/row:opacity-100">
-        <button type="button" onClick={onSnooze} title="Later" aria-label="Later" className={action}>
-          <Clock size={17} />
-        </button>
         <button
           type="button"
           onClick={onDismiss}

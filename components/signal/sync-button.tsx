@@ -3,7 +3,7 @@
 import { ArrowsClockwise } from '@phosphor-icons/react/dist/csr/ArrowsClockwise';
 import { CloudSlash } from '@phosphor-icons/react/dist/csr/CloudSlash';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState, useTransition } from 'react';
+import { useEffect, useState, useSyncExternalStore, useTransition } from 'react';
 
 import { requestSync } from '@/app/actions/signal';
 import { cn } from '@/lib/cn';
@@ -22,37 +22,57 @@ import { cn } from '@/lib/cn';
  * syncing happily the whole time, or may itself be offline. Either way, the
  * reader looking at a reconnected tab is a reason to ask.
  */
+/*
+  The browser's own view of the network, subscribed to rather than copied.
+
+  `navigator.onLine` is an external system: it changes without React's
+  involvement and it has its own events. Reading it into state on mount means a
+  first render that says "online" whether or not that is true, and the reader
+  sees the wrong answer for a frame. Subscribing gets the right answer from the
+  start, and the server snapshot is `true` because a page rendered on the server
+  clearly reached it.
+
+  It is only the tab's opinion. Reaching the server is what actually proves a
+  connection, which is why the failed sync — not this — is the real probe.
+*/
+function subscribeToNetwork(listener: () => void): () => void {
+  window.addEventListener('online', listener);
+  window.addEventListener('offline', listener);
+  return () => {
+    window.removeEventListener('online', listener);
+    window.removeEventListener('offline', listener);
+  };
+}
+
 export function SyncButton() {
   const router = useRouter();
   const [pending, start] = useTransition();
-  const [offline, setOffline] = useState(false);
+  // Two sources for one fact. The browser knows whether the tab has a network;
+  // the last sync knows whether YouTube was actually reachable. Either being
+  // unhappy is enough to say so.
+  const disconnected = !useSyncExternalStore(
+    subscribeToNetwork,
+    () => navigator.onLine,
+    () => true,
+  );
+  const [unreachable, setUnreachable] = useState(false);
+  const offline = disconnected || unreachable;
   const [added, setAdded] = useState<number | null>(null);
 
   const run = () =>
     start(async () => {
       const result = await requestSync();
-      setOffline(result.offline);
+      setUnreachable(result.offline);
       setAdded(result.added);
       router.refresh();
     });
 
   useEffect(() => {
-    // The browser's own view of the network. Coming back is a reason to sync
-    // immediately rather than at whatever hour the interval lands on.
-    const back = () => {
-      setOffline(false);
-      run();
-    };
-    const gone = () => setOffline(true);
-
+    // Coming back is a reason to sync immediately rather than at whatever hour
+    // the interval happens to land on.
+    const back = () => run();
     window.addEventListener('online', back);
-    window.addEventListener('offline', gone);
-    setOffline(!navigator.onLine);
-
-    return () => {
-      window.removeEventListener('online', back);
-      window.removeEventListener('offline', gone);
-    };
+    return () => window.removeEventListener('online', back);
     // Mounted once. `run` closes over nothing that changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

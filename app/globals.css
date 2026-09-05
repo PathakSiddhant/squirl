@@ -379,8 +379,16 @@
   .z-rail {
     z-index: 20;
   }
+  /* A panel being dragged, so it rides over the ones it is passing. */
+  .z-raised {
+    z-index: 25;
+  }
   .z-dropdown {
     z-index: 30;
+  }
+  /* Above menus: a tooltip can be asked for while a menu is open. */
+  .z-tooltip {
+    z-index: 35;
   }
   .z-overlay {
     z-index: 40;

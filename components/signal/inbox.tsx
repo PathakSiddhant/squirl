@@ -3,17 +3,15 @@
 import { Broadcast } from '@phosphor-icons/react/dist/csr/Broadcast';
 import { Check } from '@phosphor-icons/react/dist/csr/Check';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useState } from 'react';
 
-import { decide, snoozeUntil } from '@/app/actions/signal';
-import { cn } from '@/lib/cn';
-import type { DayGroup, QueueItem, QueueSummary } from '@/lib/signal/queue';
+import { decide } from '@/app/actions/signal';
+import type { DayGroup, QueueItem } from '@/lib/signal/queue';
 
 import { ContentRow } from './content-row';
 import { EmptyQueue } from './empty-queue';
-import { SnoozeMenu } from './snooze-menu';
+import { QueueHeader, type Lens, type LensCounts } from './queue-header';
 
 /**
  * The inbox.
@@ -34,16 +32,20 @@ import { SnoozeMenu } from './snooze-menu';
  * leave open in a tab does not: a stray keystroke meant for something else
  * would dismiss a video. Everything here is done by pointing at it.
  */
+function through(item: QueueItem, lens: Lens): boolean {
+  if (lens === 'live') return item.kind === 'live';
+  if (lens === 'soon') return item.kind === 'upcoming';
+  return true;
+}
+
 export function Inbox({
   groups,
   live,
-  summary,
   channelCount,
   baselineAt,
 }: {
   groups: DayGroup[];
   live: QueueItem[];
-  summary: QueueSummary;
   channelCount: number;
   baselineAt: number | null;
 }) {
@@ -53,11 +55,19 @@ export function Inbox({
   // Rows removed here but not yet re-fetched from the server. Without this the
   // row sits there until the refresh lands and every keystroke feels ignored.
   const [resolved, setResolved] = useState<Set<string>>(new Set());
-  const [snoozing, setSnoozing] = useState<QueueItem | null>(null);
+  const [lens, setLens] = useState<Lens>('all');
 
-  // One flat list in visual order, which is what the keyboard walks. The day
-  // headings are a way of drawing it, not a level of nesting to navigate.
+  // One flat list in visual order. The day headings are a way of drawing it,
+  // not a level of nesting to navigate.
   const flat = groups.flatMap((group) => group.items).filter((item) => !resolved.has(item.id));
+
+  // Counted before the lens is applied, so a lens never hides the fact that it
+  // has something behind it.
+  const counts: LensCounts = {
+    all: flat.length,
+    live: flat.filter((item) => through(item, 'live')).length,
+    soon: flat.filter((item) => through(item, 'soon')).length,
+  };
 
   const settle = useCallback(
     (item: QueueItem, decision: 'done' | 'dismissed') => {
@@ -79,11 +89,21 @@ export function Inbox({
     return <EmptyQueue kind={baselineAt ? 'before-baseline' : 'caught-up'} baselineAt={baselineAt} />;
   }
 
+  const showing = flat.filter((item) => through(item, lens));
+
   return (
     <div>
+      <QueueHeader
+        waiting={flat.length}
+        live={counts.live}
+        lens={lens}
+        counts={counts}
+        onLens={setLens}
+      />
+
       {/* Live sits above the dated list, because "happening now" is not a date
           and putting it under Today would bury the one thing that expires. */}
-      {live.length > 0 ? (
+      {lens !== 'soon' && live.length > 0 ? (
         <section className="mb-8">
           <h2 className="mb-4 flex items-center gap-2 font-serif text-[1.5rem] font-normal tracking-[-0.02em] text-[var(--i-owe-text)]">
             <Broadcast size={19} weight="fill" className="animate-pulse" />
@@ -99,7 +119,6 @@ export function Inbox({
                   onOpen={() => open(item)}
                   onDone={() => settle(item, 'done')}
                   onDismiss={() => settle(item, 'dismissed')}
-                  onSnooze={() => setSnoozing(item)}
                 />
               ))}
           </div>
@@ -108,7 +127,9 @@ export function Inbox({
 
       <div className="flex flex-col gap-10">
         {groups.map((group) => {
-          const visible = group.items.filter((item) => !resolved.has(item.id));
+          const visible = group.items.filter(
+            (item) => !resolved.has(item.id) && through(item, lens),
+          );
           if (visible.length === 0) return null;
 
           return (
@@ -146,8 +167,7 @@ export function Inbox({
                           onOpen={() => open(item)}
                           onDone={() => settle(item, 'done')}
                           onDismiss={() => settle(item, 'dismissed')}
-                          onSnooze={() => setSnoozing(item)}
-                        />
+                                />
                       </motion.div>
                     );
                   })}
@@ -158,26 +178,12 @@ export function Inbox({
         })}
       </div>
 
-      {/* A count, and nothing else. No rule above it: a hairline drawn to the
-          window edge is a divider announcing itself. No key legend either,
-          because this screen no longer has keys to announce. */}
-      <p className="mt-8 text-[0.8125rem] text-ink-3">
-        {flat.length} waiting
-        {summary.snoozed > 0 ? ` · ${summary.snoozed} snoozed` : ''}
-      </p>
-
-      {snoozing ? (
-        <SnoozeMenu
-          item={snoozing}
-          onClose={() => setSnoozing(null)}
-          onChoose={(until) => {
-            const item = snoozing;
-            setSnoozing(null);
-            setResolved((current) => new Set(current).add(item.id));
-            void snoozeUntil(item.id, until).then(() => router.refresh());
-          }}
-        />
+      {showing.length === 0 ? (
+        <p className="rounded-2xl border border-dashed border-line py-12 text-center text-[0.875rem] text-ink-3">
+          Nothing here fits that. The rest is still waiting.
+        </p>
       ) : null}
+
     </div>
   );
 }

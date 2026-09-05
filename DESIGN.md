@@ -108,6 +108,22 @@ shift width when a value changes, or the ledger jitters.
 
 Display letter-spacing floor is `-0.03em`, never tighter. Prose is capped at 68ch.
 
+### An application may restate the face
+
+Geist is Squirl's, and Ledger's by inheritance. It is not a house rule that
+every application has to follow, because "every application looks like itself"
+is worth more than a uniform typeface.
+
+Signal restates both faces inside its own `.app-signal` scope: **Space Grotesk**
+for the interface and **IBM Plex Mono** for its meta. The reasoning is that
+Ledger is a document — columns of figures that want a quiet, neutral face that
+does not compete with the numbers — while Signal is a console, a short list of
+things to decide about, where slightly more character in the letterforms costs
+nothing because there is no dense numeric column to disturb.
+
+The rules that do not move with the face: tabular numerals on anything that
+changes in place, the tracking floor, and the prose cap.
+
 ## Shape and elevation
 
 One radius scale, applied everywhere without exception:
@@ -121,6 +137,13 @@ all, because they do not read on near-black; it separates with `--line`.
 
 No nested cards. Grouping is done with `divide-y` on hairlines and negative
 space. Side-stripe borders are banned.
+
+**Do not draw a rule across the page to separate sections.** A hairline
+stretched to the window edge is a divider announcing itself, and a heading set
+at the right size already separates two groups perfectly well on its own. Signal's
+inbox has no rule under its day headings and no rule above its footer; its shelf
+has none between groups. Hairlines are for the edges of a surface and the gaps
+between rows inside one, not for punctuating a page.
 
 **No scrollbars, anywhere.** Every surface still scrolls by wheel, trackpad,
 touch and keyboard; only the bar is hidden, on the page and on every inner
@@ -228,6 +251,22 @@ It is never allowed on data, on a chart series, on a button fill, or on
 anything chosen to look nice. **Colour is data; chrome is ink** still holds.
 The accent is the one piece of chrome that is allowed to say *where*, because
 "which application am I in" is genuine information rather than decoration.
+
+### Signal's second colour, and why it is not in this table
+
+Signal's channel shelf tints each group of channels with a hue derived from
+that group's own name. It looks like decoration and it is not: with thirty-odd
+avatars on a page, colour is what tells you which group you are looking at
+without reading a heading, and it does that work at a glance where a hairline
+rule between sections does not.
+
+It is derived rather than stored on purpose. The same word produces the same
+hue on every machine and after every reload, which is the only property that
+makes a colour worth recognising, and there is no colour column to migrate, no
+picker to build, and no way for a group to end up with a hue nobody chose.
+
+The rule it does not break: those hues never touch a number, a status or a
+control. They tint a 3px spine and a count chip, and nothing else.
 
 ## The threshold
 

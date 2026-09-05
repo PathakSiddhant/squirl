@@ -34,7 +34,12 @@ app/
       history/ accounts/ repeating/
       people/ loans/
       insights/ progress/ guide/ settings/
+    signal/               the second, equally self-contained
+      layout.tsx          Signal's own shell, its own type, its own accent
+      page.tsx            the inbox
+      channels/           the shelf
   actions/                server actions, validated at the boundary
+instrumentation.ts        starts Signal's scheduler when the server starts
 
 lib/
   squirl/                 the platform. small on purpose.
@@ -44,8 +49,15 @@ lib/
   date.ts  cn.ts          genuinely generic utilities
   money.ts                Ledger's, living here only because nothing else
   domain/  queries/       Ledger's domain. Moves under a ledger/ folder the
-                          day a second application needs the space, and not
-                          a day earlier.
+                          day it collides with something, and not a day
+                          earlier: Signal took its own folder instead of
+                          forcing a rename that bought nothing.
+  signal/                 Signal's domain, in its own folder from day one
+    youtube.ts            the only egress. Zod-validated at the edge.
+    sync.ts  scheduler.ts the fetch, and the loop that drives it
+    queue.ts  channels.ts what is waiting, and who is watched
+    intelligence.ts       optional model call, never on a correctness path
+    keys.ts  epoch.ts     key pools, and the baseline
 
 components/
   squirl/                 the launcher, and the screens outside every app
@@ -61,13 +73,32 @@ components/
   brand/                  the marks, Squirl's and each application's
   ui/                     primitives any application may use
   today/ ledger/ people/ loans/ …   Ledger's own feature components
+  signal/                 Signal's own: inbox, content-row, channel-board
 ```
 
-Squirl has no settings screen of its own yet. Ledger's own preferences live
-inside Ledger, and everything Squirl-level, the theme, the lock, and where the
-database file sits, is reachable from the dock on its home. A
-Squirl-level settings page gets built when there is a second thing to put on
-it, rather than now, to look symmetrical.
+Squirl has no settings screen of its own yet. Each application's preferences
+live inside it, and everything Squirl-level, the theme, the lock, and where the
+database file sits, is reachable from the dock on its home. A Squirl-level
+settings page gets built when there is a second thing to put on it, rather than
+now, to look symmetrical.
+
+### Background work belongs to the application, not to the platform
+
+Signal is the first application that needs something to happen while nobody is
+looking at it. It got a scheduler of its own, started from `instrumentation.ts`
+and held on `globalThis` so a dev-server reload does not leave two of them
+running. Squirl did not grow a job runner for it.
+
+That is rule 1 applied to time rather than to code: a platform-level scheduler
+built for one application's three-hour loop would be an abstraction invented
+before the second use exists. If Form later needs its own timer, the two get
+compared and the shared thing gets written then, from two real cases instead of
+one and a guess.
+
+The loop is deliberately dumb. It has no queue, no retry table and no
+persistence: an interval, an exponential backoff on failure, and a checkpoint
+per channel in the application's own table. Everything it would otherwise need
+to remember is already durable in the data it syncs.
 
 ### The launcher has no rail and no corners
 
@@ -131,15 +162,29 @@ shared abstraction invented before the second domain exists would be fiction.
 `data/squirl.db` holds everything, because one file is one thing to back up and
 one thing to own. Applications never share tables. A table belongs to exactly
 one application, and the application prefix in migrations makes that visible.
+Signal's five tables are all `signal_*`; Ledger has never heard of them.
 
 **4. An application must be removable.**
 Deleting `app/(squirl)/ledger/` and its tables must leave Squirl running. If
-removing an application breaks the shell, something leaked upward.
+removing an application breaks the shell, something leaked upward. Signal is
+the test that this held: it was added without touching the launcher, the lock
+or the shell, and removing it means deleting its route, its `lib/signal/`
+folder, its `signal_*` tables and its registry entry.
 
 **5. The registry is the only coupling.**
 `lib/squirl/apps.ts` is how Squirl learns an application exists: a name, an
 icon, a route, and optionally one live figure for its card. That is the entire
-contract. Squirl does not import an application's domain logic.
+contract. Squirl does not import an application's domain logic: the registry
+entry imports *from* the application, dynamically, inside the snapshot
+function, so the launcher never pulls a domain into its own bundle.
+
+**6. Egress goes through exactly one file.**
+Ledger has no network at all. Signal talks to two external services, and does
+it from `lib/signal/youtube.ts` and `lib/signal/intelligence.ts` and nowhere
+else, with every response validated by Zod at the boundary and every image URL
+checked against an allowlist of hosts before it reaches a component. An
+application that reaches the network from wherever happens to be convenient has
+no boundary left to audit.
 
 ## The design contract
 
@@ -172,6 +217,15 @@ a bug rather than a style:
   inside every application: **colour is data, chrome is ink.** Ledger keeps the
   validated money palette (in / out / owed to me / I owe / stashed) because
   that palette encodes meaning specific to money, not because it is decorative.
+  Signal uses colour for two things only, a live broadcast and telling one group
+  of channels from another, and derives the second from the group's own name so
+  it is never a decision anyone has to store or maintain.
+
+Signal is where this contract stopped being theory. It restates `--font-sans`
+to Space Grotesk and `--font-mono` to IBM Plex Mono inside its own
+`.app-signal` scope, tightens the radii, and shares nothing with Ledger's look
+but the tokens it chose not to override. Put the two side by side and they do
+not read as two tabs of one product, which is the point.
 
 Squirl's own surfaces stay graphite and quiet on purpose. The shell should be
 the least loud thing on screen, so that stepping into an application feels like
@@ -179,8 +233,17 @@ walking into a different room rather than opening a different tab.
 
 ## Local-first, and honest about it
 
-No account, no server, no sync, no telemetry. `data/squirl.db` is the whole
-product state.
+No account, no server, no cloud sync, no telemetry. `data/squirl.db` is the
+whole product state.
+
+Signal reaches the network, and that is worth stating precisely rather than
+hedging. It makes read-only, unauthenticated calls to YouTube's public data API
+with an ordinary API key, and optionally sends a channel's **public** title and
+description to Gemini to file it into a group. It never signs in as you, so it
+can neither read your YouTube history nor write to it; it sends nothing about
+what you watched, dismissed or ignored; and every row it fetches lands in the
+same local SQLite file as everything else. Pull the network cable and the inbox
+still renders in full from disk, because nothing on that screen is a request.
 
 The lock screen is a **lock, not a security boundary.** It stops someone idly
 opening the tab. It does not encrypt anything: whoever holds the machine holds

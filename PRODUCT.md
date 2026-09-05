@@ -1,9 +1,18 @@
 # Squirl, product brief
 
-**Squirl** is a single-user personal money ledger. It runs on your own machine
-against a local SQLite file. Nothing leaves the device.
+**Squirl** is a single-user personal environment that runs on your own machine
+against a local SQLite file. It holds small, focused applications rather than
+being one large one.
 
-## Who it is for
+Two are built. **Ledger** is money: what you spent, what you lent, what you owe,
+and what is actually safe to spend. **Signal** is attention: what the channels
+you chose have published, held as a queue that ends.
+
+They share a file, a lock and a launcher, and nothing else. Most of this brief
+is about Ledger, because it is the older and the more intricate of the two;
+Signal's own brief is the section at the end.
+
+## Ledger: who it is for
 
 Someone whose money does not fit the shape a budgeting app expects:
 
@@ -85,7 +94,7 @@ and lives off what it can reach without touching the hoard. The app's central
 distinction, between money you hold and money you have deliberately put beyond
 easy reach, is the same behaviour.
 
-## Scope
+## Ledger's scope
 
 **In scope:** accounts and transfers, a day-grouped ledger, natural-language
 capture, people and interpersonal debt with interest, formal loans with
@@ -94,3 +103,69 @@ balances, insights, milestones, export and backup, installable on a phone.
 
 **Out of scope:** multi-user, bank sync, cloud accounts, hard budget limits,
 receipt OCR, investment tracking, multi-currency.
+
+---
+
+## Signal: the second application
+
+### The problem, precisely
+
+YouTube is two products wearing one interface. One of them answers "has this
+person posted anything", and the other decides what you should watch next. The
+second is much better funded than the first, and it wins: the subscriptions feed
+is infinite, mixes Shorts and community posts in with the videos, and never
+reaches a state where you are finished with it.
+
+So the cost of checking on six creators you actually care about is an hour of
+watching things you were not looking for, and the only defence anyone has is not
+opening the tab.
+
+### The question the product exists to answer
+
+> **What have the people I chose published, and am I done with it?**
+
+The second half is the whole design. A list that cannot be finished is a feed,
+whatever it is labelled.
+
+### Principles
+
+1. **The queue gets shorter.** Nothing here replaces a resolved item with a
+   suggestion. Every action on a row removes it.
+2. **Only what you asked for.** Signal watches the channels you named. There is
+   no discovery surface, no related videos, no "you might also like".
+3. **Videos, live streams and premieres. Not Shorts, not posts.** Short-form is
+   the part of YouTube engineered to be un-finishable, and importing it would
+   import the problem.
+4. **A baseline, not a backlog.** Nothing published before the moment tracking
+   began is ever imported. An inbox that opens with four hundred unread items
+   has already failed.
+5. **No account, ever.** Signal never signs in as you. It cannot read your watch
+   history and cannot write to it.
+6. **No statistics about your attention.** No streaks, no "videos cleared this
+   week", no completion percentage. Keeping that number is how a tool becomes a
+   scoreboard, and a scoreboard is a thing you perform for.
+7. **Decisions are one-way.** Done and dismissed differ only in what you meant,
+   which is worth recording and worth never counting. A sync can never bring
+   either back.
+8. **Offline is a normal state.** The inbox renders in full from disk. Sync is
+   checkpoint-based, so time spent disconnected cannot open a gap.
+
+### Why there is no "watch later"
+
+There was, briefly: a button that put an item back in the queue at a chosen
+hour. It was removed at the point it became clear what it was for. Every other
+control on a row ends the item; that one let you avoid deciding, which is
+exactly the behaviour that produces a two-hundred-item backlog and exactly what
+YouTube's own Watch Later already does very well. A product whose single promise
+is that the list gets shorter should not ship the one control that lets it grow.
+
+### Scope
+
+**In scope:** explicit channels by handle or link, groups you arrange yourself,
+an inbox grouped by day, live and upcoming broadcasts, background sync inside
+the local process, a quota-aware fetch path, optional model-assisted filing of
+new channels.
+
+**Out of scope:** any YouTube sign-in, recommendations, watch history, comments,
+playback inside Signal, Shorts, community posts, cloud sync, notifications,
+gamification, and any figure describing how much you watched.

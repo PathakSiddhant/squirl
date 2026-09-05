@@ -1,4 +1,4 @@
-import { and, asc, eq, sql } from 'drizzle-orm';
+import { asc, eq, sql } from 'drizzle-orm';
 
 import { db } from '@/lib/db/client';
 
@@ -292,19 +292,39 @@ export interface ChannelWithCount extends SignalChannel {
  */
 export async function listChannels(): Promise<ChannelWithCount[]> {
   const rows = await db
-    .select({
-      channel: signalChannels,
-      waiting: sql<number>`
-        (select count(*) from ${signalContent}
-          where ${signalContent.channelId} = ${signalChannels.id}
-            and ${signalContent.state} = 'unseen')
-      `,
-    })
+    .select()
     .from(signalChannels)
     // The reader's own arrangement first. Nulls sort last in SQLite's ASC, so
     // anything never dragged keeps its alphabetical place at the end of its
     // group rather than jumping to the front.
     .orderBy(asc(signalChannels.position), asc(signalChannels.title));
 
-  return rows.map((row) => ({ ...row.channel, waiting: Number(row.waiting) }));
+  /*
+    Counted with a grouped aggregate rather than a correlated subquery.
+
+    The subquery version was silently wrong for as long as it existed. Drizzle
+    renders a bare column reference inside a `sql` template without its table,
+    so `where ${signalContent.channelId} = ${signalChannels.id}` came out as
+    `where "channel_id" = "id"` — and inside the subquery both of those resolve
+    against `signal_content` itself. It compared every row's channel id to its
+    own id, matched nothing, and returned zero for every channel on the shelf
+    while the inbox sat there listing the very items it was failing to count.
+
+    A grouped query cannot go wrong that way: there is no outer scope for a
+    column to be captured by.
+
+    The rule matches the inbox's exactly — unseen — because a badge that
+    disagreed with the list it points at would be worse than no badge.
+  */
+  const counts = await db
+    .select({
+      channelId: signalContent.channelId,
+      waiting: sql<number>`count(*)`,
+    })
+    .from(signalContent)
+    .where(eq(signalContent.state, 'unseen'))
+    .groupBy(signalContent.channelId);
+
+  const waiting = new Map(counts.map((row) => [row.channelId, Number(row.waiting)]));
+  return rows.map((row) => ({ ...row, waiting: waiting.get(row.id) ?? 0 }));
 }

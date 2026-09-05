@@ -134,7 +134,7 @@ export const APPS: SquirlApp[] = [
             ? { label: 'Live now', value: String(summary.live), note: 'happening as you read this' }
             : { label: 'Waiting', value: String(summary.waiting), note: 'still to deal with' },
           { label: 'Channels', value: String(watching), note: 'being watched' },
-          { label: 'Snoozed', value: String(summary.snoozed), note: 'coming back later' },
+          { label: 'Upcoming', value: String(summary.upcoming), note: 'scheduled to air' },
         ],
       };
     },
