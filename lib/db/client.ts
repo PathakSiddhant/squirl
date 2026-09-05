@@ -1,7 +1,17 @@
 import { createClient, type Client } from '@libsql/client';
 import { drizzle } from 'drizzle-orm/libsql';
 
-import * as schema from './schema';
+import * as signalSchema from '../signal/schema';
+import * as ledgerSchema from './schema';
+
+/**
+ * Every installed application's tables, in one object for Drizzle.
+ *
+ * This is the only place the applications meet, and they meet as data rather
+ * than as code: nothing here knows what a transaction or a video is, and
+ * neither schema imports the other.
+ */
+const schema = { ...ledgerSchema, ...signalSchema };
 
 /**
  * A single local SQLite file. No server, no account, no network.

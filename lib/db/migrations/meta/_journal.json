@@ -15,6 +15,13 @@
       "when": 1785960000000,
       "tag": "0001_recurring_intervals",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1788600000000,
+      "tag": "0002_signal",
+      "breakpoints": true
     }
   ]
 }
