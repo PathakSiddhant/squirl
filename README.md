@@ -307,6 +307,8 @@ says so and stops.
 | What it remembers | everything you watched, forever | that you dealt with an item, and never counts it |
 | Where it runs | their servers | your machine, from one SQLite file |
 
+<img src="docs/screenshots/signal-inbox.webp" alt="Signal's inbox: how many things are waiting, then those things in the order they happened, cut into days" width="820">
+
 There is no YouTube account involved. Signal never signs in as you, so it can
 neither read your history nor write to it. It reads the public upload feed of
 public channels with an ordinary API key, which is the same thing a browser
@@ -321,6 +323,8 @@ YouTube**. There is no fourth option, and there used to be: a "later" button
 that put an item back at a chosen hour. It was removed. YouTube already has
 Watch Later and is welcome to it. A queue whose entire promise is that it gets
 shorter should not ship the one control that lets you avoid deciding.
+
+<img src="docs/screenshots/signal-channels.webp" alt="Signal's channel shelf: thirty-eight channels drawn as avatars, grouped, each group tinted by a hue taken from its own name" width="820">
 
 **The shelf** is the channels: every one you follow drawn as its avatar,
 because that is how you actually recognise a creator, grouped however you like.
