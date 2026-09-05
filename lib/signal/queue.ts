@@ -42,6 +42,7 @@ export interface QueueItem {
   durationSeconds: number | null;
   publishedAt: number;
   scheduledAt: number | null;
+  startedAt: number | null;
   state: ContentState;
   channelId: string;
   channelTitle: string;
@@ -109,6 +110,7 @@ export async function getQueue(filters: QueueFilters = {}): Promise<QueueItem[]>
       durationSeconds: signalContent.durationSeconds,
       publishedAt: signalContent.publishedAt,
       scheduledAt: signalContent.scheduledAt,
+      startedAt: signalContent.startedAt,
       state: signalContent.state,
       channelId: signalChannels.id,
       channelTitle: signalChannels.title,
@@ -141,6 +143,7 @@ export async function getUpcoming(): Promise<QueueItem[]> {
       durationSeconds: signalContent.durationSeconds,
       publishedAt: signalContent.publishedAt,
       scheduledAt: signalContent.scheduledAt,
+      startedAt: signalContent.startedAt,
       state: signalContent.state,
       channelId: signalChannels.id,
       channelTitle: signalChannels.title,
@@ -225,6 +228,23 @@ export interface DayGroup {
  * SQLite would need the offset baked into the query to get this right, and
  * baking a timezone into a query is how a database ends up lying every March.
  */
+/**
+ * The moment an item belongs to.
+ *
+ * Not its publication time. YouTube stamps a livestream as published when it
+ * *ends*, so a show that ran from ten at night until half past one lands on the
+ * following day and is filed under a date nobody watched it on. What people
+ * mean by "when was this" for a broadcast is when it began.
+ *
+ * So: a broadcast that happened is placed by when it started, one still to come
+ * by when it is due, and an ordinary upload by when it was published, which for
+ * an upload is the same instant anyway.
+ */
+export function happenedAt(item: QueueItem): number {
+  if (item.kind === 'upcoming') return item.scheduledAt ?? item.publishedAt;
+  return item.startedAt ?? item.publishedAt;
+}
+
 export function groupByDay(items: QueueItem[]): DayGroup[] {
   const formatter = new Intl.DateTimeFormat('en-CA', {
     timeZone: IST_TIME_ZONE,
@@ -238,10 +258,7 @@ export function groupByDay(items: QueueItem[]): DayGroup[] {
 
   const buckets = new Map<string, QueueItem[]>();
   for (const item of items) {
-    // A scheduled broadcast belongs on the day it will happen, not the day its
-    // placeholder was published, which is often weeks earlier.
-    const at = item.kind === 'upcoming' && item.scheduledAt ? item.scheduledAt : item.publishedAt;
-    const day = formatter.format(new Date(at));
+    const day = formatter.format(new Date(happenedAt(item)));
     const bucket = buckets.get(day);
     if (bucket) bucket.push(item);
     else buckets.set(day, [item]);

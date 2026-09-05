@@ -37,7 +37,7 @@ export function SignalNav() {
             key={place.href}
             href={place.href}
             className={cn(
-              'rounded-md px-2 py-1 text-[0.8125rem] transition-colors duration-[var(--t-state)]',
+              'rounded-lg px-3 py-1.5 text-[0.9375rem] transition-colors duration-[var(--t-state)]',
               active ? 'bg-surface-2 font-medium text-ink' : 'text-ink-3 hover:text-ink-2',
             )}
           >

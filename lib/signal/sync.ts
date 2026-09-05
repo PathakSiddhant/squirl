@@ -53,6 +53,19 @@ const FIRST_SYNC_DAYS = 30;
 /** Pages of fifty. A hard stop so one enormous channel cannot run away. */
 const MAX_PAGES = 6;
 
+/**
+ * How far behind the baseline to keep looking, for broadcasts only.
+ *
+ * A scheduled stream's placeholder is published when the creator sets it up,
+ * which is routinely days before the thing itself. Judging it by that date
+ * throws away a stream that has not happened yet, which is precisely the item
+ * a reader most wants to be told about. So collection reaches back further than
+ * the baseline, and the baseline is then applied to what was actually found:
+ * ordinary uploads by their publication date, broadcasts by whether they are
+ * still ahead of you.
+ */
+const BROADCAST_LOOKBACK = 21 * 86_400_000;
+
 export interface SyncResult {
   channelId: string;
   title: string;
@@ -104,7 +117,10 @@ async function collectNewUploads(channel: SignalChannel, playlistId: string): Pr
   // before the moment tracking began is ever collected, so the first sync
   // after the baseline starts genuinely empty rather than importing whatever
   // the thirty-day window happened to reach back into.
-  const floor = Math.max(window, SIGNAL_EPOCH);
+  // The floor for *reading* the playlist. Deliberately looser than the
+  // baseline, so a stream scheduled for tonight but announced last week is
+  // still seen; what is kept is decided after the details come back.
+  const floor = Math.max(window, SIGNAL_EPOCH - BROADCAST_LOOKBACK);
 
   const found: UploadRef[] = [];
   let pageToken: string | undefined;
@@ -152,6 +168,35 @@ async function refreshableIds(channelId: string): Promise<string[]> {
       ),
     );
   return rows.map((row) => row.youtubeId);
+}
+
+/**
+ * Is this something Signal should hold at all?
+ *
+ * Two rules.
+ *
+ * Shorts never enter. Signal is for things you sit down to: a video, a stream,
+ * a premiere. A minute of vertical video is not a decision worth making, and
+ * forty a day would drown the things that are. The test is duration, because
+ * the API does not report shortness at all — a Short is an ordinary video that
+ * happens to be brief and vertical — and sixty seconds is the conservative
+ * line, so a genuinely tiny real upload slips through rather than a real video
+ * being dropped.
+ *
+ * The baseline is applied by relevance rather than by publication date. An
+ * ordinary upload counts if it was published after tracking began. A broadcast
+ * counts if it is happening now or still to come, whenever its placeholder
+ * happened to be created, because a stream starting in four hours is not old
+ * news for having been announced on Tuesday.
+ */
+function keep(video: YouTubeVideo): boolean {
+  if (video.kind === 'short') return false;
+  if (video.kind === 'live') return true;
+  if (video.kind === 'upcoming') {
+    // Still ahead, with an hour of grace for one that has just begun.
+    return (video.scheduledAt ?? video.publishedAt) >= Date.now() - 3_600_000;
+  }
+  return video.publishedAt >= SIGNAL_EPOCH;
 }
 
 /** Write videos in, without ever touching what the reader decided. */
@@ -229,7 +274,7 @@ export async function syncChannel(channel: SignalChannel): Promise<SyncResult> {
     let written = 0;
     for (let index = 0; index < wanted.length; index += 50) {
       const videos = await fetchVideos(wanted.slice(index, index + 50));
-      written += await upsertVideos(channel.id, videos);
+      written += await upsertVideos(channel.id, videos.filter(keep));
     }
 
     const newest = fresh[0]?.videoId ?? channel.lastSeenVideoId;

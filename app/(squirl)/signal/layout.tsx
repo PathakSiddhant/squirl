@@ -28,15 +28,15 @@ export default function SignalLayout({ children }: { children: React.ReactNode }
   return (
     <div className="app-signal flex min-h-dvh flex-col">
       <header className="sticky top-0 z-20 border-b border-line bg-bg/85 backdrop-blur-md">
-        <div className="mx-auto grid w-full max-w-[72rem] grid-cols-[1fr_auto_1fr] items-center gap-4 px-5 py-2.5 sm:px-8">
+        <div className="mx-auto grid w-full max-w-[76rem] grid-cols-[1fr_auto_1fr] items-center gap-4 px-6 py-4 sm:px-10">
           <div className="flex min-w-0 items-center gap-1.5">
             <Link
               href="/"
               title="Back to Squirl"
               aria-label="Back to Squirl"
-              className="flex size-7 shrink-0 items-center justify-center rounded-md text-ink-3 transition-colors duration-[var(--t-state)] hover:bg-surface-2 hover:text-ink"
+              className="flex size-9 shrink-0 items-center justify-center rounded-lg text-ink-3 transition-colors duration-[var(--t-state)] hover:bg-surface-2 hover:text-ink"
             >
-              <CaretLeft size={14} weight="bold" />
+              <CaretLeft size={17} weight="bold" />
             </Link>
 
             <SignalNav />
@@ -47,8 +47,8 @@ export default function SignalLayout({ children }: { children: React.ReactNode }
             aria-label="Signal"
             className="flex shrink-0 items-center gap-2.5 transition-opacity duration-[var(--t-state)] hover:opacity-70"
           >
-            <AppMark name="signal-mark" size={26} />
-            <SignalWordmark size={13} className="hidden sm:block" />
+            <AppMark name="signal-mark" size={34} />
+            <SignalWordmark size={17} className="hidden sm:block" />
           </Link>
 
           <div className="flex items-center justify-end">
@@ -57,7 +57,7 @@ export default function SignalLayout({ children }: { children: React.ReactNode }
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-[72rem] flex-1 px-5 pb-16 pt-6 sm:px-8">{children}</main>
+      <main className="mx-auto w-full max-w-[76rem] flex-1 px-6 pb-20 pt-8 sm:px-10">{children}</main>
     </div>
   );
 }

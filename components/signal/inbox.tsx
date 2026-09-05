@@ -152,11 +152,11 @@ export function Inbox({
           and putting it under Today would bury the one thing that expires. */}
       {live.length > 0 ? (
         <section className="mb-8">
-          <h2 className="mb-3 flex items-center gap-2 text-[0.6875rem] font-semibold uppercase tracking-[0.08em] text-[var(--i-owe-text)]">
-            <Broadcast size={13} weight="fill" className="animate-pulse" />
+          <h2 className="mb-4 flex items-center gap-2 font-serif text-[1.5rem] font-normal tracking-[-0.02em] text-[var(--i-owe-text)]">
+            <Broadcast size={19} weight="fill" className="animate-pulse" />
             Live now
           </h2>
-          <div className="flex flex-col gap-px overflow-hidden rounded-xl border border-line bg-line">
+          <div className="flex flex-col gap-px overflow-hidden rounded-2xl border border-line bg-line">
             {live
               .filter((item) => !resolved.has(item.id))
               .map((item) => (
@@ -174,22 +174,25 @@ export function Inbox({
         </section>
       ) : null}
 
-      <div className="flex flex-col gap-8">
+      <div className="flex flex-col gap-10">
         {groups.map((group) => {
           const visible = group.items.filter((item) => !resolved.has(item.id));
           if (visible.length === 0) return null;
 
           return (
             <section key={group.day}>
-              <header className="mb-3 flex items-baseline gap-3">
-                <h2 className="text-[0.9375rem] font-semibold tracking-[-0.01em] text-ink">
+              {/* The day, set large, with the count beside it. No rule across
+                  the screen: a hairline stretched to the window is a divider
+                  drawing attention to itself, and the heading already separates
+                  these perfectly well on its own. */}
+              <header className="mb-4 flex items-baseline gap-3">
+                <h2 className="font-serif text-[1.5rem] font-normal tracking-[-0.02em] text-ink">
                   {group.label}
                 </h2>
-                <span className="h-px flex-1 bg-line" aria-hidden="true" />
-                <span className="money text-[0.6875rem] text-ink-3">{visible.length}</span>
+                <span className="signal-meta text-[0.875rem] text-ink-3">{visible.length}</span>
               </header>
 
-              <div className="flex flex-col gap-px overflow-hidden rounded-xl border border-line bg-line">
+              <div className="flex flex-col gap-px overflow-hidden rounded-2xl border border-line bg-line">
                 <AnimatePresence initial={false}>
                   {visible.map((item) => {
                     index += 1;

@@ -1,11 +1,16 @@
 /**
  * Signal's baseline: the moment tracking begins.
  *
- * 6 September 2026, 05:00 IST. Nothing published before this instant is ever
- * imported, on any sync, ever. The reader is clearing an existing YouTube
- * backlog by hand and wants Signal to start empty rather than inheriting it,
- * and a queue that opens with four hundred unread items is the exact thing
- * this product exists to prevent.
+ * 6 September 2026, 00:00 IST: midnight at the start of the day Signal began.
+ *
+ * It was briefly set to 05:00 that morning, so the queue would open clean after
+ * the existing YouTube backlog had been cleared by hand. Midnight keeps that
+ * intent while letting the night's streams count as part of the first day
+ * rather than falling just outside it.
+ *
+ * Nothing published before this instant is ever imported, on any sync, ever.
+ * A queue that opens with four hundred unread items is the exact thing this
+ * product exists to prevent.
  *
  * This is a floor in the sync engine rather than a filter on a screen. The
  * difference matters: a filter leaves the rows in the database, so they surface
@@ -14,11 +19,11 @@
  * those rows are never written down at all, and the starting point is a fact
  * about the data rather than a habit of the interface.
  *
- * Stored as a UTC instant because that is what it is. 05:00 IST is 23:30 UTC
- * on the previous day, and writing it in the timezone it will be compared in
- * avoids a conversion at every call site.
+ * Stored as a UTC instant because that is what it is. Midnight IST is 18:30
+ * UTC on the previous day, and writing it in the timezone it will be compared
+ * in avoids a conversion at every call site.
  */
-export const SIGNAL_EPOCH = Date.UTC(2026, 8, 5, 23, 30, 0);
+export const SIGNAL_EPOCH = Date.UTC(2026, 8, 5, 18, 30, 0);
 
 /** True while the baseline is still in the future and there is nothing to sync yet. */
 export function beforeBaseline(now: number = Date.now()): boolean {
