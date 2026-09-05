@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { keyCount, nextKey, releaseKey, restKey } from './keys';
+
 /**
  * The only place in Signal that talks to YouTube.
  *
@@ -46,10 +48,10 @@ export class YouTubeError extends Error {
 }
 
 function apiKey(): string {
-  const key = process.env.YOUTUBE_API_KEY;
+  const key = nextKey('youtube');
   if (!key) {
     throw new YouTubeError(
-      'No YouTube API key is configured. Add YOUTUBE_API_KEY to .env.local.',
+      'No YouTube API key is configured. Add YOUTUBE_API_KEYS to .env.local.',
       'auth',
     );
   }
@@ -82,8 +84,47 @@ const isId = (value: unknown): value is string => typeof value === 'string' && I
 
 // --------------------------------------------------------------- transport
 
+/**
+ * One request, retried across the key pool.
+ *
+ * A key that reports its quota is gone is rested until the quota day rolls
+ * over and the next key is tried, so several free projects behave as one
+ * larger allowance and a single exhausted key never stops Signal. Every other
+ * failure is returned as it is: retrying a malformed response on a different
+ * key would just be malformed again.
+ */
 async function call<T>(path: string, params: Record<string, string>, shape: z.ZodType<T>): Promise<T> {
-  const query = new URLSearchParams({ ...params, key: apiKey() });
+  const attempts = Math.max(keyCount('youtube'), 1);
+  let lastError: unknown = null;
+
+  for (let attempt = 0; attempt < attempts; attempt++) {
+    const key = apiKey();
+    try {
+      const result = await callWith<T>(key, path, params, shape);
+      releaseKey('youtube', key);
+      return result;
+    } catch (error) {
+      lastError = error;
+      if (error instanceof YouTubeError && error.kind === 'quota') {
+        restKey('youtube', key);
+        continue;
+      }
+      throw error;
+    }
+  }
+
+  throw lastError instanceof Error
+    ? lastError
+    : new YouTubeError('YouTube could not be reached.', 'http');
+}
+
+async function callWith<T>(
+  key: string,
+  path: string,
+  params: Record<string, string>,
+  shape: z.ZodType<T>,
+): Promise<T> {
+  const query = new URLSearchParams({ ...params, key });
   let response: Response;
 
   try {
@@ -497,4 +538,21 @@ export function watchUrl(youtubeId: string): string {
 
 export function channelUrl(youtubeId: string): string {
   return `https://www.youtube.com/channel/${encodeURIComponent(youtubeId)}`;
+}
+
+/**
+ * The same avatar, at the size it is actually drawn.
+ *
+ * YouTube hands back an `=s800` variant for every channel. Thirty-eight of
+ * those is roughly twenty megabytes of image to fill circles thirty-six pixels
+ * across, and while they trickle in the page shows a column of empty rings that
+ * reads as broken rather than as loading.
+ *
+ * The size lives in the URL, so asking for the right one costs nothing: the
+ * suffix carries crop and format flags that must be preserved, hence a targeted
+ * replacement of the `sNNN` segment rather than rebuilding the string.
+ */
+export function atSize(url: string | null, px: number): string | null {
+  if (!url) return null;
+  return url.replace(/=s\d+/, `=s${px}`);
 }

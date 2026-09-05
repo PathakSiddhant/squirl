@@ -103,6 +103,15 @@ export const signalChannels = sqliteTable(
     enabled: integer('enabled', { mode: 'boolean' }).notNull().default(true),
     addedAt: integer('added_at').notNull().$defaultFn(now),
 
+    /**
+     * Where the reader put it.
+     *
+     * Null until something is dragged, and nulls sort last, so an untouched
+     * shelf stays in the alphabetical order it already had rather than
+     * scrambling itself the first time this column exists.
+     */
+    position: integer('position'),
+
     // --- sync checkpoint -------------------------------------------------
     //
     // Kept on the channel rather than in a parallel one-to-one table. It is
@@ -126,6 +135,7 @@ export const signalChannels = sqliteTable(
     uniqueIndex('signal_channels_youtube_idx').on(t.youtubeId),
     index('signal_channels_enabled_idx').on(t.enabled),
     index('signal_channels_category_idx').on(t.categoryId),
+    index('signal_channels_position_idx').on(t.position),
   ],
 );
 

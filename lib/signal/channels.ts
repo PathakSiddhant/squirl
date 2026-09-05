@@ -1,4 +1,4 @@
-import { and, eq, sql } from 'drizzle-orm';
+import { and, asc, eq, sql } from 'drizzle-orm';
 
 import { db } from '@/lib/db/client';
 
@@ -41,6 +41,14 @@ const HINTS: Array<{ slug: string; words: string[] }> = [
     ],
   },
   {
+    slug: 'entertainment',
+    words: [
+      'comedy', 'comedian', 'entertainment', 'vlog', 'vlogger', 'vines', 'podcast',
+      'interview', 'reaction', 'reacts', 'sketch', 'standup', 'stand up', 'roast',
+      'parody', 'prank', 'meme', 'memes', 'humour', 'humor', 'funny', 'satire',
+    ],
+  },
+  {
     slug: 'sports',
     words: [
       'cricket', 'football', 'soccer', 'basketball', 'nba', 'nfl', 'formula 1', 'f1',
@@ -56,7 +64,10 @@ const HINTS: Array<{ slug: string; words: string[] }> = [
   },
   {
     slug: 'gaming',
-    words: ['gaming', 'gameplay', 'let’s play', 'lets play', 'esports', 'speedrun', 'playthrough'],
+    words: [
+      'gaming', 'gamer', 'gameplay', 'let’s play', 'lets play', 'esports',
+      'speedrun', 'playthrough', 'streamer', 'bgmi', 'valorant', 'minecraft',
+    ],
   },
   {
     slug: 'science',
@@ -83,10 +94,6 @@ const HINTS: Array<{ slug: string; words: string[] }> = [
     words: ['movie', 'film', 'cinema', 'trailer', 'series', 'netflix', 'tv show', 'review film'],
   },
   { slug: 'music', words: ['music', 'song', 'album', 'band', 'concert', 'guitar', 'producer'] },
-  {
-    slug: 'entertainment',
-    words: ['comedy', 'entertainment', 'vlog', 'podcast', 'interview', 'reaction', 'sketch'],
-  },
 ];
 
 /**
@@ -97,7 +104,7 @@ const HINTS: Array<{ slug: string; words: string[] }> = [
  * incidental word, which is not.
  */
 export function classify(channel: Pick<YouTubeChannel, 'title' | 'description'>): string | null {
-  const haystack = `${channel.title} ${channel.description ?? ''}`.toLowerCase();
+  const haystack = `${channel.title} ${strip(channel.description)}`.toLowerCase();
 
   for (const { slug, words } of HINTS) {
     for (const word of words) {
@@ -112,6 +119,37 @@ export function classify(channel: Pick<YouTubeChannel, 'title' | 'description'>)
 
 function escape(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Cut the boilerplate every channel description carries.
+ *
+ * Almost every creator signs off with a contact line, and almost every contact
+ * line contains the word "business". Matching against the raw text therefore
+ * filed CarryMinati, BB Ki Vines, Angry Prash and half a dozen other comedians
+ * under Business, which is not a subtle failure: it was wrong on the first
+ * screen, for the most recognisable names on the list.
+ *
+ * Contact details say who to email and where else to follow. They never say
+ * what a channel is about, so they are removed before a single word is matched.
+ */
+function strip(description: string | null): string {
+  if (!description) return '';
+
+  return description
+    .split(/\r?\n/)
+    .filter((line) => {
+      const text = line.toLowerCase();
+      if (/[\w.+-]+@[\w-]+\.[\w.]+/.test(text)) return false;
+      if (/business\s+(enquir|inquir|purpose|email|contact|proposal|relat)/.test(text)) return false;
+      if (/for\s+(business|brand|collab|promotion|sponsor|advertis)/.test(text)) return false;
+      if (/(instagram|twitter|facebook|whatsapp|telegram|discord|snapchat|threads)\s*[:\-@]/.test(text)) {
+        return false;
+      }
+      if (/^\s*https?:\/\//.test(text)) return false;
+      return true;
+    })
+    .join(' ');
 }
 
 // ------------------------------------------------------------- discovering
@@ -263,7 +301,10 @@ export async function listChannels(): Promise<ChannelWithCount[]> {
       `,
     })
     .from(signalChannels)
-    .orderBy(signalChannels.title);
+    // The reader's own arrangement first. Nulls sort last in SQLite's ASC, so
+    // anything never dragged keeps its alphabetical place at the end of its
+    // group rather than jumping to the front.
+    .orderBy(asc(signalChannels.position), asc(signalChannels.title));
 
   return rows.map((row) => ({ ...row.channel, waiting: Number(row.waiting) }));
 }

@@ -156,3 +156,167 @@ export async function requestSync(): Promise<{ added: number; offline: boolean; 
     return { added: 0, offline: false, error: explain(error) };
   }
 }
+
+// ---------------------------------------------------------------- categories
+
+/**
+ * Make a category of the reader's own.
+ *
+ * The seeded thirteen are a starting point, not a taxonomy. Somebody who
+ * follows eleven football channels wants a Football category whatever the
+ * classifier thinks, and a product that will not let them make one is telling
+ * them their own shelf is wrong.
+ */
+export async function createCategory(name: string): Promise<{ id: string | null; error: string | null }> {
+  const clean = name.trim().slice(0, 32);
+  if (!clean) return { id: null, error: 'Give it a name.' };
+
+  const { db } = await import('@/lib/db/client');
+  const { signalCategories } = await import('@/lib/signal/schema');
+  const { newSignalId } = await import('@/lib/signal/id');
+  const { eq } = await import('drizzle-orm');
+
+  const slug = clean.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  if (!slug) return { id: null, error: 'Use a few letters or numbers.' };
+
+  const [existing] = await db
+    .select()
+    .from(signalCategories)
+    .where(eq(signalCategories.slug, slug));
+  if (existing) return { id: existing.id, error: null };
+
+  const id = newSignalId('scat');
+  await db.insert(signalCategories).values({ id, name: clean, slug, position: 100 });
+  revalidatePath('/signal', 'layout');
+  return { id, error: null };
+}
+
+/** Remove a category. Channels in it fall back to uncategorised, never deleted. */
+export async function deleteCategory(categoryId: string): Promise<void> {
+  const parsed = id.safeParse(categoryId);
+  if (!parsed.success) return;
+
+  const { db } = await import('@/lib/db/client');
+  const { signalCategories } = await import('@/lib/signal/schema');
+  const { eq } = await import('drizzle-orm');
+
+  await db.delete(signalCategories).where(eq(signalCategories.id, parsed.data));
+  revalidatePath('/signal', 'layout');
+}
+
+/**
+ * Re-run the classifier over every channel, with the model if one is reachable.
+ *
+ * Channels the reader has filed by hand are left alone: `categoryLocked` is
+ * what makes a correction stick, and a re-classification that overwrote human
+ * decisions would be a button that undoes your work.
+ */
+export async function reclassifyAll(): Promise<{ changed: number; usedModel: boolean; error: string | null }> {
+  try {
+    const { db } = await import('@/lib/db/client');
+    const { signalChannels } = await import('@/lib/signal/schema');
+    const { ensureCategories } = await import('@/lib/signal/categories');
+    const { classify } = await import('@/lib/signal/channels');
+    const { classifyWithAI } = await import('@/lib/signal/intelligence');
+    const { eq } = await import('drizzle-orm');
+
+    const rows = (await db.select().from(signalChannels)).filter((row) => !row.categoryLocked);
+    if (rows.length === 0) return { changed: 0, usedModel: false, error: null };
+
+    const categories = await ensureCategories();
+    const bySlug = new Map(categories.map((row) => [row.slug, row]));
+
+    const fromModel = await classifyWithAI(
+      rows.map((row) => ({
+        youtubeId: row.youtubeId,
+        title: row.title,
+        description: row.description,
+        handle: row.handle,
+        thumbnailUrl: row.thumbnailUrl,
+        subscriberCount: row.subscriberCount,
+        uploadsPlaylistId: row.uploadsPlaylistId,
+      })),
+    );
+
+    let changed = 0;
+
+    for (const row of rows) {
+      const slug =
+        fromModel?.find((entry) => entry.youtubeId === row.youtubeId)?.category ??
+        classify(row) ??
+        'other';
+      const category = bySlug.get(slug) ?? bySlug.get('other');
+      if (!category || category.id === row.categoryId) continue;
+
+      await db
+        .update(signalChannels)
+        .set({ categoryId: category.id })
+        .where(eq(signalChannels.id, row.id));
+      changed += 1;
+    }
+
+    revalidatePath('/signal', 'layout');
+    return { changed, usedModel: fromModel !== null, error: null };
+  } catch (error) {
+    console.error('[signal] reclassify failed', error);
+    return { changed: 0, usedModel: false, error: explain(error) };
+  }
+}
+
+// ----------------------------------------------------------------- ordering
+
+/**
+ * Persist an arrangement the reader made by hand.
+ *
+ * Sent as the whole ordered list rather than as a single moved item, because
+ * that is what the screen knows after a drag and it is the only version that
+ * cannot drift: recomputing neighbours server-side from one index would have to
+ * reproduce the exact reordering the browser already performed.
+ *
+ * Moving a channel into a different group counts as filing it by hand, so it
+ * locks the category against a later re-classification, exactly as choosing
+ * from the menu does.
+ */
+export async function saveChannelOrder(
+  groups: Array<{ categoryId: string | null; channelIds: string[] }>,
+): Promise<void> {
+  const { db } = await import('@/lib/db/client');
+  const { signalChannels } = await import('@/lib/signal/schema');
+  const { eq } = await import('drizzle-orm');
+
+  for (const group of groups) {
+    for (const [index, channelId] of group.channelIds.entries()) {
+      const parsed = id.safeParse(channelId);
+      if (!parsed.success) continue;
+
+      await db
+        .update(signalChannels)
+        .set({
+          position: index,
+          categoryId: group.categoryId,
+          categoryLocked: true,
+        })
+        .where(eq(signalChannels.id, parsed.data));
+    }
+  }
+
+  revalidatePath('/signal', 'layout');
+}
+
+/** The order the groups themselves stack in. */
+export async function saveCategoryOrder(categoryIds: string[]): Promise<void> {
+  const { db } = await import('@/lib/db/client');
+  const { signalCategories } = await import('@/lib/signal/schema');
+  const { eq } = await import('drizzle-orm');
+
+  for (const [index, categoryId] of categoryIds.entries()) {
+    const parsed = id.safeParse(categoryId);
+    if (!parsed.success) continue;
+    await db
+      .update(signalCategories)
+      .set({ position: index })
+      .where(eq(signalCategories.id, parsed.data));
+  }
+
+  revalidatePath('/signal', 'layout');
+}

@@ -77,6 +77,7 @@ function Baseline({ at }: { at: number }) {
 
   const hours = remaining === null ? null : Math.floor(remaining / 3_600_000);
   const minutes = remaining === null ? null : Math.floor((remaining % 3_600_000) / 60_000);
+  const seconds = remaining === null ? null : Math.floor((remaining % 60_000) / 1_000);
 
   return (
     <Shell
@@ -85,12 +86,30 @@ function Baseline({ at }: { at: number }) {
       body={`Signal begins watching your channels on ${clock}. Nothing published before then is brought in, so the queue starts genuinely empty.`}
       action={{ href: '/signal/channels', label: 'Add channels while you wait' }}
     >
-      {hours !== null && minutes !== null ? (
-        <p className="money mt-5 text-[1.75rem] leading-none text-ink" suppressHydrationWarning>
-          {hours}h {String(minutes).padStart(2, '0')}m
+      {hours !== null && minutes !== null && seconds !== null ? (
+        // Tabular figures and a fixed shape, so a ticking second never nudges
+        // the hours sideways.
+        <p
+          className="signal-meta mt-6 flex items-baseline gap-1 text-[2.25rem] leading-none text-ink"
+          suppressHydrationWarning
+          aria-label="Time until tracking starts"
+        >
+          <Unit value={hours} label="h" />
+          <Unit value={minutes} label="m" />
+          <Unit value={seconds} label="s" />
         </p>
       ) : null}
     </Shell>
+  );
+}
+
+/** One field of the countdown: the number, then its unit, quieter and smaller. */
+function Unit({ value, label }: { value: number; label: string }) {
+  return (
+    <span className="tabular-nums">
+      {String(value).padStart(2, '0')}
+      <span className="ml-0.5 text-[0.9375rem] text-ink-3">{label}</span>
+    </span>
   );
 }
 
