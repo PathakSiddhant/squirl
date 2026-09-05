@@ -113,14 +113,31 @@ export const APPS: SquirlApp[] = [
   {
     id: 'signal',
     name: 'Signal',
-    // Unlike Form, which already knows its own subject, what Signal is for has
-    // not been decided yet. Writing it up as though it had would be exactly
-    // the invented number this card exists to refuse elsewhere on the page.
-    tagline: 'Not decided yet.',
+    tagline: 'The channels you chose, without the noise.',
     mark: 'signal-mark',
     accentClass: 'app-signal',
-    status: 'planned',
-    note: 'Its place is held before its idea is. Nothing about what Signal does has been settled, so nothing about what it does is claimed here either.',
+    status: 'ready',
+    href: '/signal',
+    snapshot: async () => {
+      const { getSummary } = await import('@/lib/signal/queue');
+      const { listChannels } = await import('@/lib/signal/channels');
+
+      const [summary, channels] = await Promise.all([getSummary(), listChannels()]);
+      const watching = channels.filter((channel) => channel.enabled).length;
+
+      return {
+        // Attention means something here rather than being decoration: a live
+        // stream is the only thing on this card that expires.
+        tone: summary.live > 0 ? 'attention' : 'normal',
+        stats: [
+          summary.live > 0
+            ? { label: 'Live now', value: String(summary.live), note: 'happening as you read this' }
+            : { label: 'Waiting', value: String(summary.waiting), note: 'still to deal with' },
+          { label: 'Channels', value: String(watching), note: 'being watched' },
+          { label: 'Snoozed', value: String(summary.snoozed), note: 'coming back later' },
+        ],
+      };
+    },
   },
 ];
 

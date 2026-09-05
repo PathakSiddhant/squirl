@@ -1205,3 +1205,63 @@ html.dark .threshold .mark-over-art {
     color var(--t-hover) var(--ease-soft),
     background-color var(--t-hover) var(--ease-soft);
 }
+
+/*
+  Signal's own reading.
+
+  Squirl owns the frame; an application owns how it reads inside it. Ledger is
+  Geist with a transitional serif for its headlines, which is right for a book
+  of numbers you check twice. Signal is an instrument you scan, so it swaps the
+  whole ramp: a geometric grotesque with actual personality in its letterforms,
+  and a mono carrying every timestamp, duration and count so they stack into
+  columns the eye can run down without reading them.
+
+  Scoped to the `.app-signal` subtree. Nothing outside Signal is touched, and
+  Ledger a click away is still entirely itself.
+*/
+.app-signal {
+  --font-sans: var(--font-signal-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-signal-mono), ui-monospace, monospace;
+
+  /* Tighter than Squirl's. Signal is a dense list, and the shapes that suit a
+     spacious card read as soft and imprecise around a row of forty items. */
+  --radius-1: 4px;
+  --radius-2: 7px;
+  --radius-3: 10px;
+
+  font-family: var(--font-sans);
+  /* The grotesque sets a touch wide for a scanning list. */
+  letter-spacing: -0.011em;
+}
+
+/* Its headings do not use the serif. That face is Ledger's voice, and the
+   whole point is that these two do not sound alike. */
+.app-signal .font-serif {
+  font-family: var(--font-sans);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+}
+
+/*
+  The small uppercase label Signal uses to name a section.
+
+  Ledger names its sections in sentence case, at reading size. Signal is an
+  instrument panel, so its labels are set the way an instrument labels a dial:
+  small, spaced, and unmistakably not content.
+*/
+.signal-label {
+  font-family: var(--font-mono);
+  font-size: 0.625rem;
+  font-weight: 500;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+/* Metadata sits in the mono, always. Durations and times then line up down the
+   list instead of ragging against the proportional titles beside them. */
+.signal-meta {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
