@@ -48,8 +48,16 @@ lib/
                           a day earlier.
 
 components/
-  squirl/                 boot sheet, lock screen, launcher rail and cards
-  shell/                  the application shell: rail, tab bar, nav config
+  squirl/                 the launcher, and the screens outside every app
+    launcher.tsx          the three columns, and what they are arranged for
+    orbit.tsx             the applications, going round, in three dimensions
+    app-tile.tsx          one application's door
+    dock.tsx              the controls, mounted to a wall of the window
+    console-panel.tsx     the clock, and the machine's own figures
+    command-palette.tsx   Ctrl-K, over every screen in the product
+    storage-sheet.tsx     where the data lives, and which keys do what
+    lock-screen.tsx       the threshold
+  shell/                  an application's own shell: sidebar, nav, theme
   brand/                  the marks, Squirl's and each application's
   ui/                     primitives any application may use
   today/ ledger/ people/ loans/ …   Ledger's own feature components
@@ -57,7 +65,7 @@ components/
 
 Squirl has no settings screen of its own yet. Ledger's own preferences live
 inside Ledger, and everything Squirl-level, the theme, the lock, and where the
-database file sits, is reachable from the command bar on its home. A
+database file sits, is reachable from the dock on its home. A
 Squirl-level settings page gets built when there is a second thing to put on
 it, rather than now, to look symmetrical.
 
@@ -69,26 +77,38 @@ the shape that fails first: it draws every destination at all times, so the
 fourth and fifth application turn the rail into a column with its own scrollbar.
 A launcher whose own navigation needs scrolling has stopped being a launcher.
 
-What replaced it is three things and a dock:
+What replaced it is three columns and a dock.
 
-- **The hour and the orbit**, side by side. The orbit is Squirl's own model
-  drawn literally: the mark still in the middle, one dot per application in its
-  own accent, the rings turning slowly. Built applications ride the inner ring
-  because they are the ones you reach for. Hovering a dot names its application
-  and draws a line back to the centre; clicking one opens it. They are side by
-  side rather than stacked because stacked they cost the sum of their heights
-  and the applications fell below the fold.
+- **The identity, on the left.** The lockup, the hour said out loud, and the
+  claim the product rests on. It anchors the composition rather than hovering
+  over it: centred above the orbit, the same three lines read as something
+  wedged into the gap above the rings, and left both sides of the window empty.
+- **The orbit, in the middle, as the subject.** Squirl's own model drawn
+  literally: the mark is the environment, each body going round it is an
+  installed application in its own colour, and built ones ride the inner ring
+  because those are the ones you reach for. It is dimensional rather than a
+  flat ring pretending, and it can be pushed. Three rings are drawn whether or
+  not they are occupied, so the fifth application arrives into a place that
+  already exists rather than forcing the picture to be redrawn.
+- **The machine's own figures, on the right.** A running clock, how many
+  applications are installed, how many are real, how large the file has got and
+  when it was last written. Squirl reporting on Squirl. This is the line that
+  keeps the column honest: an application's own numbers belong on its tile, and
+  a launcher that grows a panel of Ledger's figures has quietly become Ledger's
+  dashboard.
 - **One tile per application**, all the same size, built or not. A tile says
   whether its application wants you; it does not try to be the application.
-- **A dock along the foot**, spread rather than clustered: the file on the
-  left, how to draw the shelf in the middle, the theme and the lock together on
-  the right. Nothing sits in a corner, and the five controls are not one lump.
+- **A dock**, taken out of the page and given to the window. In the layout it
+  cost height whether or not it was being used; fixed, it costs none. It can be
+  dragged to any of the four walls and settles centred on the one it was
+  dropped nearest, upright on the left and right.
 
 Two things are deliberately absent. There is no search field, because Ctrl-K
 opens the palette and a permanent input would spend the best space on the
-screen implying a catalogue too big to look at. And the layout switch is a
-preference, not a fixture, so it is small and at the foot rather than parked
-above the thing it governs.
+screen implying a catalogue too big to look at. And nothing on this screen
+announces its own shortcuts along the bottom; the keys are written down in the
+panel behind the dock's info button, which is the place you go when you want to
+be told.
 
 The whole screen fits without scrolling, at laptop heights as well as monitor
 ones. The orbit is what gives up room when the window is short, because it is

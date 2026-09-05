@@ -12,7 +12,11 @@ No account, no server, no sync, no telemetry. One file holds everything.
 Its first application is **Ledger**, which keeps money you *spent*,
 money you *lent*, and money you *put away* as three different things.
 
-[What Squirl is](#what-squirl-is) · [Ledger](#ledger-the-first-application) · [Run it](#run-it) · [Under the hood](#under-the-hood)
+[What Squirl is](#what-squirl-is) · [The launcher](#the-launcher) · [Ledger](#ledger-the-first-application) · [Run it](#run-it) · [Under the hood](#under-the-hood)
+
+<br>
+
+<img src="docs/screenshots/launcher-light.webp" alt="The Squirl launcher: the mark and the hour on the left, the orbit of installed applications in the middle, the machine's own figures on the right, and a tile for each application below" width="820">
 
 </div>
 
@@ -44,14 +48,20 @@ Squirl knows Ledger exists. Ledger does not know Squirl has other plans.
 
 ### What is inside, right now
 
-| Application | What it is for |
-|---|---|
-| **Ledger** | Money. What you spent, what you lent, what you owe, what is safe to spend. |
+| | Application | State | What it is for |
+|---|---|---|---|
+| <img src="public/brand/ledger-mark.png" width="26"> | **Ledger** | Built | Money. What you spent, what you lent, what you owe, what is safe to spend. |
+| <img src="public/brand/form-mark.png" width="26"> | **Form** | Planned | Training, and what it is actually doing to you. |
+| <img src="public/brand/signal-mark.png" width="26"> | **Signal** | Planned | Not decided yet. |
 
-That is the entire list, and it is honest. There is no roadmap of half-imagined
-apps here, because a list of things that do not exist is a promise, and this
-project would rather ship one thing that is genuinely finished. The second
-application arrives when there is something worth building, not to fill a grid.
+One of those three is real. The other two hold a place and say so, on the
+screen as well as here: they show no figures, they have no route to open, and
+their cards say "not built yet" rather than filling the space with a plausible
+number. Signal goes further and admits its subject has not been chosen.
+
+That is deliberate. A launcher that quietly invents data for the applications
+it has not written yet teaches you not to trust the ones it has, and the first
+real number to appear would not be believed.
 
 ### The rules it holds itself to
 
@@ -87,8 +97,65 @@ clear, and anyone holding the machine can read it with any SQLite browser. The
 lock screen says so out loud rather than implying protection it does not
 provide.
 
-Past the lock is Squirl's home: the applications it holds, and a live figure
-from each one so you know whether you need to open it at all.
+Past the lock is Squirl's home.
+
+<img src="docs/screenshots/lock.webp" alt="The Squirl lock screen: an illustrated valley on the left, the sign-in panel leaning into it across a curve on the right" width="820">
+
+The picture behind the sign-in is a matched pair, day and night. Which one you
+get is decided by two things and nothing else: the hour, resolved in IST on the
+machine, and the theme. A theme you chose by hand wins over the clock, so
+picking Light at eleven at night gets you a light screen; left on System, the
+hour decides. Nothing announces it and there is no control for it.
+
+---
+
+## The launcher
+
+<table>
+<tr>
+<td width="50%"><img src="docs/screenshots/launcher-light.webp" alt="The launcher in the light theme"></td>
+<td width="50%"><img src="docs/screenshots/launcher-dark.webp" alt="The launcher in the dark theme"></td>
+</tr>
+</table>
+
+Squirl's home is three columns and a dock, and it is sized to be read without
+scrolling at laptop heights as well as monitor ones. It answers one question,
+"what do I have and does any of it need me", and then gets out of the way.
+
+**The orbit is the product's own model of itself, drawn literally.** The mark
+in the middle is the environment; each body going round it is an installed
+application in its own colour; built ones ride the inner ring because those are
+the ones you reach for. It is genuinely three-dimensional rather than a flat
+ring pretending: bodies are placed in an orbital plane, tilted, spun about the
+vertical axis and projected, so they pass behind the mark and come round the
+front larger and brighter. Drag it and it spins, keeps the momentum you gave it,
+and settles back to a slow drift rather than to a stop. Three rings are drawn
+whether or not they are all occupied, so a fourth application arrives into a
+place that was already there.
+
+**The tiles are doors, not reports.** Each one carries a mark, a line about what
+the application is for, and at most one live figure read from that application's
+own data at render time. Drag a tile by its grip and the row rearranges around
+it, and the order you leave it in is the order you get back. Right-click one for
+the things that are not "open it".
+
+**The dock belongs to the window, not the page.** It costs the layout no height,
+it can be dragged to any of the four edges, and it settles centred on the wall
+you drop it nearest, upright on the left and right. Where you left it is where
+it starts. `Ctrl` `\` takes it away and brings it back.
+
+### Keys
+
+| Key | What it does |
+|---|---|
+| <kbd>Ctrl</kbd> <kbd>K</kbd> | The command palette: every application, every screen inside them, the theme, the lock |
+| <kbd>Ctrl</kbd> <kbd>\\</kbd> | Hide the dock, and bring it back |
+| <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> | Open an application by its place in the row |
+| <kbd>Esc</kbd> | Close whatever is open |
+
+There is no search field on the screen. Three applications do not need one, and
+a permanent input would spend the best space on the page implying a catalogue
+too large to look at.
 
 ---
 
@@ -111,6 +178,8 @@ random: some weeks end flush, some end at zero, and nothing explains why.
 
 Ledger refuses to blur them. A squirrel does not eat its whole hoard just
 because it can reach it.
+
+<img src="docs/screenshots/ledger.webp" alt="Ledger's Today screen: how much is short, where the money is across five piles, what is due, and what was written down today" width="820">
 
 ### Five piles, never added together
 
@@ -354,7 +423,15 @@ lib/
   queries/              read models composed from the pure engines above
 
 components/
-  squirl/               boot, lock screen, shell
+  squirl/               the launcher, and the screens outside every app
+    launcher.tsx          the three columns, and what they are arranged for
+    orbit.tsx             the applications, going round, in three dimensions
+    app-tile.tsx          one application's door
+    dock.tsx              the controls, mounted to a wall of the window
+    console-panel.tsx     the clock, and the machine's own figures
+    command-palette.tsx   Ctrl-K, over every screen in the product
+    storage-sheet.tsx     where the data lives, and which keys do what
+    lock-screen.tsx       the threshold
   brand/                the marks, Squirl's and each application's
   ui/                   primitives any application may use
 ```
@@ -399,11 +476,21 @@ ink.** Every coloured pixel means something specific about money, so nothing is
 tinted to look nice, primary buttons are solid ink rather than a brand colour,
 and colour stays rare enough to still be a signal.
 
-Each application fills one slot in that system, `--app-accent`, with a hue
-sampled from its own mark. Ledger's is the desaturated forest green of its
-ledger book. An accent identifies an application, on its card and on the
-selected row of its own navigation. It never colours data, which has already
-earned its palette.
+Each application fills one slot in that system, `--app-accent`. Ledger's is the
+desaturated forest green sampled from its own ledger book, and Form's is the
+flame off its match. Signal's is the exception that proves the rule: every
+colour in its mark landed within about ten degrees of a hue already taken, so
+it was given a blue with nothing else near it rather than a sampled one that
+would have made its card say "Form". An accent identifies an application, on
+its tile and on the selected row of its own navigation. It never colours data,
+which has already earned its palette.
+
+Motion is held to things that explain something. A figure counts up to itself
+once on arrival, so you can see it was read rather than printed. A tile tips
+three degrees towards the pointer and carries a light in its own accent. A
+built application's node breathes and an unbuilt one does not. Every one of
+them has a `prefers-reduced-motion` path, and the launcher runs on its own
+slower durations than the rest of the product, because nothing here is urgent.
 
 Money direction uses a cool/warm pair rather than green/red, so red-green
 colour blindness never destroys the most important distinction in the app, and

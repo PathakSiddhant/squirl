@@ -148,6 +148,32 @@ Every animation has a `prefers-reduced-motion: reduce` path, which is a crossfad
 or an instant swap. Only `transform`, `opacity`, `filter` and `clip-path` are
 animated.
 
+### The launcher runs slower than the product
+
+The launcher keeps its own pair of durations, `--t-hover: 420ms` and
+`--t-settle: 640ms`, with a spring that overshoots by about four percent. The
+product's 120 and 180ms are right for a control acknowledging a click and wrong
+for a surface answering a pointer: at 180ms a tile has finished lifting before
+the eye has finished arriving, so it reads as a flicker rather than a response.
+Nothing on this screen is urgent. It is the pause before the work.
+
+Two things deliberately opt out of those durations, and both for the same
+reason: they track the pointer continuously rather than responding to it once.
+A tile's tilt follows the cursor at `90ms linear`, and the dock's magnification
+at `70ms linear`, because a value being chased on a 420ms curve arrives a third
+of a second late and the whole surface feels like syrup. The slow spring is
+kept for the way out, where there is nothing to chase.
+
+### Beware which property Tailwind v4 animates
+
+`translate-x-*`, `scale-*` and `rotate-*` compile to the standalone `translate`,
+`scale` and `rotate` properties, not to `transform`. Those compose with
+`transform` rather than replacing it, which has bitten this codebase twice: a
+keyframe that also wrote `transform: translate(-50%, -50%)` on a centred dialog
+applied the offset a second time and flew the panel in from the corner. If an
+element is positioned by a Tailwind translate utility, an animation on it owns
+`transform` only, and must use it for scale and rotation alone.
+
 ## States
 
 Empty, loading and error states are shipped, not deferred. Loading uses skeletons
