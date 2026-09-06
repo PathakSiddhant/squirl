@@ -9,6 +9,7 @@ import {
   fetchChannels,
   fetchUploadsPage,
   fetchVideos,
+  shortsPlaylistId,
   YouTubeError,
   type UploadRef,
   type YouTubeVideo,
@@ -171,17 +172,47 @@ async function refreshableIds(channelId: string): Promise<string[]> {
 }
 
 /**
+ * The Shorts YouTube itself knows about for a channel, as of this pass.
+ *
+ * A duration cutoff used to be the only test for shortness, and it was wrong:
+ * YouTube raised the length a Short can run to three minutes in October 2024,
+ * so a sixty-second threshold let a ninety-second hashtag-titled match
+ * reaction straight into the inbox as an ordinary video. This reads the
+ * playlist YouTube's own site uses to populate a channel's Shorts shelf, which
+ * says definitively rather than guessing from a number.
+ *
+ * Best-effort and silent on failure. A channel that has never posted a Short
+ * may expose no such playlist at all, and that is not a sync error — it is
+ * simply nothing to add to the exclusion set. Fetched only for one page: the
+ * ids that matter are the handful most recently added, which is exactly what
+ * a channel's newest uploads need checking against.
+ */
+async function collectKnownShortIds(channel: SignalChannel): Promise<Set<string>> {
+  const playlistId = shortsPlaylistId(channel.youtubeId);
+  if (!playlistId) return new Set();
+
+  try {
+    const { items } = await fetchUploadsPage(playlistId);
+    return new Set(items.map((item) => item.videoId));
+  } catch {
+    return new Set();
+  }
+}
+
+/**
  * Is this something Signal should hold at all?
  *
  * Two rules.
  *
  * Shorts never enter. Signal is for things you sit down to: a video, a stream,
- * a premiere. A minute of vertical video is not a decision worth making, and
- * forty a day would drown the things that are. The test is duration, because
- * the API does not report shortness at all — a Short is an ordinary video that
- * happens to be brief and vertical — and sixty seconds is the conservative
- * line, so a genuinely tiny real upload slips through rather than a real video
- * being dropped.
+ * a premiere. A minute or two of vertical video is not a decision worth
+ * making, and forty a day would drown the things that are. Exclusion here is
+ * the union of two signals: confirmed membership in the channel's own Shorts
+ * playlist (`collectKnownShortIds`, the authoritative one), and a duration
+ * under a minute as a cheap fallback for the pass where that playlist could
+ * not be read. Either one is enough to keep something out; missing a Short is
+ * worse than the near-zero chance of wrongly excluding a genuine one-minute
+ * upload.
  *
  * The baseline is applied by relevance rather than by publication date. An
  * ordinary upload counts if it was published after tracking began. A broadcast
@@ -189,8 +220,8 @@ async function refreshableIds(channelId: string): Promise<string[]> {
  * happened to be created, because a stream starting in four hours is not old
  * news for having been announced on Tuesday.
  */
-function keep(video: YouTubeVideo): boolean {
-  if (video.kind === 'short') return false;
+function keep(video: YouTubeVideo, knownShortIds: Set<string>): boolean {
+  if (video.kind === 'short' || knownShortIds.has(video.youtubeId)) return false;
   if (video.kind === 'live') return true;
   if (video.kind === 'upcoming') {
     // Still ahead, with an hour of grace for one that has just begun.
@@ -271,10 +302,15 @@ export async function syncChannel(channel: SignalChannel): Promise<SyncResult> {
     // once, not twice.
     const wanted = [...new Set([...fresh.map((item) => item.videoId), ...stale])];
 
+    // Only spent when there is something to check. A pass with nothing new
+    // has nothing for the Shorts playlist to disqualify, so asking would be a
+    // unit spent to learn the empty set.
+    const knownShortIds = wanted.length > 0 ? await collectKnownShortIds(channel) : new Set<string>();
+
     let written = 0;
     for (let index = 0; index < wanted.length; index += 50) {
       const videos = await fetchVideos(wanted.slice(index, index + 50));
-      written += await upsertVideos(channel.id, videos.filter(keep));
+      written += await upsertVideos(channel.id, videos.filter((video) => keep(video, knownShortIds)));
     }
 
     const newest = fresh[0]?.videoId ?? channel.lastSeenVideoId;

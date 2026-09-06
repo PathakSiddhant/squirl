@@ -396,6 +396,13 @@
   .z-modal {
     z-index: 50;
   }
+  /* A menu opened from inside a dialog — both render through a portal near
+     the document root, so DOM nesting cannot save it: without a number above
+     `z-modal`, the dialog's own scrim sits on top of the menu and swallows
+     every click meant for it. */
+  .z-modal-menu {
+    z-index: 55;
+  }
   .z-toast {
     z-index: 60;
   }

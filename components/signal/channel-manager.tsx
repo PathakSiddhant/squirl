@@ -28,12 +28,14 @@ import {
   createCategory,
   reclassifyAll,
   searchForChannels,
+  type AddChannelResult,
   type SearchState,
 } from '@/app/actions/signal';
 import { cn } from '@/lib/cn';
 import type { ChannelWithCount } from '@/lib/signal/channels';
 import { atSize } from '@/lib/signal/youtube';
 
+import { ChannelAddedDialog } from './channel-added-dialog';
 import { ChannelBoard, type Group, type ShelfView } from './channel-board';
 
 const INITIAL: SearchState = { query: '', results: [], error: null };
@@ -159,6 +161,8 @@ export function ChannelManager({
   const [state, search, searching] = useActionState(searchForChannels, INITIAL);
   const [, start] = useTransition();
   const [adding, setAdding] = useState<string | null>(null);
+  const [added, setAdded] = useState<AddChannelResult | null>(null);
+  const [addError, setAddError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [naming, setNaming] = useState(false);
   const [sorting, setSorting] = useState(false);
@@ -171,10 +175,25 @@ export function ChannelManager({
 
   const add = (youtubeId: string) => {
     setAdding(youtubeId);
+    setAddError(null);
     start(async () => {
-      await addChannelById(youtubeId);
+      const result = await addChannelById(youtubeId);
       router.refresh();
       setAdding(null);
+
+      if (result.error || !result.channelId) {
+        setAddError(result.error ?? 'Something went wrong adding that channel.');
+        return;
+      }
+
+      // The search is finished the moment something is added, and clearing
+      // the field is enough to say so: the results panel below is gated on
+      // there being an active query (see `filter`), so an empty field hides
+      // it immediately rather than going on showing a snapshot from before
+      // the add, where the very item just added still read "Add" because
+      // nothing had told that array anything had happened.
+      setQuery('');
+      setAdded(result);
     });
   };
 
@@ -369,8 +388,20 @@ export function ChannelManager({
           </p>
         ) : null}
 
+        {addError ? (
+          <p className="mt-4 max-w-[26rem] rounded-lg border border-line bg-surface px-3 py-2 text-[0.8125rem] text-[var(--i-owe-text)]">
+            {addError}
+          </p>
+        ) : null}
+
         <AnimatePresence initial={false}>
-          {state.results.length > 0 ? (
+          {/* Gated on there being something typed, not merely on the last
+              search having found something. Without `filter` here the panel
+              is a snapshot: clearing the field, or adding the very channel it
+              is showing, left it exactly as it was — nothing had told this
+              array that the question it was answering was no longer being
+              asked. */}
+          {filter && state.results.length > 0 ? (
             <motion.div
               initial={reduceMotion ? false : { opacity: 0, y: -6 }}
               animate={{ opacity: 1, y: 0 }}
@@ -541,6 +572,20 @@ export function ChannelManager({
 
           <ChannelBoard groups={grouped} filter={filter} view={view} collapsedAll={fold} />
         </>
+      ) : null}
+
+      {added ? (
+        <ChannelAddedDialog
+          key={added.channelId ?? undefined}
+          open={added !== null}
+          onOpenChange={(open) => !open && setAdded(null)}
+          title={added.title ?? 'Channel'}
+          channelId={added.channelId!}
+          category={added.category}
+          usedModel={added.usedModel}
+          wasNew={added.wasNew}
+          categories={categories}
+        />
       ) : null}
     </div>
   );

@@ -23,8 +23,10 @@ import { keyCount, nextKey, releaseKey, restKey } from './keys';
  *
  * A search costs as much as a hundred playlist reads. That single fact decides
  * the architecture: monitoring never searches. It reads each channel's uploads
- * playlist, which is one unit per channel per pass, so twenty channels every
- * three hours costs about 160 units a day out of ten thousand.
+ * playlist, one unit per channel per pass, plus a second unit only when there
+ * is something new to check against the channel's Shorts playlist (see
+ * `shortsPlaylistId`). Even at two units a channel, thirty-eight channels every
+ * hour costs under two thousand units a day out of ten thousand.
  *
  * Search is spent only when a human is looking for something, and even then
  * only when nothing cheaper will do: a handle, a URL or a raw channel id all
@@ -538,6 +540,31 @@ export function watchUrl(youtubeId: string): string {
 
 export function channelUrl(youtubeId: string): string {
   return `https://www.youtube.com/channel/${encodeURIComponent(youtubeId)}`;
+}
+
+/**
+ * The playlist YouTube itself uses to drive a channel's Shorts shelf.
+ *
+ * Undocumented, but consistent: replacing the `UC` prefix of a channel id with
+ * `UUSH` is the same trick that gets the uploads playlist by replacing it with
+ * `UU`, and it is populated automatically by YouTube, not by us. Verified
+ * against a real channel in this codebase: the two items that were slipping
+ * into the inbox as ordinary videos — both under a minute and a half, both
+ * hashtag-titled match reactions — are exactly and only the two ids this
+ * playlist returns for that channel.
+ *
+ * A duration cutoff alone cannot do this job any more. YouTube raised the
+ * length a Short can be to three minutes in October 2024, so a plain "is it
+ * short" threshold either misses genuine Shorts or starts catching ordinary
+ * short-but-not-vertical uploads. This is the actual signal instead of a
+ * guess at one.
+ *
+ * Returns null for anything that is not a `UC…` id, so a caller cannot end up
+ * asking YouTube for a malformed playlist by accident.
+ */
+export function shortsPlaylistId(channelId: string): string | null {
+  if (!isId(channelId) || !channelId.startsWith('UC')) return null;
+  return `UUSH${channelId.slice(2)}`;
 }
 
 /**

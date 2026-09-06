@@ -3,7 +3,7 @@ import { and, asc, desc, eq, gt, inArray, isNotNull, lte, or, sql, type SQL } fr
 import { db } from '@/lib/db/client';
 import { IST_TIME_ZONE } from '@/lib/date';
 
-import { signalChannels, signalContent, type ContentKind, type ContentState } from './schema';
+import { signalCategories, signalChannels, signalContent, type ContentKind, type ContentState } from './schema';
 
 /**
  * The queue: everything still waiting on the reader, and the four things that
@@ -47,6 +47,12 @@ export interface QueueItem {
   channelTitle: string;
   channelThumbnail: string | null;
   categoryId: string | null;
+  /** Where the reader put this channel's group on the Channels shelf. Null for
+   *  an uncategorised channel, which sorts last. */
+  categoryPosition: number | null;
+  /** Where the reader put this channel within its group. Null for one never
+   *  dragged, which sorts after anything that has been. */
+  channelPosition: number | null;
 }
 
 export interface QueueFilters {
@@ -117,9 +123,14 @@ export async function getQueue(filters: QueueFilters = {}): Promise<QueueItem[]>
       channelTitle: signalChannels.title,
       channelThumbnail: signalChannels.thumbnailUrl,
       categoryId: signalChannels.categoryId,
+      categoryPosition: signalCategories.position,
+      channelPosition: signalChannels.position,
     })
     .from(signalContent)
     .innerJoin(signalChannels, eq(signalContent.channelId, signalChannels.id))
+    // Left, not inner: an uncategorised channel has no row to join to, and it
+    // must still appear rather than vanish from its own inbox.
+    .leftJoin(signalCategories, eq(signalChannels.categoryId, signalCategories.id))
     .where(and(...conditions))
     .orderBy(desc(signalContent.publishedAt));
 
@@ -149,9 +160,12 @@ export async function getUpcoming(): Promise<QueueItem[]> {
       channelTitle: signalChannels.title,
       channelThumbnail: signalChannels.thumbnailUrl,
       categoryId: signalChannels.categoryId,
+      categoryPosition: signalCategories.position,
+      channelPosition: signalChannels.position,
     })
     .from(signalContent)
     .innerJoin(signalChannels, eq(signalContent.channelId, signalChannels.id))
+    .leftJoin(signalCategories, eq(signalChannels.categoryId, signalCategories.id))
     .where(
       and(
         waitingClause(),
@@ -231,6 +245,35 @@ export function happenedAt(item: QueueItem): number {
   return item.startedAt ?? item.publishedAt;
 }
 
+/**
+ * The reader's own arrangement, applied to what they are shown.
+ *
+ * The day something happened is still a fact about the world and stays out of
+ * this: `groupByDay` decides which bucket an item lands in, and this only
+ * decides the order *within* one. What changes is which group of channels is
+ * looked at first, and within a group which channel, because that arrangement
+ * is something the reader built by hand on the Channels shelf and this is the
+ * one place it was going unused. Three sports videos and two politics videos
+ * from the same day now read top to bottom the way the shelf reads left to
+ * right, rather than in whatever order YouTube happened to publish them.
+ *
+ * A channel or category never dragged sorts after ones that have been, the
+ * same rule the shelf itself uses, so a freshly added channel does not jump
+ * ahead of an arrangement the reader spent time on. Within one channel on one
+ * day, newest first, which is the only ordering nobody has an opinion about.
+ */
+export function orderByShelf(items: QueueItem[]): QueueItem[] {
+  return [...items].sort((a, b) => {
+    const category = (a.categoryPosition ?? Infinity) - (b.categoryPosition ?? Infinity);
+    if (category !== 0) return category;
+
+    const channel = (a.channelPosition ?? Infinity) - (b.channelPosition ?? Infinity);
+    if (channel !== 0) return channel;
+
+    return happenedAt(b) - happenedAt(a);
+  });
+}
+
 export function groupByDay(items: QueueItem[]): DayGroup[] {
   const formatter = new Intl.DateTimeFormat('en-CA', {
     timeZone: IST_TIME_ZONE,
@@ -263,7 +306,7 @@ export function groupByDay(items: QueueItem[]): DayGroup[] {
 
   return [...buckets.entries()]
     .sort((a, b) => (a[0] < b[0] ? 1 : -1))
-    .map(([day, group]) => ({ day, label: label(day), items: group }));
+    .map(([day, group]) => ({ day, label: label(day), items: orderByShelf(group) }));
 }
 
 // ------------------------------------------------------------------ counts

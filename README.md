@@ -317,12 +317,20 @@ does when it loads a channel page.
 ### Two screens, and they answer different questions
 
 **The inbox** is the queue: how many things are waiting, at the top, and then
-those things in the order they happened, cut into days. Every row can be dealt
-with three ways and all three end it — **done**, **dismiss**, or **open on
-YouTube**. There is no fourth option, and there used to be: a "later" button
-that put an item back at a chosen hour. It was removed. YouTube already has
-Watch Later and is welcome to it. A queue whose entire promise is that it gets
-shorter should not ship the one control that lets you avoid deciding.
+those things in the order they happened, cut into days. Within one day, order
+follows the shelf: the category you put first comes first, and inside it the
+channel you put first comes first, so the arrangement you built by hand on the
+Channels page is the order you read the queue in too, not an accident of when
+YouTube happened to publish each thing.
+
+Every row can be dealt with three ways and all three end it — **done**,
+**dismiss**, or **open on YouTube** — and each shows a brief mark of which one
+you chose before the row leaves, so a click reads as landed rather than the row
+simply vanishing under the pointer. There is no fourth option, and there used
+to be: a "later" button that put an item back at a chosen hour. It was removed.
+YouTube already has Watch Later and is welcome to it. A queue whose entire
+promise is that it gets shorter should not ship the one control that lets you
+avoid deciding.
 
 <img src="docs/screenshots/signal-channels.webp" alt="Signal's channel shelf: thirty-eight channels drawn as avatars, grouped, each group tinted by a hue taken from its own name" width="820">
 
@@ -350,12 +358,29 @@ YouTube stamps a broadcast as published the moment it *ends*, so a show that ran
 from ten at night until half past one would otherwise land on the following day
 and be filed under a date nobody watched it on.
 
+### It knows a Short when it sees one
+
+YouTube's API has no field that says "this is a Short". The obvious guess —
+anything under a minute — stopped being reliable in October 2024, when YouTube
+let Shorts run up to three minutes: a duration cutoff either lets the longer
+ones through or starts rejecting ordinary short uploads that were never Shorts
+at all. Signal instead reads the same auto-generated playlist YouTube's own
+website uses to populate a channel's Shorts shelf, which says definitively
+rather than guessing from a number, at the cost of one extra quota unit and
+only on a pass where there is something new to check.
+
 ### It syncs itself, and cannot open a gap
 
 The background sync runs inside the Squirl process — no cron, no cloud
-scheduler, nothing to keep running when the app is not. It goes every three
-hours, and also on startup, on the machine coming back online, when the last
-run is stale, and whenever you press the button.
+scheduler, nothing to keep running when the app is not. It goes every hour,
+and also on startup, on the machine coming back online, when the last run is
+stale, and whenever you press the button.
+
+Signal notices its own sync landing, too. A tab left open polls a tiny piece
+of the scheduler's own state every twenty seconds — not the database, not
+YouTube, just a number already sitting in memory — and refreshes itself the
+moment that number changes. Leaving the inbox open is enough; nothing has to
+be reloaded by hand for new videos to appear.
 
 It is **checkpoint-based and idempotent**, which together mean offline time
 cannot cost you anything. Each channel remembers the last video it saw; a sync
@@ -384,10 +409,16 @@ rather than retried into the ground.
 ### Filing, with a model and without one
 
 New channels are filed into groups by a keyword heuristic, and by Gemini when a
-key is available. The heuristic alone was wrong in a way worth recording:
-several comedians filed themselves under Business, because their channel
-descriptions contain the phrase "business enquiries". The classifier now strips
-contact boilerplate before matching.
+key is available — including the moment a single channel is added, not only in
+a batch. The heuristic alone was wrong in a way worth recording: several
+comedians filed themselves under Business, because their channel descriptions
+contain the phrase "business enquiries". The classifier now strips contact
+boilerplate before matching.
+
+Adding a channel shows where it landed, right then: which category, and
+whether a model placed it or the keyword table did. Changing it is one click
+from that same dialog, because the moment you are already looking at the
+decision is a better time to correct it than three scrolls later on the shelf.
 
 Anything you file by hand is locked and never re-classified. A "sort them for
 me" button that undid your own corrections would be a button nobody presses
@@ -457,7 +488,7 @@ loan. Delete `data/squirl.db` whenever you want a clean start.
 | `npm test` | Run the test suite |
 | `npm run typecheck` | Type-check without building |
 | `npm run brand:build` | Regenerate marks and icons from the artwork |
-| `SIGNAL_SYNC_INTERVAL_MS=…` | Override Signal's three-hour sync interval |
+| `SIGNAL_SYNC_INTERVAL_MS=…` | Override Signal's one-hour sync interval |
 | `npm run build && npm start` | Production build |
 
 ### Where your data lives

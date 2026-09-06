@@ -12,7 +12,7 @@ import { syncAll, type SyncRun } from './sync';
  *
  * ## Never wait when there is a reason to go now
  *
- * Three hours is the *idle* cadence, not a rate limit. Four things jump the
+ * One hour is the *idle* cadence, not a rate limit. Four things jump the
  * queue, because in each case the schedule is known to be wrong:
  *
  *   the process just started      the machine may have been off for a day
@@ -34,7 +34,7 @@ import { syncAll, type SyncRun } from './sync';
 const HOURS = 3_600_000;
 
 /** The idle cadence. Configurable, but not exposed as a setting until it needs to be. */
-const INTERVAL = Number(process.env.SIGNAL_SYNC_INTERVAL_MS ?? 3 * HOURS);
+const INTERVAL = Number(process.env.SIGNAL_SYNC_INTERVAL_MS ?? 1 * HOURS);
 
 /** How soon to try again after a failure, and how far that backs off. */
 const RETRY_MIN = 60_000;

@@ -1,6 +1,6 @@
 import { listChannels } from '@/lib/signal/channels';
 import { SIGNAL_EPOCH, beforeBaseline } from '@/lib/signal/epoch';
-import { getQueue, groupByDay } from '@/lib/signal/queue';
+import { getQueue, groupByDay, orderByShelf } from '@/lib/signal/queue';
 import { Inbox } from '@/components/signal/inbox';
 
 export const metadata = { title: 'Signal' };
@@ -22,7 +22,7 @@ export default async function SignalInbox() {
   const [items, channels] = await Promise.all([getQueue(), listChannels()]);
 
   const groups = groupByDay(items);
-  const live = items.filter((item) => item.kind === 'live');
+  const live = orderByShelf(items.filter((item) => item.kind === 'live'));
 
   return (
     <Inbox

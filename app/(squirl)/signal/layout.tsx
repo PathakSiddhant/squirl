@@ -2,6 +2,7 @@ import { CaretLeft } from '@phosphor-icons/react/dist/ssr/CaretLeft';
 import Link from 'next/link';
 
 import { AppMark, SignalWordmark } from '@/components/brand/logo';
+import { AutoRefresh } from '@/components/signal/auto-refresh';
 import { SignalNav } from '@/components/signal/signal-nav';
 import { SyncButton } from '@/components/signal/sync-button';
 
@@ -27,6 +28,8 @@ import { SyncButton } from '@/components/signal/sync-button';
 export default function SignalLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="app-signal flex min-h-dvh flex-col">
+      <AutoRefresh />
+
       <header className="sticky top-0 z-20 border-b border-line bg-bg/85 backdrop-blur-md">
         <div className="mx-auto grid w-full max-w-[76rem] grid-cols-[1fr_auto_1fr] items-center gap-4 px-6 py-4 sm:px-10">
           <div className="flex min-w-0 items-center gap-1.5">

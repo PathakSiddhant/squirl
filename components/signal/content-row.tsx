@@ -4,7 +4,9 @@ import { ArrowUpRight } from '@phosphor-icons/react/dist/csr/ArrowUpRight';
 import { Broadcast } from '@phosphor-icons/react/dist/csr/Broadcast';
 import { Check } from '@phosphor-icons/react/dist/csr/Check';
 import { X } from '@phosphor-icons/react/dist/csr/X';
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import Image from 'next/image';
+import { useEffect, useRef, useState } from 'react';
 
 import { cn } from '@/lib/cn';
 import { IST_TIME_ZONE } from '@/lib/date';
@@ -63,6 +65,17 @@ function when(item: QueueItem): string | null {
   }).format(at);
 }
 
+/**
+ * How long the confirmation shows before the row actually leaves.
+ *
+ * Long enough that the check or the cross is unmistakably the thing that just
+ * happened, short enough that clearing ten items in a row still feels brisk.
+ * Matches nothing else in the system's duration scale on purpose: this is a
+ * held beat before an exit, not a state change or a layout shift, and it earns
+ * its own number rather than borrowing one that means something else.
+ */
+const CONFIRM_MS = 320;
+
 export function ContentRow({
   item,
   onOpen,
@@ -78,6 +91,39 @@ export function ContentRow({
   const soon = when(item);
   const thumb = atSize(item.thumbnailUrl, 480);
   const avatar = atSize(item.channelThumbnail, 64);
+  const reduceMotion = useReducedMotion();
+
+  /*
+    Held here, not in the parent.
+
+    The parent removes the row the instant it is told to — that is what makes
+    every other decision in the inbox feel instant, and it must stay that way
+    for a reader working through a real backlog. What changes is *when* the row
+    tells it: a click now shows what was chosen before it says so, instead of
+    the row simply vanishing the moment a button is touched. Reduced motion
+    skips straight through, because the point of the flash is to be seen.
+  */
+  const [settling, setSettling] = useState<'done' | 'dismissed' | null>(null);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    // Cleared, never fired: if the row leaves the tree for some other reason
+    // mid-flash — a refresh landing at the same instant, say — this must not
+    // go on to call a handler for a row that is no longer there.
+    return () => {
+      if (timer.current) clearTimeout(timer.current);
+    };
+  }, []);
+
+  const settle = (kind: 'done' | 'dismissed', run: () => void) => {
+    if (settling) return;
+    if (reduceMotion) {
+      run();
+      return;
+    }
+    setSettling(kind);
+    timer.current = setTimeout(run, CONFIRM_MS);
+  };
 
   const action =
     'flex size-9 items-center justify-center rounded-lg text-ink-3 transition-colors duration-[var(--t-state)] hover:bg-surface-3 hover:text-ink';
@@ -86,7 +132,45 @@ export function ContentRow({
     // Highlighted while the pointer is on it, and not a moment longer. An
     // earlier version kept a cursor on the last row touched, which left the
     // screen permanently marked at wherever the mouse happened to stop.
-    <div className="group/row relative flex items-start gap-5 bg-surface p-4 transition-colors duration-[var(--t-state)] hover:bg-surface-2">
+    <div
+      className={cn(
+        'group/row relative flex items-start gap-5 bg-surface p-4 transition-colors duration-[var(--t-state)]',
+        settling ? 'pointer-events-none' : 'hover:bg-surface-2',
+      )}
+    >
+      {/* The confirmation. A wash in the colour the reader just chose, and the
+          mark for what they chose, so the click reads as landed before the row
+          leaves rather than the row simply disappearing under the pointer. */}
+      <AnimatePresence>
+        {settling ? (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0, transition: { duration: 0.1 } }}
+            transition={{ duration: 0.1 }}
+            className={cn(
+              'absolute inset-0 z-10 flex items-center justify-center',
+              settling === 'done' ? 'bg-[var(--in-wash)]' : 'bg-[var(--i-owe-wash)]',
+            )}
+          >
+            <motion.span
+              initial={{ scale: 0.5, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+              className={cn(
+                'flex size-11 items-center justify-center rounded-full text-white shadow-[var(--shadow-pop)]',
+                settling === 'done' ? 'bg-[var(--in)]' : 'bg-[var(--i-owe)]',
+              )}
+            >
+              {settling === 'done' ? (
+                <Check size={22} weight="bold" />
+              ) : (
+                <X size={22} weight="bold" />
+              )}
+            </motion.span>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
 
       {/*
         The picture is the only thing that opens the video, and only on a double
@@ -167,7 +251,8 @@ export function ContentRow({
       <div className="flex shrink-0 items-center gap-1 self-center opacity-0 transition-opacity duration-[var(--t-state)] group-hover/row:opacity-100">
         <button
           type="button"
-          onClick={onDismiss}
+          onClick={() => settle('dismissed', onDismiss)}
+          disabled={settling !== null}
           title="Dismiss"
           aria-label="Dismiss"
           // The two irreversible-feeling actions each take their own colour on
@@ -178,14 +263,22 @@ export function ContentRow({
         </button>
         <button
           type="button"
-          onClick={onDone}
+          onClick={() => settle('done', onDone)}
+          disabled={settling !== null}
           title="Done"
           aria-label="Done"
           className={cn(action, 'hover:bg-[var(--in-wash)] hover:text-[var(--in-text)]')}
         >
           <Check size={17} weight="bold" />
         </button>
-        <button type="button" onClick={onOpen} title="Open on YouTube" aria-label="Open" className={action}>
+        <button
+          type="button"
+          onClick={onOpen}
+          disabled={settling !== null}
+          title="Open on YouTube"
+          aria-label="Open"
+          className={action}
+        >
           <ArrowUpRight size={17} />
         </button>
       </div>

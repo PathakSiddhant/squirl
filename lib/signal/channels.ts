@@ -4,6 +4,7 @@ import { db } from '@/lib/db/client';
 
 import { ensureCategories } from './categories';
 import { newSignalId } from './id';
+import { classifyWithAI } from './intelligence';
 import { signalChannels, signalContent, type SignalChannel } from './schema';
 import { fetchChannels, resolveChannel, searchChannels, type YouTubeChannel } from './youtube';
 
@@ -193,6 +194,17 @@ export async function findChannels(query: string): Promise<ChannelCandidate[]> {
 
 // ----------------------------------------------------------------- adding
 
+export interface AddedChannel {
+  channel: SignalChannel;
+  category: { id: string; name: string; slug: string } | null;
+  /** True when Gemini placed it. False for the keyword guess, or when nothing
+   *  was classified at all because the channel already existed. */
+  usedModel: boolean;
+  /** False for a channel that was already being watched and was simply
+   *  switched back on: nothing was filed, so there is nothing to report. */
+  wasNew: boolean;
+}
+
 /**
  * Add a channel to the watched set.
  *
@@ -200,8 +212,13 @@ export async function findChannels(query: string): Promise<ChannelCandidate[]> {
  * duplicating it or resetting its category. The uploads playlist is captured
  * now, at the one moment we are already holding the channel resource, so no
  * later sync has to spend a unit discovering it.
+ *
+ * Classified with the model first, the keyword table second. Filing thirty
+ * channels at once through `reclassifyAll` is worth batching; filing the one
+ * channel a reader just typed is not, and a single-item request to Gemini
+ * costs the same one call either way.
  */
-export async function addChannel(youtubeId: string): Promise<SignalChannel> {
+export async function addChannel(youtubeId: string): Promise<AddedChannel> {
   const [existing] = await db
     .select()
     .from(signalChannels)
@@ -211,21 +228,32 @@ export async function addChannel(youtubeId: string): Promise<SignalChannel> {
     // Re-adding a channel that was switched off turns it back on. That is what
     // the reader means by adding it again, and it keeps everything already
     // pulled from it rather than starting over.
-    if (!existing.enabled) {
-      await db
-        .update(signalChannels)
-        .set({ enabled: true })
-        .where(eq(signalChannels.id, existing.id));
-      return { ...existing, enabled: true };
-    }
-    return existing;
+    const channel = existing.enabled
+      ? existing
+      : await (async () => {
+          await db
+            .update(signalChannels)
+            .set({ enabled: true })
+            .where(eq(signalChannels.id, existing.id));
+          return { ...existing, enabled: true };
+        })();
+
+    const categories = existing.categoryId ? await ensureCategories() : [];
+    const category = categories.find((row) => row.id === existing.categoryId) ?? null;
+    return {
+      channel,
+      category: category ? { id: category.id, name: category.name, slug: category.slug } : null,
+      usedModel: false,
+      wasNew: false,
+    };
   }
 
   const [fresh] = await fetchChannels([youtubeId]);
   if (!fresh) throw new Error('That channel could not be found on YouTube.');
 
   const categories = await ensureCategories();
-  const slug = classify(fresh) ?? 'other';
+  const fromModel = await classifyWithAI([fresh]).catch(() => null);
+  const slug = fromModel?.[0]?.category ?? classify(fresh) ?? 'other';
   const category = categories.find((row) => row.slug === slug) ?? null;
 
   const row = {
@@ -242,7 +270,13 @@ export async function addChannel(youtubeId: string): Promise<SignalChannel> {
 
   await db.insert(signalChannels).values(row);
   const [saved] = await db.select().from(signalChannels).where(eq(signalChannels.id, row.id));
-  return saved;
+
+  return {
+    channel: saved,
+    category: category ? { id: category.id, name: category.name, slug: category.slug } : null,
+    usedModel: fromModel !== null,
+    wasNew: true,
+  };
 }
 
 /**

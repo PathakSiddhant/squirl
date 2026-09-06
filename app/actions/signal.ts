@@ -12,7 +12,7 @@ import {
   type ChannelCandidate,
 } from '@/lib/signal/channels';
 import { dismiss, markDone, restore } from '@/lib/signal/queue';
-import { syncNow } from '@/lib/signal/scheduler';
+import { getStatus, syncNow, type SchedulerStatus } from '@/lib/signal/scheduler';
 import { YouTubeError } from '@/lib/signal/youtube';
 
 /**
@@ -74,17 +74,49 @@ export async function searchForChannels(
   }
 }
 
-export async function addChannelById(youtubeId: string): Promise<{ error: string | null }> {
+export interface AddChannelResult {
+  error: string | null;
+  channelId: string | null;
+  title: string | null;
+  category: { id: string; name: string; slug: string } | null;
+  usedModel: boolean;
+  wasNew: boolean;
+}
+
+export async function addChannelById(youtubeId: string): Promise<AddChannelResult> {
   const parsed = id.safeParse(youtubeId);
-  if (!parsed.success) return { error: 'That channel id is malformed.' };
+  if (!parsed.success) {
+    return {
+      error: 'That channel id is malformed.',
+      channelId: null,
+      title: null,
+      category: null,
+      usedModel: false,
+      wasNew: false,
+    };
+  }
 
   try {
-    await addChannel(parsed.data);
+    const added = await addChannel(parsed.data);
     revalidatePath('/signal', 'layout');
-    return { error: null };
+    return {
+      error: null,
+      channelId: added.channel.id,
+      title: added.channel.title,
+      category: added.category,
+      usedModel: added.usedModel,
+      wasNew: added.wasNew,
+    };
   } catch (error) {
     console.error('[signal] add channel failed', error);
-    return { error: explain(error) };
+    return {
+      error: explain(error),
+      channelId: null,
+      title: null,
+      category: null,
+      usedModel: false,
+      wasNew: false,
+    };
   }
 }
 
@@ -137,6 +169,19 @@ export async function requestSync(): Promise<{ added: number; offline: boolean; 
     console.error('[signal] manual sync failed', error);
     return { added: 0, offline: false, error: explain(error) };
   }
+}
+
+/**
+ * The scheduler's own state, for a page that wants to notice a sync landing
+ * without the reader having to reload it.
+ *
+ * Reading this costs nothing: the scheduler keeps its state on `globalThis`
+ * in this same process, so this is a read of memory that happens to cross a
+ * server-action boundary, not a query or a call to YouTube. Safe to poll from
+ * the browser far more often than a sync itself could ever run.
+ */
+export async function syncStatus(): Promise<SchedulerStatus> {
+  return getStatus();
 }
 
 // ---------------------------------------------------------------- categories
