@@ -68,8 +68,20 @@ export function Arc({
     return `M ${a.x} ${a.y} A ${r} ${r} 0 ${large} 1 ${b.x} ${b.y}`;
   }
 
-  const needle = point(drawn);
   const tone = unknown ? 'var(--line-strong)' : over ? 'var(--form-partial)' : 'var(--app-accent)';
+
+  /*
+    The length of the drawn sweep, in user units.
+
+    Written as a real dash length rather than left to `pathLength`, because
+    `pathLength` is applied on hydration: the server sends a fully drawn arc,
+    the browser paints it, and only then does the animation reset it to zero
+    and sweep it back in. That flash is why the dial appeared to come from
+    somewhere else. With the dash offset set as an ordinary attribute the arc
+    is already empty in the markup, so it starts at the foot of the scale and
+    travels to the reading, once.
+  */
+  const sweepLength = (r * SWEEP * drawn * Math.PI) / 180;
 
   return (
     <div className="relative shrink-0" style={{ width: size, height: size * 0.88 }}>
@@ -123,10 +135,12 @@ export function Arc({
             stroke={tone}
             strokeWidth={stroke}
             strokeLinecap="round"
-            initial={reduceMotion ? false : { pathLength: 0 }}
-            animate={{ pathLength: 1 }}
+            strokeDasharray={sweepLength}
+            strokeDashoffset={reduceMotion ? 0 : sweepLength}
+            initial={reduceMotion ? false : { strokeDashoffset: sweepLength }}
+            animate={{ strokeDashoffset: 0 }}
             transition={
-              reduceMotion ? { duration: 0 } : { duration: 0.85, ease: [0.22, 1, 0.36, 1] }
+              reduceMotion ? { duration: 0 } : { duration: 0.9, ease: [0.22, 1, 0.36, 1] }
             }
           />
         ) : null}
@@ -139,18 +153,30 @@ export function Arc({
           for it to mark until the day has some fuel in it.
         */}
         {!unknown && drawn > 0.005 ? (
-          <motion.circle
-            cx={needle.x}
-            cy={needle.y}
-            r={stroke / 2 + 3}
-            fill="var(--surface)"
-            stroke={tone}
-            strokeWidth={3.5}
-            initial={reduceMotion ? false : { scale: 0, originX: needle.x, originY: needle.y }}
-            animate={{ scale: 1 }}
-            transition={{ type: 'spring', stiffness: 420, damping: 24, delay: 0.5 }}
-            style={{ transformOrigin: `${needle.x}px ${needle.y}px` }}
-          />
+          /*
+            The needle rides the scale rather than appearing at the end of it.
+
+            Drawn once at angle zero and carried round by a rotation of the
+            group, so its path is the arc itself — it leaves the foot of the
+            scale with the sweep and arrives with it.
+          */
+          <motion.g
+            initial={reduceMotion ? false : { rotate: START }}
+            animate={{ rotate: START + SWEEP * drawn }}
+            transition={
+              reduceMotion ? { duration: 0 } : { duration: 0.9, ease: [0.22, 1, 0.36, 1] }
+            }
+            style={{ transformOrigin: `${cx}px ${cy}px`, transformBox: 'view-box' }}
+          >
+            <circle
+              cx={cx + r}
+              cy={cy}
+              r={stroke / 2 + 3}
+              fill="var(--surface)"
+              stroke={tone}
+              strokeWidth={3.5}
+            />
+          </motion.g>
         ) : null}
       </svg>
 

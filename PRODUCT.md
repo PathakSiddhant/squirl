@@ -169,3 +169,97 @@ new channels.
 **Out of scope:** any YouTube sign-in, recommendations, watch history, comments,
 playback inside Signal, Shorts, community posts, cloud sync, notifications,
 gamification, and any figure describing how much you watched.
+
+## Form: the third application
+
+### The problem, precisely
+
+Every product for tracking a body is built to be used perfectly, and nobody uses
+one perfectly. You log breakfast and lunch, you eat dinner at somebody's house,
+and the day is recorded as 900 calories — a number that is not wrong so much as
+invented. The graph then reads that invention as a triumph, the weekly summary
+averages it in, and by the third week the data is worth less than the memory it
+replaced.
+
+The second failure is the streak. A tool that counts consecutive days has made
+the count the point, and the day you break it is the day you stop opening the
+app — not because the training stopped, but because the app has arranged to
+punish you for telling it the truth.
+
+The third is that these products cannot say when a goal is nonsense. Ten
+kilograms in six weeks is accepted without comment, the plan is drawn, and the
+failure arrives six weeks later as a personal one.
+
+### The question the product exists to answer
+
+> **What is my body doing, over months, and is what I am asking of it sane?**
+
+Both halves matter. Days are noise; the months are the signal. And a plan that
+cannot be met should say so on the day it is written, not on the day it fails.
+
+### Principles
+
+1. **A day has three readings and none of them is failure.** Complete, partial,
+   or untracked. There is deliberately no state for "logged everything and hit
+   nothing" — a day somebody ate out with friends and wrote down what they could
+   is a day with real information in it, and answering it with a red square is
+   the product deciding its own tidiness matters more than the person using it.
+2. **"I could not track today" is a first-class answer.** One tap, never buried
+   in a menu, never phrased as a confession. The alternative is that somebody
+   invents a number, and an invented number is worse than an absence in every
+   direction.
+3. **Off means gone.** A metric switched off does not become a row of em dashes.
+   It leaves the daily screen, the day's judgement and the completion graph,
+   because a placeholder for something you chose not to track is a small daily
+   argument with your own decision.
+4. **The past keeps meaning what it meant.** Targets change forward only. Food
+   rows freeze their numbers at the moment they are logged. A finished phase is
+   a record, not a recalculation. Nothing you change today rewrites last Monday.
+5. **No streaks, no scores, no badges.** Nothing counts consecutive anything.
+   The completion graph is a texture, not a report card, and it has exactly one
+   hue because a second one would inevitably be red.
+6. **The reality check is arithmetic; only the sentence is written by a model.**
+   Whether a goal is sane is decided by a deterministic band, offline, always.
+   Gemini is asked to phrase the verdict in a sentence and is never asked what
+   the verdict is.
+7. **Weight is measured, never scored.** It is a fact about a body, not a thing
+   done with a day. Including it in daily completion would make every day before
+   the last one a partial day.
+8. **Offline is a normal state.** Every screen renders from the local database.
+   Food photographs are stored in the row rather than linked, so the library
+   still draws with the network unplugged.
+
+### Why one phase at a time
+
+A phase is a stretch with a start, a target and an end — a cut, a maintenance
+block, a lean bulk. Exactly one runs at a time, and the database enforces it
+with a partial unique index rather than the application hoping.
+
+Two simultaneous goals is two contradictory sets of targets, and every screen
+would have to ask which one it is drawing. One at a time is also the honest
+model of how bodies actually change: you do one thing for three months, then you
+decide what to do next.
+
+### Why there is no photograph gallery, no barcode scanner, no recipe builder
+
+Each of them is a second product. The food library is the twenty or thirty
+things somebody actually cooks, entered once and reused for years, which is
+small enough to be ordered by what you ate most recently — and that ordering is
+the entire reason logging takes seconds. A public food database would make it a
+search problem, and a search problem is a slower interaction than typing the
+name.
+
+### Scope
+
+**In scope:** phases with immutable history, configurable per-phase metrics with
+targets that change forward only, natural-language entry of weights and
+portions, a personal food library with exact portion arithmetic and a
+photograph, water, creatine, movement and sleep as one-tap facts, an untracked
+day as a real state, a trend that separates the signal from the scale's noise,
+tape measurements when you want them, notes between phases, and a completion
+graph that never reads as failure.
+
+**Out of scope:** exercise logging, workout programming, macros beyond the four,
+barcodes, recipes, a public food database, social anything, streaks, badges,
+scores, notifications, cloud sync, and any number describing how disciplined
+somebody has been.

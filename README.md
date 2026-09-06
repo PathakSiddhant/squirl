@@ -51,16 +51,15 @@ Squirl knows Ledger exists. Ledger does not know Squirl has other plans.
 | | Application | State | What it is for |
 |---|---|---|---|
 | <img src="public/brand/ledger-mark.png" width="26"> | **Ledger** | Built | Money. What you spent, what you lent, what you owe, what is safe to spend. |
-| <img src="public/brand/form-mark.png" width="26"> | **Form** | Planned | Training, and what it is actually doing to you. |
+| <img src="public/brand/form-mark.png" width="26"> | **Form** | Built | One body, measured over months. Phases, what you ate, and whether the plan is sane. |
 | <img src="public/brand/signal-mark.png" width="26"> | **Signal** | Built | Attention. What the channels you chose have published, as a queue that ends. |
 
-Two of those three are real. Form holds a place and says so, on the screen as
-well as here: it shows no figures, it has no route to open, and its card says
-"not built yet" rather than filling the space with a plausible number.
-
-That is deliberate. A launcher that quietly invents data for the applications
-it has not written yet teaches you not to trust the ones it has, and the first
-real number to appear would not be believed.
+All three are real, and each was built to answer one question rather than to be
+a category of software. The launcher shows a live figure from each of them and
+nothing else; when Form had not been written yet its card said "not built yet"
+rather than filling the space with a plausible number, because a launcher that
+invents data for the applications it has not written teaches you not to trust
+the ones it has.
 
 ### The rules it holds itself to
 
@@ -426,11 +425,129 @@ twice.
 
 ---
 
+## Form, the third application
+
+Ledger is a document you check and Signal is a queue you clear. Form is neither.
+It is a record of one body over months, opened standing up, several times a day,
+usually to write one number down and close it again.
+
+<img src="docs/screenshots/form-today.webp" alt="Form's daily screen: the phase drawn as two arcs on one dial, a fuel gauge, a protein tally, a water vessel, and the day's food" width="820">
+
+Every product in this category is built to be used perfectly, and nobody uses
+one perfectly. You log breakfast and lunch, you eat dinner at somebody's house,
+and the day goes into the database as 900 calories — a figure that is not so
+much wrong as invented. Form's answer is that **"I could not track today" is a
+first-class answer**: one tap, never buried in a menu, never phrased as a
+confession. An absence is worth more than an invention.
+
+### One phase at a time, and the database says so
+
+A phase is a stretch with a start, a target and an end. Exactly one runs at
+once, enforced by a partial unique index rather than by hope:
+
+```sql
+CREATE UNIQUE INDEX form_phases_one_active_idx
+  ON form_phases (status) WHERE status = 'active';
+```
+
+Two simultaneous goals is two contradictory sets of targets, and every screen
+would have to ask which one it was drawing.
+
+The dial on the daily screen carries the only comparison that matters in a
+phase, which is why it is a picture rather than a sentence: the outer arc is how
+much of the **time** has gone, the inner one how far the **body** has actually
+come. A phase two-thirds through the calendar and one-third through the weight
+says so instantly, and Form takes no position on it.
+
+### The reality check is arithmetic. Only the sentence is a model.
+
+Ask for ten kilograms in six weeks and Form works out, offline and
+deterministically, that this is 2.3% of bodyweight a week — outside every band a
+body can do without losing muscle — and says so before the plan is drawn. The
+verdict comes from a table of rates; Gemini is only ever asked to phrase it in a
+sentence, and never asked what the verdict is.
+
+If there is no key, or no network, the sentence is written by code instead and
+the verdict is identical. Nothing about whether a goal is sane depends on a
+model being reachable.
+
+### Every reading gets the instrument its own physics suggests
+
+<img src="docs/screenshots/form-progress.webp" alt="Form's progress screen: the weight trend against its target, and the day-completion graph" width="820">
+
+Six identical rings in a grid is the house style of every fitness product ever
+shipped, and it has a real cost: you cannot tell the second ring from the third
+without reading the label under it. So fuel is an **arc**, because it is spent
+against a ceiling and an arc has two ends. Protein is a **tally** of ten blocks,
+because protein is reached in lumps — an egg, a bowl of dal, a scoop — and
+counting seven full blocks is faster than reading `137 / 190`. Water is a
+**vessel**, because water fills things. You can tell them apart from across the
+room, which is the actual test.
+
+### A graph of days that cannot read as failure
+
+The completion graph borrows its shape from a contribution graph and none of its
+meaning. It does not measure whether the app was opened; it measures how much of
+what a day asked for actually happened, judged against **the targets that were
+in force on that day** rather than the ones set since.
+
+There is exactly one hue, and nothing on it is ever red. A day where somebody
+wrote down what they could and came up short is a quiet square, not a failure,
+and a day nobody logged is neutral rather than empty — "I did not write anything
+down" and "I missed everything" are different statements, and the graph has to
+be able to make the first without implying the second.
+
+### The past keeps meaning what it meant
+
+Three separate mechanisms, all of them the same idea:
+
+- **Targets change forward only.** Editing one writes a new row into the phase's
+  target history. Monday was lived against 1,800 kcal and is judged against
+  1,800 forever, whatever it says today.
+- **Food rows freeze.** A logged row carries its own name and its own numbers,
+  copied at the moment it was logged. Correcting a packet's protein figure today
+  does not quietly rewrite what last March's breakfasts contained.
+- **A finished phase is a record.** It remembers the weight it started at, aimed
+  for and ended on, and nothing on the history screen is recomputed from current
+  settings.
+
+### The food library is small on purpose
+
+<img src="docs/screenshots/form-food.webp" alt="Form's food library: the twenty things actually cooked, each with a photograph" width="820">
+
+Twenty or thirty things, entered once with the packet in hand and reused for
+years. That constraint is what makes logging fast: a library this size can be
+ordered by what you ate most recently, so the oats are the first row every
+morning without anybody arranging them.
+
+Each food carries a photograph, because a list of nouns is the hardest kind of
+list to search with your eyes. Form finds one on Wikipedia — a public API with
+no key and no account — and stores the bytes **in the row** rather than linking
+them, so the library still draws with the network unplugged and copying
+`squirl.db` still copies everything. You can choose your own file instead; it is
+re-encoded to a 320px square in the browser before it is stored. Anything
+without a photograph falls back to an icon for the kind of thing it is.
+
+### Everything is stored in fine units
+
+Grams, millilitres, millimetres, milli-kcal, milligrams. The same reason Ledger
+counts in paise: 68.5 g of a per-100g food is exact integer arithmetic rather
+than a float that drifts, and a day's total is the sum of what it is made of
+rather than a number that disagrees with its own rows.
+
+You never type any of that. `72.5`, `72.5 kg`, `160 lb`, `5'11"`, `2.5L`,
+`7h 30m` and `7:30` are all read correctly, and the field tells you what it
+understood before anything is saved.
+
+---
+
 ## Run it
 
 You need **Node 20.9 or newer**. Nothing else to install, no Docker, no
-sign-up. Ledger needs no keys at all; Signal needs a free YouTube key to fetch
-anything.
+sign-up. Ledger needs no keys at all. Signal needs a free YouTube key to fetch
+anything. Form needs nothing: it will use a Gemini key to phrase a goal's
+verdict in a sentence if one happens to be set, and writes the sentence itself
+if not — the verdict is the same either way, because it is arithmetic.
 
 ```bash
 git clone https://github.com/PathakSiddhant/squirl.git

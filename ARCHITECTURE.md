@@ -162,7 +162,7 @@ shared abstraction invented before the second domain exists would be fiction.
 `data/squirl.db` holds everything, because one file is one thing to back up and
 one thing to own. Applications never share tables. A table belongs to exactly
 one application, and the application prefix in migrations makes that visible.
-Signal's five tables are all `signal_*`; Ledger has never heard of them.
+Signal's five tables are all `signal_*` and Form's twelve are all `form_*`; Ledger has never heard of either.
 
 **4. An application must be removable.**
 Deleting `app/(squirl)/ledger/` and its tables must leave Squirl running. If
@@ -178,13 +178,85 @@ contract. Squirl does not import an application's domain logic: the registry
 entry imports *from* the application, dynamically, inside the snapshot
 function, so the launcher never pulls a domain into its own bundle.
 
-**6. Egress goes through exactly one file.**
-Ledger has no network at all. Signal talks to two external services, and does
-it from `lib/signal/youtube.ts` and `lib/signal/intelligence.ts` and nowhere
+**6. Egress goes through one file per service.**
+Ledger has no network at all. Signal talks to two external services from
+`lib/signal/youtube.ts` and `lib/signal/intelligence.ts`, and Form talks to two
+from `lib/form/intelligence.ts` and `lib/form/food-image.ts`, and nowhere
 else, with every response validated by Zod at the boundary and every image URL
 checked against an allowlist of hosts before it reaches a component. An
 application that reaches the network from wherever happens to be convenient has
 no boundary left to audit.
+
+## Form, and what the third application proved
+
+Signal was the test that the platform rules held for a second application. Form
+was the test that they hold when the domain is genuinely unlike the first two,
+and it was added the same way: a `lib/form/` folder, a `form_*` table prefix, a
+route group, and one entry in `lib/squirl/apps.ts`. Nothing in Squirl, Ledger or
+Signal was touched to make room for it.
+
+### Its own units, for the same reason Ledger has its own
+
+Form stores everything in integer fine units — grams, millimetres, millilitres,
+milli-kcal, milligrams, and milli-units for a portion. This is Ledger's paise
+argument applied to a different domain: 68.5 g of a per-100 g food is exact
+integer arithmetic, and a day's totals are the sum of its rows rather than a
+float that has drifted away from them.
+
+`lib/form/units.ts` is both the parser and the formatter, and that pairing is
+load-bearing. The interface previews a value using the same function the server
+will store it with, so a field that showed `72.5 kg` cannot save something else.
+
+### Nutrition is never typed, only summed
+
+`form_entries` holds one directly-logged metric per day — water, creatine,
+movement, sleep. Calories and macros are deliberately absent from it. They are
+sums over `form_food_logs`, so a day's total and the things it is made of can
+never disagree, and there is no way to type a calorie figure that contradicts
+the food underneath it.
+
+Weight is a third table again. It is a measurement of the body rather than a
+thing done with a day, and keeping it apart is what stops the completion logic
+from ever being tempted to score a missed weigh-in as a missed target.
+
+### Judgement is a pure function
+
+`lib/form/day.ts` takes the rules in force, the readings, and whether the day is
+over, and returns a verdict. It touches no database and knows no metric by name:
+which metrics count comes from the phase's configuration, passed in. Turning
+carbohydrate off does not hide a column, it removes the metric from the
+judgement entirely.
+
+The historical part sits in the same file. `targetsOn()` resolves the targets
+that applied on a given day from the target-history rows, so completion is never
+judged against current configuration. That single function is what makes "the
+past keeps meaning what it meant" mechanical rather than aspirational.
+
+### The model is asked for prose, never for a verdict
+
+`lib/form/feasibility.ts` decides whether a goal is sane from a table of rates,
+deterministically and offline. `lib/form/intelligence.ts` asks Gemini to phrase
+that verdict in one sentence, and the action layer splits the two so the
+interface can show the verdict instantly and let the sentence arrive when it
+arrives. If the key is missing, the network is down or the response is malformed,
+a sentence written in code is used and the verdict is byte-for-byte the same.
+
+This is the same rule Signal follows for filing channels, and it is worth
+stating as a rule: **a model may write a sentence about a decision, and may
+never make one.**
+
+### Egress, again through one file
+
+Form reaches the network from exactly two places. `lib/form/intelligence.ts` for
+the sentence above, and `lib/form/food-image.ts`, which asks Wikipedia for a
+photograph of a food. Both fail silently into a working application: no
+sentence, or no photograph, and nothing else changes.
+
+Food photographs are downloaded once and stored inline in the row as a `data:`
+URL rather than kept as a link or a file path. A link makes the library go blank
+on a train; a path puts half of a food in the database and half of it on disk,
+so copying `squirl.db` stops copying everything. Inline bytes keep a food a
+single row.
 
 ## The design contract
 

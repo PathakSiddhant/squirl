@@ -289,11 +289,10 @@ function FoodForm({
   const file = useRef<HTMLInputElement>(null);
 
   const hunt = () => {
+    // The button is disabled without a name, so this is a guard rather than a
+    // path anybody can reach by pressing things.
     const term = name.trim();
-    if (!term) {
-      setError('Give it a name first, so Form knows what to look for.');
-      return;
-    }
+    if (!term) return;
     setHunting(true);
     setError(null);
     start(async () => {
@@ -355,12 +354,22 @@ function FoodForm({
       <Dialog.Portal>
         <Dialog.Overlay className="z-overlay fixed inset-0 bg-black/40 data-[state=open]:animate-[scrim-in_180ms_var(--ease)]" />
         <Dialog.Content
+          /*
+            Three bands, and only the middle one moves.
+
+            The whole dialog used to scroll, which took the title, the picture
+            and — worse — the save button off the top and bottom of a short
+            window. What you are naming and the button that commits it are the
+            two things that must never leave the screen, so the header and the
+            footer are pinned and the fields scroll between them.
+          */
           className={cn(
-            'z-modal fixed left-1/2 top-1/2 max-h-[88dvh] w-[calc(100vw-1.5rem)] max-w-[30rem] overflow-y-auto',
-            '-translate-x-1/2 -translate-y-1/2 rounded-[1.5rem] border border-[var(--form-edge)] bg-surface p-5',
+            'form-scope z-modal fixed left-1/2 top-1/2 flex max-h-[88dvh] w-[calc(100vw-1.5rem)] max-w-[30rem] flex-col',
+            '-translate-x-1/2 -translate-y-1/2 rounded-[1.5rem] border border-[var(--form-edge)] bg-surface',
             'shadow-[var(--shadow-pop)] focus:outline-none data-[state=open]:animate-[sheet-in_180ms_var(--ease)]',
           )}
         >
+          <div className="shrink-0 p-5 pb-0">
           <div className="flex items-start justify-between gap-3">
             <Dialog.Title className="font-serif text-[1.375rem] leading-none tracking-[-0.025em] text-ink">
               {food ? 'Edit food' : 'Add a food'}
@@ -374,7 +383,7 @@ function FoodForm({
           </div>
 
           {/* -------------------------------------------------- the picture */}
-          <div className="mt-5 flex items-center gap-4">
+          <div className="mb-5 mt-5 flex items-center gap-4">
             <FoodPicture name={name || 'food'} image={image} size={88} />
 
             <div className="flex min-w-0 flex-1 flex-col gap-2">
@@ -382,7 +391,8 @@ function FoodForm({
                 <button
                   type="button"
                   onClick={hunt}
-                  disabled={hunting || pending}
+                  title={name.trim() ? 'Look this up on Wikipedia' : 'Type a name first'}
+                  disabled={hunting || pending || !name.trim()}
                   className="flex items-center gap-1.5 rounded-full border border-[var(--form-edge)] bg-surface px-3 py-1.5 text-[0.8125rem] text-ink transition-[translate,box-shadow] duration-[var(--t-state)] hover:-translate-x-px hover:-translate-y-px hover:shadow-[var(--shadow-press)] disabled:opacity-50"
                 >
                   <MagicWand size={13} />
@@ -424,8 +434,11 @@ function FoodForm({
             </div>
           </div>
 
-          {/* -------------------------------------------------- the numbers */}
-          <div className="mt-6 flex flex-col gap-4">
+          </div>
+
+          {/* ------------------------------------ the fields, and only these */}
+          <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
+          <div className="flex flex-col gap-4">
             <Field label="Name" value={name} onChange={setName} placeholder="Curd" autoFocus />
             <Field label="Brand" value={brand} onChange={setBrand} placeholder="optional" />
 
@@ -466,17 +479,22 @@ function FoodForm({
               <Field label="Fibre" value={fiber} onChange={setFiber} placeholder="optional" />
             </div>
           </div>
+          </div>
 
-          {error ? <p className="mt-4 text-[0.8125rem] text-[var(--i-owe-text)]">{error}</p> : null}
+          <div className="shrink-0 border-t border-[var(--form-edge)] p-5">
+            {error ? (
+              <p className="mb-3 text-[0.8125rem] text-[var(--i-owe-text)]">{error}</p>
+            ) : null}
 
-          <button
-            type="button"
-            onClick={submit}
-            disabled={pending}
-            className="mt-6 w-full rounded-full bg-[var(--app-accent)] px-4 py-3 text-[0.9375rem] font-medium text-white transition-[translate,box-shadow] duration-[var(--t-state)] hover:-translate-y-0.5 hover:shadow-[var(--shadow-pop)] disabled:opacity-60"
-          >
-            {food ? 'Save changes' : 'Add to my kitchen'}
-          </button>
+            <button
+              type="button"
+              onClick={submit}
+              disabled={pending}
+              className="w-full rounded-full bg-[var(--app-accent)] px-4 py-3 text-[0.9375rem] font-medium text-white transition-[translate,box-shadow] duration-[var(--t-state)] hover:-translate-y-0.5 hover:shadow-[var(--shadow-pop)] disabled:opacity-60"
+            >
+              {food ? 'Save changes' : 'Add to my kitchen'}
+            </button>
+          </div>
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>

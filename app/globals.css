@@ -1364,7 +1364,17 @@ html.dark .threshold .mark-over-art {
 
   It follows the theme. Dark is this same room at night, not a second product.
 */
-.form-app {
+/*
+  `.form-scope` carries the palette without the ground.
+
+  Dialogs are portalled to the end of the body, which puts them outside
+  `.form-app` entirely — so every variable in this block fell back to Squirl's
+  and the flame button in the add-food sheet came out in Ledger's acorn. The
+  scope class is the same declarations with no background and no bloom, for
+  anything that has to live outside the application's own subtree.
+*/
+.form-app,
+.form-scope {
   --bg: oklch(0.951 0.021 34);
   --bg-deep: oklch(0.921 0.028 33);
   --surface: oklch(0.999 0.002 60);
@@ -1417,6 +1427,13 @@ html.dark .threshold .mark-over-art {
     the scope is what makes the override actually apply.
   */
   color: var(--ink);
+}
+
+.form-scope {
+  color: var(--ink);
+}
+
+.form-app {
   background-color: var(--bg);
   /*
     No `background-attachment: fixed`. It sizes the bloom to the viewport, so
@@ -1431,7 +1448,8 @@ html.dark .threshold .mark-over-art {
   background-repeat: no-repeat;
 }
 
-.dark .form-app {
+.dark .form-app,
+.dark .form-scope {
   --bg: oklch(0.207 0.03 34);
   --bg-deep: oklch(0.163 0.025 32);
   --surface: oklch(0.263 0.027 38);

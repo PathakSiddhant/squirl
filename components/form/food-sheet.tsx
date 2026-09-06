@@ -70,7 +70,7 @@ export function FoodSheet({
         <Dialog.Overlay className="z-overlay fixed inset-0 bg-black/40 backdrop-blur-[2px] data-[state=open]:animate-[scrim-in_180ms_var(--ease)]" />
         <Dialog.Content
           className={cn(
-            'z-modal fixed left-1/2 top-1/2 flex max-h-[86dvh] w-[calc(100vw-1.5rem)] max-w-[32rem] flex-col',
+            'form-scope z-modal fixed left-1/2 top-1/2 flex max-h-[86dvh] w-[calc(100vw-1.5rem)] max-w-[32rem] flex-col',
             '-translate-x-1/2 -translate-y-1/2 focus:outline-none',
             'data-[state=open]:animate-[sheet-in_180ms_var(--ease)]',
           )}

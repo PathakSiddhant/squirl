@@ -240,6 +240,41 @@ would make the accent say "Form" or "nothing in particular" instead of
 "Signal", which is the one job the token has, so this hue is held rather than
 found: a blue with nothing else on the wheel near it.
 
+### What Form does with its slot, and with everything else
+
+Form is the furthest an application has taken the "every application looks like
+itself" clause, and it is worth writing down what it changed and what it did
+not.
+
+It keeps the token names, the spacing scale, the motion durations and the
+accent rule. It changes the ground, the type and the elevation model.
+
+**The ground is a colour, not a neutral.** Ledger and Signal both float white
+on near-white; Form's ground is a blush porcelain at hue 34 carrying four times
+Squirl's chroma, so it is visibly a colour rather than a grey. A mid-tone clay
+was tried first and rejected in about a minute: it read as dark at a glance,
+which is the wrong first impression for something opened at seven in the
+morning.
+
+**Elevation is printed, not lit.** Every panel casts a hard offset shadow with
+no blur at all. That one decision is what keeps the application out of the two
+shapes it kept drifting into — the soft inner-shadow look, where controls are
+pressed into putty, and the frosted-glass look, where they float over a blur.
+Both are house styles with a date stamp on them. A solid slab of colour behind
+a shape with no gradient anywhere is how ink sits on paper in two passes.
+
+**Figures are the content, so they get the display face by default.** Almost
+everything on a Form screen is a number, set in the display serif with tabular
+figures so a figure changing under an animation does not shift its neighbours.
+The unit beside a figure is explicitly returned to the sans, because a nested
+span inherits the serif and "kcal" set in a condensed display face at eleven
+pixels is unreadable.
+
+**Each reading gets its own instrument.** Fuel is an arc, protein a tally, water
+a vessel. Six identical rings in a grid is the house style of every fitness
+product ever shipped and it has a real cost: shape is a much faster channel than
+a label, and identical shapes throw that channel away.
+
 An accent is allowed in exactly four places:
 
 - the application's mark tile, on its launcher row and in its own header
