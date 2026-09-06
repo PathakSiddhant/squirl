@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { GeistMono } from 'geist/font/mono';
 import { GeistSans } from 'geist/font/sans';
-import { IBM_Plex_Mono, Source_Serif_4, Space_Grotesk } from 'next/font/google';
+import { Archivo, Fraunces, IBM_Plex_Mono, Source_Serif_4, Space_Grotesk } from 'next/font/google';
 
 
 import { BootScreen } from '@/components/squirl/boot-screen';
@@ -56,6 +56,39 @@ const signalMono = IBM_Plex_Mono({
   display: 'swap',
 });
 
+/**
+ * Form's own faces.
+ *
+ * Ledger reads like a document and Signal reads like an instrument panel;
+ * Form is neither. It is a record of a body over months, mostly numbers, and
+ * the numbers are the thing you actually look at — so the display face was
+ * chosen for how it sets a large figure rather than for how it sets a
+ * paragraph.
+ *
+ * Fraunces carries those figures. It is a variable serif with real warmth and
+ * a slight optical wonkiness that keeps a screen of measurements from feeling
+ * clinical, which is the exact failure mode of every fitness app: a body is
+ * not a server rack and its weight should not be set in the typeface of a
+ * status dashboard. Archivo does the interface work around it — a grotesque
+ * with flat, industrial terminals that pairs on a genuine contrast axis
+ * instead of being a second sans doing the same job.
+ *
+ * Loaded here because next/font must be called at module scope in a file the
+ * compiler can see statically. Scoped by class, so nothing outside Form moves.
+ */
+const formDisplay = Fraunces({
+  subsets: ['latin'],
+  variable: '--font-form-display',
+  display: 'swap',
+  axes: ['SOFT', 'WONK', 'opsz'],
+});
+
+const formSans = Archivo({
+  subsets: ['latin'],
+  variable: '--font-form-sans',
+  display: 'swap',
+});
+
 export const metadata: Metadata = {
   title: {
     default: 'Squirl',
@@ -81,7 +114,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning className={`${GeistSans.variable} ${GeistMono.variable} ${displaySerif.variable} ${signalSans.variable} ${signalMono.variable}`}>
+    <html lang="en" suppressHydrationWarning className={`${GeistSans.variable} ${GeistMono.variable} ${displaySerif.variable} ${signalSans.variable} ${signalMono.variable} ${formDisplay.variable} ${formSans.variable}`}>
       <head>
         <ThemeScript />
       </head>

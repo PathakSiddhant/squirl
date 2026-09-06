@@ -104,11 +104,52 @@ export const APPS: SquirlApp[] = [
   {
     id: 'form',
     name: 'Form',
-    tagline: 'Training, and what it is actually doing to you.',
+    tagline: 'One body, measured over months.',
     mark: 'form-mark',
     accentClass: 'app-form',
-    status: 'planned',
-    note: 'It has a place here so the shape of Squirl is honest. Nothing is stored for it, and nothing is counted from it, until there is something real behind it.',
+    status: 'ready',
+    href: '/form',
+    snapshot: async () => {
+      const { today } = await import('@/lib/date');
+      const { getActivePhase } = await import('@/lib/form/phases');
+      const { getDayView, latestWeight } = await import('@/lib/form/log');
+      const { getProfile } = await import('@/lib/form/profile');
+      const { weightFigure } = await import('@/lib/form/units');
+
+      const day = today();
+      const phase = await getActivePhase(day);
+
+      // No phase is a real state, not an error. The launcher says so plainly
+      // rather than showing three dashes where numbers are supposed to be.
+      if (!phase) {
+        return { stats: [{ label: 'No phase running', value: 'Start one', note: 'nothing is being tracked' }] };
+      }
+
+      const [profile, weight, view] = await Promise.all([
+        getProfile(),
+        latestWeight(day),
+        getDayView(day, phase, day),
+      ]);
+
+      const judged = view.verdict.judged;
+      const met = view.verdict.met;
+
+      return {
+        stats: [
+          { label: phase.name, value: `Day ${phase.dayNumber}`, note: `of ${phase.totalDays}` },
+          {
+            label: 'Weight',
+            value: weight !== null ? `${weightFigure(weight, profile.weightUnit)} ${profile.weightUnit}` : '—',
+            note: view.weightG !== null ? 'weighed in today' : 'not weighed today',
+          },
+          {
+            label: 'Today',
+            value: judged > 0 ? `${met} of ${judged}` : '—',
+            note: 'targets met so far',
+          },
+        ],
+      };
+    },
   },
   {
     id: 'signal',

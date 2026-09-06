@@ -29,6 +29,27 @@
       "when": 1788700000000,
       "tag": "0003_signal_order",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1788800000000,
+      "tag": "0004_form",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1788900000000,
+      "tag": "0005_form_food_images",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1788910000000,
+      "tag": "0006_form_measure_toggle",
+      "breakpoints": true
     }
   ]
 }

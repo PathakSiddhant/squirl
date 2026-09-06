@@ -1,6 +1,7 @@
 import { createClient, type Client } from '@libsql/client';
 import { drizzle } from 'drizzle-orm/libsql';
 
+import * as formSchema from '../form/schema';
 import * as signalSchema from '../signal/schema';
 import * as ledgerSchema from './schema';
 
@@ -11,7 +12,7 @@ import * as ledgerSchema from './schema';
  * than as code: nothing here knows what a transaction or a video is, and
  * neither schema imports the other.
  */
-const schema = { ...ledgerSchema, ...signalSchema };
+const schema = { ...ledgerSchema, ...signalSchema, ...formSchema };
 
 /**
  * A single local SQLite file. No server, no account, no network.

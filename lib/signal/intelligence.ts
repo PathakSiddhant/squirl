@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import { DEFAULT_CATEGORIES } from './categories';
-import { keyCount, nextKey, releaseKey, restKey } from './keys';
+import { keyCount, nextKey, releaseKey, restKey } from '@/lib/squirl/keys';
 import type { YouTubeChannel } from './youtube';
 
 /**

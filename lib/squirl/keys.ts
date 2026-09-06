@@ -1,6 +1,15 @@
 /**
  * Credential pools, and rotation across them.
  *
+ * Lives in `lib/squirl/` rather than inside an application because it now has
+ * two consumers: Signal classifies channels with Gemini, and Form explains a
+ * goal with it. ARCHITECTURE.md's first rule is to extract to shared only on
+ * the *second* real use, and this is that second use — before Form existed
+ * this file was Signal's and moving it would have been guessing.
+ *
+ * It stays deliberately small. This knows about keys and cooldowns; it knows
+ * nothing about videos, bodies, or what either application asks a model for.
+ *
  * Every key here is on a free tier, which means the limit is not money but a
  * daily and per-minute ceiling per project. Several keys from several projects
  * therefore multiply the ceiling, and more usefully they remove the single

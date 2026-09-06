@@ -1280,3 +1280,369 @@ html.dark .threshold .mark-over-art {
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.02em;
 }
+
+/*
+  ============================================================ Form
+  Form's own voice inside Squirl's frame.
+
+  Ledger is a document you check; Signal is a list you clear. Form is neither.
+  It is a record of one body over months, and almost everything on the screen
+  is a figure — so the type is chosen for how it sets a large number, and the
+  surfaces are shaped for something you press rather than something you read.
+
+  Scoped to `.app-form`. Nothing outside it moves, and Ledger a click away is
+  still entirely itself.
+*/
+.form-app {
+  --font-sans: var(--font-form-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-form-display), ui-serif, Georgia, serif;
+  /*
+    No separate mono. Signal needs one because forty timestamps have to stack
+    into a column the eye can run down; Form shows a handful of figures at a
+    time and sets them in the display serif with tabular figures, which keeps
+    them aligned without introducing a third typeface to say so.
+  */
+  --font-mono: var(--font-form-sans), ui-monospace, monospace;
+
+  /*
+    Softer than Squirl's, and much softer than Signal's. Form's controls are
+    things you press with a thumb — a water increment, a creatine toggle — and
+    a tight radius reads as precise where this wants to read as physical.
+  */
+  --radius-1: 8px;
+  --radius-2: 14px;
+  --radius-3: 20px;
+
+  font-family: var(--font-sans);
+  letter-spacing: -0.006em;
+}
+
+/*
+  Figures are the content here, so they get the display face by default rather
+  than by opt-in, at an optical size tuned for large settings and with tabular
+  figures so a number changing under an animation does not shift its neighbours.
+*/
+.form-figure {
+  font-family: var(--font-serif);
+  font-variant-numeric: tabular-nums;
+  font-variation-settings: 'SOFT' 30, 'WONK' 1, 'opsz' 100;
+  letter-spacing: -0.03em;
+  line-height: 0.92;
+}
+
+/*
+  The small label that names a reading.
+
+  Deliberately not Signal's tracked uppercase mono: that is an instrument
+  panel's voice and Signal already speaks it. Form names things the way a
+  measurement is annotated in a notebook — lower case, close to the figure it
+  belongs to, and quiet enough that the figure stays the thing you see.
+*/
+.form-label {
+  font-family: var(--font-sans);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--ink-3);
+}
+
+/*
+  Form's own ground, and the single largest reason it stops reading as another
+  Squirl screen.
+
+  Ledger and Signal both float white on near-white. That is right for a
+  document and right for a queue, and wrong here. Form is a workbench: the
+  ground is a real colour — fired clay, the same hue the flame accent is cut
+  from, several steps down in lightness — and everything you read sits on a
+  cream panel resting on top of it.
+
+  It is light. A mid-tone ground was tried and it read as dark and muddy at a
+  glance, which is the wrong first impression for something opened at seven in
+  the morning. So the clay is fired thin: a blush porcelain, hue 34, carrying
+  four times Squirl's chroma so it is visibly a colour rather than a grey, with
+  a warm bloom laid across the top of the window like light coming in.
+
+  It follows the theme. Dark is this same room at night, not a second product.
+*/
+.form-app {
+  --bg: oklch(0.951 0.021 34);
+  --bg-deep: oklch(0.921 0.028 33);
+  --surface: oklch(0.999 0.002 60);
+  --surface-2: oklch(0.969 0.011 40);
+  --surface-3: oklch(0.908 0.021 36);
+  --line: oklch(0.898 0.017 37);
+  --line-strong: oklch(0.812 0.025 35);
+
+  --ink: oklch(0.235 0.028 38);
+  --ink-2: oklch(0.428 0.027 38);
+  --ink-3: oklch(0.552 0.024 40);
+  --ink-invert: oklch(0.99 0.004 62);
+
+  --app-accent: oklch(0.53 0.205 29);
+  --app-accent-deep: oklch(0.43 0.19 28);
+  --app-accent-wash: oklch(0.53 0.205 29 / 0.1);
+
+  --form-water: oklch(0.5 0.13 232);
+  --form-water-wash: oklch(0.5 0.13 232 / 0.12);
+  --form-met: oklch(0.48 0.115 162);
+  --form-met-wash: oklch(0.48 0.115 162 / 0.13);
+  --form-partial: oklch(0.63 0.135 62);
+  --form-partial-wash: oklch(0.63 0.135 62 / 0.15);
+
+  /*
+    Printed, not embossed.
+
+    Everything in Form casts a hard offset shadow with no blur at all. That one
+    decision is what keeps the application out of the two shapes it kept
+    drifting into — the soft inner-shadow look, where controls are pressed into
+    a putty surface, and the frosted-glass look, where they float over a blur.
+    Both are house styles with a date stamp on them.
+
+    A shape with a solid slab of colour behind it and no gradient anywhere is
+    how ink sits on paper in two passes: it reads as a physical layer, it
+    photographs at any size, and it is unmistakably deliberate.
+  */
+  --form-edge: oklch(0.745 0.075 32);
+  --shadow-panel: 4px 4px 0 var(--form-edge);
+  --shadow-pop: 6px 6px 0 var(--form-edge);
+  --shadow-press: 2px 2px 0 var(--form-edge);
+
+  /*
+    Re-resolved here, and this line is load-bearing.
+
+    `body { color: var(--ink) }` computes against the *body* element, where
+    --ink is still Squirl's. Overriding the variable further down the tree does
+    nothing for anything that inherits, so every figure drawn in `currentColor`
+    came out in the shell's ink. Restating the two inherited properties inside
+    the scope is what makes the override actually apply.
+  */
+  color: var(--ink);
+  background-color: var(--bg);
+  /*
+    No `background-attachment: fixed`. It sizes the bloom to the viewport, so
+    on a page taller than one screen the rest of the element paints in the flat
+    colour and the wash ends in a visible horizontal seam.
+  */
+  background-image: radial-gradient(
+    140% 560px at 50% -80px,
+    oklch(0.936 0.048 34 / 0.85),
+    transparent 100%
+  );
+  background-repeat: no-repeat;
+}
+
+.dark .form-app {
+  --bg: oklch(0.207 0.03 34);
+  --bg-deep: oklch(0.163 0.025 32);
+  --surface: oklch(0.263 0.027 38);
+  --surface-2: oklch(0.303 0.028 40);
+  --surface-3: oklch(0.345 0.029 42);
+  --line: oklch(0.363 0.028 42);
+  --line-strong: oklch(0.455 0.031 44);
+
+  --ink: oklch(0.972 0.008 62);
+  --ink-2: oklch(0.815 0.014 56);
+  --ink-3: oklch(0.662 0.018 50);
+  --ink-invert: oklch(0.18 0.025 34);
+
+  --app-accent: oklch(0.72 0.19 38);
+  --app-accent-deep: oklch(0.62 0.19 35);
+  --app-accent-wash: oklch(0.72 0.19 38 / 0.16);
+
+  --form-water: oklch(0.74 0.13 228);
+  --form-water-wash: oklch(0.74 0.13 228 / 0.18);
+  --form-met: oklch(0.78 0.15 158);
+  --form-met-wash: oklch(0.78 0.15 158 / 0.16);
+  --form-partial: oklch(0.82 0.14 78);
+  --form-partial-wash: oklch(0.82 0.14 78 / 0.18);
+
+  --form-edge: oklch(0.145 0.02 32);
+  --shadow-panel: 4px 4px 0 var(--form-edge);
+  --shadow-pop: 6px 6px 0 var(--form-edge);
+  --shadow-press: 2px 2px 0 var(--form-edge);
+
+  background-image: radial-gradient(
+    140% 620px at 50% -60px,
+    oklch(0.3 0.045 34 / 0.9),
+    transparent 100%
+  );
+}
+
+/*
+  A panel.
+
+  Form's basic unit, and the reason the app does not read as a page of fields:
+  every control lives inside one of these, so the screen is a set of objects
+  rather than a column of labels. Lifted off the clay by a warm shadow, which
+  is what makes them read as things resting on a surface rather than shapes
+  printed on one.
+*/
+.form-panel {
+  background:
+    radial-gradient(
+      140% 100% at 50% -30%,
+      color-mix(in oklch, var(--app-accent) 3%, transparent),
+      transparent 58%
+    ),
+    var(--surface);
+  border: 1px solid var(--form-edge);
+  box-shadow: var(--shadow-panel);
+}
+
+.dark .form-panel {
+  background:
+    radial-gradient(
+      140% 100% at 50% -30%,
+      color-mix(in oklch, var(--app-accent) 12%, transparent),
+      transparent 62%
+    ),
+    var(--surface);
+}
+
+/*
+  The plaque: the one piece of chrome, and an object on the bench rather than a
+  bar welded to the window.
+
+  Solid, not frosted. A blurred translucent header is the other dated house
+  style, and it also makes the type underneath it swim as the page scrolls.
+*/
+.form-plaque {
+  background: var(--surface);
+  border: 1px solid var(--form-edge);
+  box-shadow: var(--shadow-panel);
+}
+
+/* The readout: the one surface per screen allowed to look powered. */
+.form-lit {
+  background:
+    radial-gradient(
+      120% 95% at 50% -25%,
+      color-mix(in oklch, var(--app-accent) 14%, transparent),
+      transparent 64%
+    ),
+    var(--surface);
+  border: 1px solid var(--line);
+}
+
+.dark .form-lit {
+  background:
+    radial-gradient(
+      120% 95% at 50% -25%,
+      color-mix(in oklch, var(--app-accent) 20%, transparent),
+      transparent 64%
+    ),
+    var(--surface);
+}
+
+/*
+  A field.
+
+  The old one turned its border flame-red on focus, which read as an error on
+  every single input. Focus is a *place*, not a problem: the border lifts to a
+  plain strong line and a soft ring appears behind it, and the accent is kept
+  for things that are actually about the accent.
+*/
+.form-field {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  transition:
+    border-color var(--t-state) var(--ease),
+    box-shadow var(--t-state) var(--ease),
+    background-color var(--t-state) var(--ease);
+}
+
+.form-field::placeholder {
+  color: var(--ink-3);
+}
+
+.form-field:hover {
+  border-color: var(--line-strong);
+}
+
+.form-field:focus,
+.form-field:focus-visible {
+  outline: none;
+  border-color: var(--line-strong);
+  box-shadow: 0 0 0 4px color-mix(in oklch, var(--ink) 8%, transparent);
+}
+
+/*
+  The grain, dark only.
+
+  Large flat areas of near-black band on ordinary displays and a few per cent
+  of noise is the standard fix. On the light ground there is nothing to band,
+  and the same layer just reads as a dirty screen.
+*/
+.dark .form-app::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.03;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/*
+  Stacking, and why this is not one blanket rule.
+
+  It used to be `.form-app > * { position: relative; z-index: 1 }`, meant only
+  to lift content clear of the grain layer in dark mode. It did two other
+  things nobody wanted. It out-specified the header's z-index, so `main` — later
+  in the document — painted over the plaque. And, worse, `position: relative`
+  landed on the header too and quietly overwrote the `sticky` utility, so the
+  header did not stick at all: it simply scrolled off the top of the page.
+
+  Nothing here sets `position` on the header. It carries its own.
+*/
+.form-app > main {
+  position: relative;
+  z-index: 1;
+}
+
+.form-app > header {
+  z-index: 30;
+}
+
+/*
+  The surface of the water in the vessel.
+
+  Two copies of the same wave at different speeds and opposite directions. One
+  alone reads as a wobbling line; two out of phase read as a surface, which is
+  the whole illusion and costs two composited transforms.
+*/
+@keyframes form-wave {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.form-wave {
+  animation: form-wave 4.5s linear infinite;
+}
+
+.form-wave-slow {
+  animation: form-wave 7s linear infinite reverse;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .form-wave,
+  .form-wave-slow {
+    animation: none;
+  }
+}
+
+/*
+  The rail's tick marks, drawn once in the background rather than as elements.
+*/
+.form-ticks {
+  background-image: repeating-linear-gradient(
+    to right,
+    var(--line-strong) 0 1px,
+    transparent 1px var(--form-tick-gap, 10%)
+  );
+}

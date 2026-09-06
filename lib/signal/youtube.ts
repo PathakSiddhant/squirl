@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { keyCount, nextKey, releaseKey, restKey } from './keys';
+import { keyCount, nextKey, releaseKey, restKey } from '@/lib/squirl/keys';
 
 /**
  * The only place in Signal that talks to YouTube.

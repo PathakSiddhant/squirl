@@ -4,7 +4,7 @@ export default defineConfig({
   dialect: 'sqlite',
   // Each application owns its own schema file. Drizzle reads them all;
   // they never import one another.
-  schema: ['./lib/db/schema.ts', './lib/signal/schema.ts'],
+  schema: ['./lib/db/schema.ts', './lib/signal/schema.ts', './lib/form/schema.ts'],
   out: './lib/db/migrations',
   dbCredentials: {
     url: process.env.DATABASE_URL ?? 'file:./data/squirl.db',
