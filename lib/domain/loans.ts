@@ -3,6 +3,38 @@ import { distribute, sum, type Paise } from '../money';
 import type { LoanInterestModel } from '../db/schema';
 
 /**
+ * How much of a loan is a debt right now, for net worth.
+ *
+ * "Interest" means two different things depending on the model, and treating
+ * them the same is exactly what made a loan's contribution to net worth
+ * quietly wrong. A `reducing` loan charges for time on a shrinking balance:
+ * pay it off early and the interest that would have accrued on the later
+ * months simply never happens, so what you owe today is the principal still
+ * outstanding — the same figure a bank would quote as your payoff balance.
+ * That is real, and it is why `principalOutstanding` alone is correct there.
+ *
+ * A `flat` or `emi_known` loan does not work that way. Its total interest is
+ * a fixed number, decided the day it was taken and split evenly across the
+ * schedule — see `flatStyleParts` below — and settling every remaining
+ * installment tomorrow does not remove a rupee of it, because the fee was
+ * never a function of time to begin with. For those, what you owe today is
+ * everything still scheduled, interest included: `remainingTotal`.
+ *
+ * `none` has no interest at all, so the two figures are identical and it does
+ * not matter which branch it falls into; it is grouped with the flat models
+ * rather than singled out because the reasoning ("interest is not
+ * time-dependent here") happens to hold for the trivial reason that there is
+ * none.
+ */
+export function currentLoanLiability(
+  interestModel: LoanInterestModel,
+  principalOutstanding: Paise,
+  remainingTotal: Paise,
+): Paise {
+  return interestModel === 'reducing' ? principalOutstanding : remainingTotal;
+}
+
+/**
  * Installment schedules for a formal loan.
  *
  * Four models, because loan products in the wild are described four different

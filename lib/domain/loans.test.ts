@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { buildSchedule, effectiveAnnualRatePct, scheduleTotals, type LoanSpec } from './loans';
+import { buildSchedule, currentLoanLiability, effectiveAnnualRatePct, scheduleTotals, type LoanSpec } from './loans';
 import { sum } from '../money';
 
 // The exact case from the brief: borrow 1,500, repay 550 a month for 3 months.
@@ -132,4 +132,27 @@ test('effective annual rate exposes what the app loan really costs', () => {
 
   assert.equal(effectiveAnnualRatePct(150000, 50000, 3), 0); // exactly principal back
   assert.equal(effectiveAnnualRatePct(0, 5000, 3), null);
+});
+
+test('a fixed-fee loan owes the whole remaining schedule, not just principal', () => {
+  // The exact case that prompted this: Mayank's Branch App loan. 2,308
+  // principal, 488 interest fixed the day it was taken, nothing paid yet.
+  // Paying it off tomorrow costs exactly what paying it off on schedule
+  // costs, so the debt today is the full 2,796 — not the 2,308 that would
+  // quietly leave the fee out of net worth.
+  assert.equal(currentLoanLiability('emi_known', 230800, 279600), 279600);
+  assert.equal(currentLoanLiability('flat', 230800, 279600), 279600);
+});
+
+test('a reducing-balance loan owes only what has actually accrued', () => {
+  // Paying off a true amortising loan early genuinely skips interest that
+  // was never going to be charged, so the debt today is the payoff
+  // balance — principal only — not the full scheduled total.
+  assert.equal(currentLoanLiability('reducing', 900000, 1050000), 900000);
+});
+
+test('an interest-free loan gives the same answer either way', () => {
+  // No interest exists to disagree about, so the two figures coincide; this
+  // just confirms grouping `none` with the fixed-fee branch is harmless.
+  assert.equal(currentLoanLiability('none', 500000, 500000), 500000);
 });

@@ -93,8 +93,18 @@ export interface PositionInput {
   owedToMe: Paise;
   /** Payoff totals of money borrowed from people, interest included. */
   owedByMeToPeople: Paise;
-  /** Principal still outstanding across all active loans. */
-  loanPrincipalOutstanding: Paise;
+  /**
+   * What every active loan actually owes right now, summed.
+   *
+   * Not simply "principal outstanding": a loan whose interest is a fixed fee
+   * decided upfront (flat, emi_known) owes that fee regardless of when it is
+   * paid, so the whole remaining schedule counts. Only a `reducing` loan's
+   * interest is genuinely time-dependent enough for principal-only to be the
+   * honest figure. See `currentLoanLiability` in `lib/domain/loans.ts`, which
+   * is where this number is actually decided per loan before being summed
+   * here.
+   */
+  loanLiabilityOutstanding: Paise;
   commitments: Commitment[];
   /** Untouchable floor the user never wants to dip below. */
   buffer: Paise;
@@ -147,7 +157,7 @@ export function computePosition(input: PositionInput): Position {
     .sort((a, b) => (a.dueOn < b.dueOn ? -1 : a.dueOn > b.dueOn ? 1 : 0));
 
   const committed = sum(relevant.map((c) => c.amount));
-  const iOwe = input.owedByMeToPeople + input.loanPrincipalOutstanding;
+  const iOwe = input.owedByMeToPeople + input.loanLiabilityOutstanding;
   const headroom = inHand - committed - input.buffer;
 
   return {

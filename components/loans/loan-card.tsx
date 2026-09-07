@@ -35,6 +35,7 @@ export interface LoanView {
   schedule: InstallmentView[];
   paidCount: number;
   remainingTotal: number;
+  liabilityOutstanding: number;
   totalInterest: number;
   effectiveApr: number | null;
   progress: number;
@@ -113,6 +114,21 @@ export function LoanCard({
         <div className="text-right">
           <p className="money text-[1.0625rem] text-ink">{formatMoney(loan.remainingTotal)}</p>
           <p className="text-[0.75rem] text-ink-3">still to pay</p>
+          {/*
+            Shown only when the two figures actually disagree — which happens
+            for exactly one reason: a reducing-balance loan's future interest
+            has not accrued yet, so it counts toward what you owe once it
+            does, not now. A flat or emi_known loan's interest is a fixed fee
+            decided upfront, so "still to pay" and "counts toward net worth"
+            are always the same number for those, and this line would just be
+            restating it.
+          */}
+          {loan.liabilityOutstanding < loan.remainingTotal ? (
+            <p className="mt-0.5 max-w-[11rem] text-[0.6875rem] leading-snug text-ink-3">
+              {formatMoney(loan.liabilityOutstanding)} counts as owed today — the rest is interest
+              that has not accrued yet
+            </p>
+          ) : null}
         </div>
       </header>
 

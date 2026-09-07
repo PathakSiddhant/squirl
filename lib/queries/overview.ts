@@ -70,7 +70,7 @@ export async function getOverview(asOf: DayString = istToday()): Promise<Overvie
     movements,
     owedToMe: totals.owedToMe,
     owedByMeToPeople: totals.owedByMe,
-    loanPrincipalOutstanding: activeLoans(loanEntries).reduce((n, l) => n + l.principalOutstanding, 0),
+    loanLiabilityOutstanding: activeLoans(loanEntries).reduce((n, l) => n + l.liabilityOutstanding, 0),
     commitments,
     buffer: preferences.buffer,
     horizonDays: preferences.horizonDays,

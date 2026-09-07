@@ -75,7 +75,7 @@ test('lending leaves net worth intact but takes the money out of hand', () => {
     movements,
     owedToMe: 100000,
     owedByMeToPeople: 0,
-    loanPrincipalOutstanding: 0,
+    loanLiabilityOutstanding: 0,
     commitments: [],
     buffer: 0,
     horizonDays: 30,
@@ -87,7 +87,7 @@ test('lending leaves net worth intact but takes the money out of hand', () => {
     movements: brief,
     owedToMe: 0,
     owedByMeToPeople: 0,
-    loanPrincipalOutstanding: 0,
+    loanLiabilityOutstanding: 0,
     commitments: [],
     buffer: 0,
     horizonDays: 30,
@@ -105,7 +105,7 @@ test('parked money counts toward net worth but never toward safe to spend', () =
     movements: brief,
     owedToMe: 0,
     owedByMeToPeople: 0,
-    loanPrincipalOutstanding: 0,
+    loanLiabilityOutstanding: 0,
     commitments: [],
     buffer: 0,
     horizonDays: 30,
@@ -119,7 +119,7 @@ test('parked money counts toward net worth but never toward safe to spend', () =
 
 test('investing is a move, not a spend, and gains are not income', () => {
   const base = { asOf: '2026-08-10', accounts, owedToMe: 0, owedByMeToPeople: 0,
-    loanPrincipalOutstanding: 0, commitments: [], buffer: 0, horizonDays: 30 };
+    loanLiabilityOutstanding: 0, commitments: [], buffer: 0, horizonDays: 30 };
 
   const before = computePosition({ ...base, movements: brief });
 
@@ -164,7 +164,7 @@ test('commitments inside the horizon reduce what is safe to spend', () => {
     movements: brief,
     owedToMe: 0,
     owedByMeToPeople: 0,
-    loanPrincipalOutstanding: 110000,
+    loanLiabilityOutstanding: 110000,
     commitments,
     buffer: 0,
     horizonDays: 30,
@@ -187,7 +187,7 @@ test('an overdue commitment still counts however far back it slipped', () => {
     movements: brief,
     owedToMe: 0,
     owedByMeToPeople: 0,
-    loanPrincipalOutstanding: 55000,
+    loanLiabilityOutstanding: 55000,
     commitments,
     buffer: 0,
     horizonDays: 30,
@@ -202,7 +202,7 @@ test('the buffer is subtracted and shortfall is reported when underwater', () =>
     movements: brief,
     owedToMe: 0,
     owedByMeToPeople: 0,
-    loanPrincipalOutstanding: 0,
+    loanLiabilityOutstanding: 0,
     commitments: [
       { id: 'x', label: 'rent', dueOn: '2026-08-10', amount: 500000, source: 'recurring', isOverdue: false },
     ],
@@ -233,7 +233,7 @@ test('runway divides what is in hand by the burn rate', () => {
     movements: brief,
     owedToMe: 0,
     owedByMeToPeople: 0,
-    loanPrincipalOutstanding: 0,
+    loanLiabilityOutstanding: 0,
     commitments: [],
     buffer: 0,
     horizonDays: 30,
@@ -253,7 +253,7 @@ test('daily allowance stretches to the next money arriving', () => {
     movements: brief,
     owedToMe: 0,
     owedByMeToPeople: 0,
-    loanPrincipalOutstanding: 0,
+    loanLiabilityOutstanding: 0,
     commitments: [],
     buffer: 0,
     horizonDays: 30,

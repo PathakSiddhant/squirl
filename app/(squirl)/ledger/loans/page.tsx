@@ -45,6 +45,7 @@ export default async function LoansPage() {
     })),
     paidCount: entry.paidCount,
     remainingTotal: entry.remainingTotal,
+    liabilityOutstanding: entry.liabilityOutstanding,
     totalInterest: entry.totalInterest,
     effectiveApr: entry.effectiveApr,
     progress: entry.progress,

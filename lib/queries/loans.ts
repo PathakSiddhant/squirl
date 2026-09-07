@@ -3,17 +3,24 @@ import { asc, eq } from 'drizzle-orm';
 import type { DayString } from '../date';
 import { db } from '../db/client';
 import { installments, loans, type Installment, type Loan } from '../db/schema';
-import { effectiveAnnualRatePct } from '../domain/loans';
+import { currentLoanLiability, effectiveAnnualRatePct } from '../domain/loans';
 import { sum } from '../money';
 
 export interface LoanWithSchedule {
   loan: Loan;
   schedule: Installment[];
   paidCount: number;
-  /** Principal still owed. This is the liability that hits net worth. */
+  /** Principal still owed, regardless of interest model. */
   principalOutstanding: number;
   /** Everything still to be handed over, interest included. */
   remainingTotal: number;
+  /**
+   * Whichever of the two above is the real debt today. This is the figure
+   * that hits net worth — see `currentLoanLiability` for which one, and why
+   * it depends on the interest model rather than being `principalOutstanding`
+   * unconditionally.
+   */
+  liabilityOutstanding: number;
   totalInterest: number;
   nextDue: Installment | null;
   overdue: Installment[];
@@ -40,12 +47,16 @@ export async function getLoansWithSchedules(asOf: DayString): Promise<LoanWithSc
     const unpaid = schedule.filter((i) => i.status === 'due');
     const paid = schedule.filter((i) => i.status === 'paid');
 
+    const principalOutstanding = sum(unpaid.map((i) => i.principalPart));
+    const remainingTotal = sum(unpaid.map((i) => i.amount));
+
     return {
       loan,
       schedule,
       paidCount: paid.length,
-      principalOutstanding: sum(unpaid.map((i) => i.principalPart)),
-      remainingTotal: sum(unpaid.map((i) => i.amount)),
+      principalOutstanding,
+      remainingTotal,
+      liabilityOutstanding: currentLoanLiability(loan.interestModel, principalOutstanding, remainingTotal),
       totalInterest: sum(schedule.map((i) => i.interestPart)),
       nextDue: unpaid[0] ?? null,
       overdue: unpaid.filter((i) => i.dueOn < asOf),
