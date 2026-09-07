@@ -24,8 +24,11 @@ $shortcut.Description = 'Starts the Squirl money ledger in the background'
 $shortcut.Save()
 
 Write-Host "Installed."
-Write-Host "Squirl will start on its own every time you sign in, with no window."
+Write-Host "Squirl will start on its own every time you sign in, with no window,"
+Write-Host "and restarts itself if it ever crashes mid-session — see start-squirl.ps1."
 Write-Host "Shortcut: $link"
 Write-Host "Logs:     $(Join-Path (Split-Path -Parent (Split-Path -Parent $here)) 'logs\squirl.log')"
 Write-Host ""
 Write-Host "To undo it later, run uninstall-autostart.ps1 or just delete that shortcut."
+Write-Host "To stop a running instance, use stop-squirl.ps1 rather than Task Manager —"
+Write-Host "it knows to stop the restart loop too, not just the app it is running."

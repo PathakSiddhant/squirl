@@ -653,19 +653,32 @@ powershell -ExecutionPolicy Bypass -File scripts\windows\install-autostart.ps1
 ```
 
 That drops a shortcut in your Startup folder pointing at a small VBScript
-wrapper, which runs `npm start` with no console window. It uses the Startup
-folder rather than Task Scheduler because creating a scheduled task needs
-privileges a normal account often does not have.
+wrapper, which runs a PowerShell loop with no console window. It uses the
+Startup folder rather than Task Scheduler because creating a scheduled task
+needs privileges a normal account often does not have.
+
+**It is a loop, not a single launch** — if `npm start` ever exits on its own
+mid-session (an unhandled exception, something else grabbing port 3000
+first), `scripts\windows\start-squirl.ps1` notices within seconds and starts
+it again, backing off a little longer between retries if it keeps failing
+fast rather than spinning. "Always running" means surviving a crash as well
+as surviving a reboot; a script that only did the second half of that would
+still leave you finding it dead sometime in the afternoon.
 
 - Logs go to `logs/squirl.log`
-- Stop it any time: `powershell -File scripts\windows\stop-squirl.ps1`
-- Undo it: `powershell -File scripts\windows\uninstall-autostart.ps1`
+- Stop it any time: `powershell -File scripts\windows\stop-squirl.ps1` — this
+  stops the restart loop itself, not just the server, so it actually stays
+  stopped rather than coming back up a few seconds later
+- Undo the autostart entirely: `powershell -File scripts\windows\uninstall-autostart.ps1`
 - Moving the project folder breaks that shortcut, since it stores an absolute
   path. Re-run the installer afterwards, or use
   `scripts\windows\rename-project-folder.ps1`, which does both.
 
-It only runs while you are signed in, and rebuilding (`npm run build`) is still
-needed after any code change.
+It only runs while you are signed in — Windows never starts a per-user Startup
+item before someone logs in, autostart or not — and rebuilding
+(`npm run build`) is still needed after any code change for the always-on
+copy to pick it up; this loop keeps whatever build is on disk running, it does
+not rebuild it.
 
 ### On your phone
 
