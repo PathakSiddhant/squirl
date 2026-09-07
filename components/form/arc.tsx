@@ -16,16 +16,29 @@ import { motion, useReducedMotion } from 'motion/react';
  * ## The needle is the reading
  *
  * The sweep is filled *and* a needle sits at the value, because those answer
- * different questions — how much has gone, and where exactly you are. Past the
- * end of the scale the sweep changes to the warm tone and the needle keeps
- * travelling a little further, which is information rather than a verdict.
- * Nothing here is ever red for being over.
+ * different questions — how much has gone, and where exactly you are.
+ *
+ * ## Over the ceiling is a full ring, not a longer one
+ *
+ * A first version let the sweep keep travelling past the end of the scale to
+ * show *how far* over — up to 118% of the circle. The angle for anything past
+ * about 112% lands back inside the dial's own gap at the bottom, so an
+ * overshoot didn't read as "past the end", it read as a ring that had nearly
+ * closed into a full circle: the one shape this component exists specifically
+ * to avoid (see above). Worse, every overshoot looked much the same regardless
+ * of size, because the cap was reached quickly.
+ *
+ * So the sweep is now capped at exactly 1 always. Over the ceiling, the ring
+ * simply reads as full and warm — an unambiguous "spent, and then some" — and
+ * *how much* over is answered by the caption underneath in plain text
+ * (`overBy`), which says it exactly rather than asking a 240-degree arc to.
  */
 export function Arc({
   fraction,
   reading,
   unit,
   goal,
+  overBy,
   over = false,
   unknown = false,
   size = 232,
@@ -34,6 +47,8 @@ export function Arc({
   reading: string;
   unit?: string;
   goal?: string;
+  /** Already formatted, e.g. "300 kcal over". Shown instead of `goal` once over. */
+  overBy?: string;
   over?: boolean;
   unknown?: boolean;
   size?: number;
@@ -48,10 +63,7 @@ export function Arc({
   const SWEEP = 240;
   const START = 150;
 
-  const filled = Math.min(Math.max(fraction, 0), 1);
-  // Overshoot is allowed to run a little past the end of the scale, but not far
-  // enough to wrap around and meet the start.
-  const drawn = over ? Math.min(fraction, 1.18) : filled;
+  const drawn = Math.min(Math.max(fraction, 0), 1);
 
   const point = (ratio: number, radius = r) => {
     const angle = ((START + SWEEP * ratio) * Math.PI) / 180;
@@ -185,7 +197,13 @@ export function Arc({
           {reading}
           {unit ? <span className="ml-1.5 text-[1rem] text-ink-3">{unit}</span> : null}
         </span>
-        {goal ? <span className="mt-2.5 text-[0.8125rem] text-ink-3">of {goal}</span> : null}
+        {over && overBy ? (
+          <span className="mt-2.5 text-[0.8125rem] font-medium text-[var(--form-partial)]">
+            {overBy}
+          </span>
+        ) : goal ? (
+          <span className="mt-2.5 text-[0.8125rem] text-ink-3">of {goal}</span>
+        ) : null}
       </div>
     </div>
   );

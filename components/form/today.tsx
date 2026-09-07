@@ -175,6 +175,11 @@ export function Today({
                       : formatEnergy(read('energy')!)
                 }
                 goal={target('energy') ? `${formatEnergy(target('energy')!)} kcal` : undefined}
+                overBy={
+                  energyOver && target('energy')
+                    ? `${formatEnergy(read('energy')! - target('energy')!)} kcal over`
+                    : undefined
+                }
               />
               <p className="text-[0.9375rem] font-medium text-ink">
                 {energyOver ? 'Over the allowance' : 'Fuel'}
