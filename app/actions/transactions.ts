@@ -9,8 +9,10 @@ import { newId } from '@/lib/db/id';
 import { debts, installments, people, transactions } from '@/lib/db/schema';
 import { intendedDestination, parseCapture } from '@/lib/domain/capture';
 import { computeDebtPosition, splitRepayment } from '@/lib/domain/interest';
-import { getCaptureContext } from '@/lib/queries/reference';
-import { getDebtMovements } from '@/lib/queries/ledger';
+import { wouldOverdraw, type AccountSeed, type LedgerMovement } from '@/lib/domain/position';
+import { formatMoney } from '@/lib/money';
+import { getCaptureContext, getAccounts } from '@/lib/queries/reference';
+import { getDebtMovements, getMovements } from '@/lib/queries/ledger';
 import { fromZodError, transactionInput, type ActionResult, type TransactionInput } from '@/lib/validation';
 
 /** Refresh everything. The whole app is derived from one ledger, so one page
@@ -19,9 +21,71 @@ function refreshAll() {
   revalidatePath('/', 'layout');
 }
 
+/**
+ * Refuses to save anything that would leave an account somewhere it could
+ * not actually be: below zero, with no bank overdraft or family goodwill
+ * behind it. Real money does not do that on its own; a typo does.
+ *
+ * `previousId` is the transaction being replaced, for an edit — excluded from
+ * the history before re-checking, and supplied as `wouldOverdraw`'s baseline
+ * so an edit is only refused for making things *worse*, never for a
+ * pre-existing problem it did not cause (see that function's own comment).
+ * Left out entirely for a brand new transaction.
+ */
+async function checkOverdraft(
+  input: TransactionInput,
+  previousId?: string,
+): Promise<ActionResult<never> | null> {
+  if (!input.accountId) return null;
+
+  const [accountRows, otherMovements, previousRow] = await Promise.all([
+    getAccounts(),
+    getMovements(undefined, input.day, previousId),
+    previousId
+      ? db.select().from(transactions).where(eq(transactions.id, previousId)).limit(1)
+      : Promise.resolve([]),
+  ]);
+
+  const accountSeeds: AccountSeed[] = accountRows.map((a) => ({
+    id: a.id,
+    kind: a.kind,
+    openingBalance: a.openingBalance,
+  }));
+
+  const candidate: LedgerMovement = {
+    day: input.day,
+    kind: input.kind,
+    amount: input.amount,
+    accountId: input.accountId,
+    counterAccountId: input.counterAccountId ?? null,
+  };
+
+  const previous: LedgerMovement | null = previousRow[0]
+    ? {
+        day: previousRow[0].day,
+        kind: previousRow[0].kind,
+        amount: previousRow[0].amount,
+        accountId: previousRow[0].accountId,
+        counterAccountId: previousRow[0].counterAccountId,
+      }
+    : null;
+
+  const overdraft = wouldOverdraw(accountSeeds, otherMovements, previous, candidate);
+  if (!overdraft) return null;
+
+  const account = accountRows.find((a) => a.id === overdraft.accountId);
+  return {
+    ok: false,
+    error: `${account?.name ?? 'That account'} would go to ${formatMoney(overdraft.wouldBe)}. Check the amount, or the account, before saving.`,
+  };
+}
+
 export async function createTransaction(input: TransactionInput): Promise<ActionResult<{ id: string }>> {
   const parsed = transactionInput.safeParse(input);
   if (!parsed.success) return fromZodError(parsed.error);
+
+  const overdraft = await checkOverdraft(parsed.data);
+  if (overdraft) return overdraft;
 
   const id = newId('txn');
   await db.insert(transactions).values({ id, ...parsed.data });
@@ -159,6 +223,9 @@ export async function updateTransaction(
 ): Promise<ActionResult<{ id: string }>> {
   const parsed = transactionInput.safeParse(input);
   if (!parsed.success) return fromZodError(parsed.error);
+
+  const overdraft = await checkOverdraft(parsed.data, id);
+  if (overdraft) return overdraft;
 
   await db
     .update(transactions)

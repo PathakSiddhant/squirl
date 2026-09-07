@@ -10,6 +10,7 @@ import {
   dailyAllowance,
   loggingStreak,
   summariseDays,
+  wouldOverdraw,
   type AccountSeed,
   type Commitment,
   type LedgerMovement,
@@ -285,4 +286,72 @@ test('the logging streak survives a day that has not been logged yet', () => {
   assert.equal(loggingStreak(logged, '2026-08-04'), 3, 'today is still in progress');
   assert.equal(loggingStreak(logged, '2026-08-05'), 0, 'a full day missed breaks it');
   assert.equal(loggingStreak(new Set(), '2026-08-03'), 0);
+});
+
+// ------------------------------------------------------------ wouldOverdraw
+
+// Bank holds exactly 1,972 as of the 3rd (2,000 in, 15 to parents, 25 and 2
+// spent), the exact "I typed 70 instead of 62" shape this exists to catch.
+const solvent = brief; // 2000000 - 1500000 - 25000 - 2000 = 473000
+
+test('a new expense the account cannot cover is refused', () => {
+  const candidate = move('2026-08-03', 'expense', 500000); // more than the 4,730 on hand
+  const result = wouldOverdraw(accounts, solvent, null, candidate);
+  assert.ok(result, 'flagged');
+  assert.equal(result!.accountId, 'bank');
+  assert.equal(result!.wouldBe, 473000 - 500000);
+});
+
+test('a new expense within the balance is fine', () => {
+  const candidate = move('2026-08-03', 'expense', 100000);
+  assert.equal(wouldOverdraw(accounts, solvent, null, candidate), null);
+});
+
+test('a credit can never overdraw, however the numbers land', () => {
+  // Even manufactured to look alarming — a huge income on top of an account
+  // this function has no reason to believe is already negative — the sign of
+  // the delta alone should make this impossible to trip.
+  const candidate = move('2026-08-03', 'income', 1);
+  assert.equal(wouldOverdraw(accounts, solvent, null, candidate), null);
+});
+
+test('editing an unrelated field never gets blocked by a problem it did not cause', () => {
+  // The account is 15,270 in the red on this day for reasons that have
+  // nothing to do with the transaction under test — some other expense
+  // entirely. Re-saving *this* one unchanged (same day, kind, amount,
+  // account) must not be refused just because the day already reads
+  // negative; the edit itself changes nothing about that.
+  const otherMovements = [...brief, move('2026-08-03', 'expense', 2000000)]; // -1,527,000 paise that day
+  const unrelatedEdit = move('2026-08-03', 'expense', 2000); // identical to its current form
+  const result = wouldOverdraw(accounts, otherMovements, unrelatedEdit, unrelatedEdit);
+  assert.equal(result, null, 'same delta before and after: nothing got worse');
+});
+
+test('correcting an amount downward is never blocked, even on an already-negative day', () => {
+  const otherMovements = [...brief, move('2026-08-03', 'expense', 2000000)];
+  const previous = move('2026-08-03', 'expense', 3000000); // the mistaken, larger figure
+  const corrected = move('2026-08-03', 'expense', 500000); // fixing it downward
+  const result = wouldOverdraw(accounts, otherMovements, previous, corrected);
+  assert.equal(result, null, 'strictly improves the balance, so it is allowed through');
+});
+
+test('editing an amount upward into overdraft is blocked, same as a new one', () => {
+  const previous = move('2026-08-03', 'expense', 62 * 100); // the real amount, 62 rupees
+  const wrong = move('2026-08-03', 'expense', 70 * 100); // typed 70 instead
+  // Solvent for 62, not for 70: exactly the reported case.
+  const tight = [
+    move('2026-08-01', 'income', 6500),
+    move('2026-08-02', 'expense', 100),
+  ];
+  const result = wouldOverdraw(accounts, tight, previous, wrong);
+  assert.ok(result, 'the extra 8 rupees is exactly what tips it over');
+});
+
+test('checked against the transaction’s own day, not against today', () => {
+  // Dated last week, when the balance could not cover it, even though a
+  // later deposit means today's balance looks fine.
+  const laterDeposit = [...brief, move('2026-08-10', 'income', 10000000)];
+  const backdated = move('2026-07-25', 'expense', 1000000); // before any of brief happened
+  const result = wouldOverdraw(accounts, laterDeposit, null, backdated);
+  assert.ok(result, 'insolvent on the day it is dated, whatever happens afterward');
 });

@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gte, isNotNull, like, lte, or, sql, type SQL } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, isNotNull, like, lte, ne, or, sql, type SQL } from 'drizzle-orm';
 import { alias } from 'drizzle-orm/sqlite-core';
 
 import { db } from '../db/client';
@@ -14,10 +14,17 @@ import type { LedgerMovement } from '../domain/position';
  * month history just to add them up would be wasteful.
  */
 
-export async function getMovements(from?: DayString, to?: DayString): Promise<LedgerMovement[]> {
+export async function getMovements(
+  from?: DayString,
+  to?: DayString,
+  /** Leaves one transaction out entirely — for checking an edit against
+   *  everything else on the books without double-counting its old form. */
+  excludeId?: string,
+): Promise<LedgerMovement[]> {
   const filters: SQL[] = [];
   if (from) filters.push(gte(transactions.day, from));
   if (to) filters.push(lte(transactions.day, to));
+  if (excludeId) filters.push(ne(transactions.id, excludeId));
 
   return db
     .select({

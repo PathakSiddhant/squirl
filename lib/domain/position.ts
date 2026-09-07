@@ -73,6 +73,60 @@ export function accountBalances(
   return balances;
 }
 
+// ------------------------------------------------------------ overdraft
+
+export interface OverdraftCheck {
+  accountId: string;
+  /** Negative. What the account would read if this were saved. */
+  wouldBe: Paise;
+}
+
+/**
+ * Whether saving a transaction would newly overdraw its account.
+ *
+ * "Newly" is the operative word, and it is why this compares two balances
+ * rather than testing one against zero. Checking only "would the result be
+ * negative" also blocks something that has nothing to do with the mistake:
+ * fixing a typo in a transaction's *note*, on a day some other transaction
+ * already left negative, would recompute to the same negative number and get
+ * refused — trapping the very correction that might fix the real problem
+ * behind an error about a field the edit never touched.
+ *
+ * So the question this actually asks is "does saving this leave the account
+ * worse off than it already reads" — comparing what the day would total with
+ * `previous` (the transaction's current form, or nothing at all if it does
+ * not exist yet) against what it would total with `candidate` (the form being
+ * saved). A pure metadata edit has `previous` and `candidate` worth the same,
+ * so the two totals are equal and nothing is ever blocked by it, whatever the
+ * pre-existing balance happens to be. A brand new transaction has no
+ * `previous` at all, which behaves exactly like comparing against zero delta:
+ * a credit can only raise the total, so it can never trip this, and a debit
+ * is refused exactly when the account cannot actually cover it.
+ *
+ * Checked as of the transaction's own day, not today, so something dated last
+ * Tuesday is judged against last Tuesday's running balance — the one that
+ * would actually have gone negative — rather than whatever the balance
+ * happens to be by the time it is typed in.
+ *
+ * `otherMovements` must exclude both the old and new forms of the transaction
+ * under test; the caller assembles that (typically "everything except this
+ * transaction's id").
+ */
+export function wouldOverdraw(
+  accounts: AccountSeed[],
+  otherMovements: LedgerMovement[],
+  previous: LedgerMovement | null,
+  candidate: LedgerMovement,
+): OverdraftCheck | null {
+  if (!candidate.accountId) return null;
+
+  const before = accountBalances(accounts, otherMovements, candidate.day).get(candidate.accountId) ?? 0;
+  const readsNowAt = before + (previous ? accountDelta(previous, candidate.accountId) : 0);
+  const wouldBe = before + accountDelta(candidate, candidate.accountId);
+
+  return wouldBe < 0 && wouldBe < readsNowAt ? { accountId: candidate.accountId, wouldBe } : null;
+}
+
 // ------------------------------------------------------------- position
 
 /** A single thing you have already promised away, inside the horizon. */
