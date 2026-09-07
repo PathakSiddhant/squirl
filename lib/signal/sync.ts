@@ -1,4 +1,4 @@
-import { and, eq, inArray, sql } from 'drizzle-orm';
+import { and, eq, inArray, or, sql } from 'drizzle-orm';
 
 import { db } from '@/lib/db/client';
 
@@ -72,6 +72,8 @@ export interface SyncResult {
   title: string;
   added: number;
   updated: number;
+  /** Rows removed because YouTube no longer has the video. */
+  removed: number;
   ok: boolean;
   error?: string;
 }
@@ -151,12 +153,25 @@ async function collectNewUploads(channel: SignalChannel, playlistId: string): Pr
 }
 
 /**
- * Items whose metadata is expected to change under them.
+ * Ids worth re-checking beyond whatever the playlist scan just found, for two
+ * different reasons.
  *
- * A scheduled stream becomes a live one and then an ordinary video, and none
- * of those transitions produce a new upload for the playlist to report. So
- * anything still marked live or upcoming is re-read on every pass, regardless
- * of whether it is new, which is the only way those states ever resolve.
+ *   still resolving   a scheduled stream becomes live, then an ordinary
+ *                      video, and none of those transitions produce a new
+ *                      upload for the playlist to report. Anything still
+ *                      marked live or upcoming is re-read on every pass,
+ *                      regardless of whether the reader has already acted on
+ *                      it, so the record's own facts stay correct even for
+ *                      something already dismissed.
+ *
+ *   still waiting      an ordinary unseen item can vanish from YouTube on its
+ *                      own — a creator deleting a video to fix a mistake and
+ *                      reuploading it under a new id is routine — and nothing
+ *                      else in this file ever looks at that id again once the
+ *                      playlist scan has moved past it. Re-checking every
+ *                      unseen row is how a video that disappeared upstream
+ *                      stops sitting in the inbox forever — see
+ *                      `pruneGoneVideos`, which is what actually removes it.
  */
 async function refreshableIds(channelId: string): Promise<string[]> {
   const rows = await db
@@ -165,10 +180,51 @@ async function refreshableIds(channelId: string): Promise<string[]> {
     .where(
       and(
         eq(signalContent.channelId, channelId),
-        inArray(signalContent.kind, ['live', 'upcoming']),
+        or(inArray(signalContent.kind, ['live', 'upcoming']), eq(signalContent.state, 'unseen')),
       ),
     );
   return rows.map((row) => row.youtubeId);
+}
+
+/**
+ * Remove rows for ids that were asked for and did not come back.
+ *
+ * `videos.list` is silent about a ban a deleted or made-private video: it
+ * simply omits that id from the response, with no error and no marker saying
+ * which one is missing. So "requested but absent from the reply" is the only
+ * signal there is, and it is a reliable one — YouTube does not intermittently
+ * drop an id that still exists.
+ *
+ * Scoped to `state = 'unseen'`. A row already marked done or dismissed is
+ * never shown regardless of whether it still exists on YouTube, so there is
+ * nothing to fix by deleting it, and doing so would throw away the record of
+ * a decision the reader actually made. Only an item still sitting in the
+ * inbox, that has now been confirmed gone, is removed — which is exactly the
+ * ghost this was written to clear.
+ */
+async function pruneGoneVideos(channelId: string, requestedIds: string[], foundIds: Set<string>): Promise<number> {
+  const missing = requestedIds.filter((id) => !foundIds.has(id));
+  if (missing.length === 0) return 0;
+
+  const gone = await db
+    .select({ id: signalContent.id })
+    .from(signalContent)
+    .where(
+      and(
+        eq(signalContent.channelId, channelId),
+        inArray(signalContent.youtubeId, missing),
+        eq(signalContent.state, 'unseen'),
+      ),
+    );
+  if (gone.length === 0) return 0;
+
+  await db.delete(signalContent).where(
+    inArray(
+      signalContent.id,
+      gone.map((row) => row.id),
+    ),
+  );
+  return gone.length;
 }
 
 /**
@@ -308,9 +364,22 @@ export async function syncChannel(channel: SignalChannel): Promise<SyncResult> {
     const knownShortIds = wanted.length > 0 ? await collectKnownShortIds(channel) : new Set<string>();
 
     let written = 0;
+    let removed = 0;
     for (let index = 0; index < wanted.length; index += 50) {
-      const videos = await fetchVideos(wanted.slice(index, index + 50));
+      const batch = wanted.slice(index, index + 50);
+      const videos = await fetchVideos(batch);
       written += await upsertVideos(channel.id, videos.filter((video) => keep(video, knownShortIds)));
+
+      // Anything asked for and not answered is gone from YouTube's side.
+      // Checked against every id in the batch, not only the ones already in
+      // our database: a brand-new upload that 404s between being listed and
+      // being fetched simply matches no row here, so this is a safe no-op for
+      // it rather than a special case.
+      removed += await pruneGoneVideos(
+        channel.id,
+        batch,
+        new Set(videos.map((video) => video.youtubeId)),
+      );
     }
 
     const newest = fresh[0]?.videoId ?? channel.lastSeenVideoId;
@@ -326,7 +395,7 @@ export async function syncChannel(channel: SignalChannel): Promise<SyncResult> {
       })
       .where(eq(signalChannels.id, channel.id));
 
-    return { ...base, added: fresh.length, updated: written - fresh.length, ok: true };
+    return { ...base, added: fresh.length, updated: written - fresh.length, removed, ok: true };
   } catch (error) {
     const { message } = humanError(error);
 
@@ -339,7 +408,7 @@ export async function syncChannel(channel: SignalChannel): Promise<SyncResult> {
       })
       .where(eq(signalChannels.id, channel.id));
 
-    return { ...base, added: 0, updated: 0, ok: false, error: message };
+    return { ...base, added: 0, updated: 0, removed: 0, ok: false, error: message };
   }
 }
 
@@ -348,6 +417,7 @@ export interface SyncRun {
   finishedAt: number;
   channels: number;
   added: number;
+  removed: number;
   errors: number;
   offline: boolean;
   results: SyncResult[];
@@ -378,6 +448,7 @@ export async function syncAll(): Promise<SyncRun> {
       finishedAt: Date.now(),
       channels: 0,
       added: 0,
+      removed: 0,
       errors: 0,
       offline: false,
       results: [],
@@ -404,6 +475,7 @@ export async function syncAll(): Promise<SyncRun> {
     finishedAt: Date.now(),
     channels: results.length,
     added: results.reduce((total, r) => total + r.added, 0),
+    removed: results.reduce((total, r) => total + r.removed, 0),
     errors: results.filter((r) => !r.ok).length,
     offline,
     results,

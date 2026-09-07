@@ -23,10 +23,14 @@ import { keyCount, nextKey, releaseKey, restKey } from '@/lib/squirl/keys';
  *
  * A search costs as much as a hundred playlist reads. That single fact decides
  * the architecture: monitoring never searches. It reads each channel's uploads
- * playlist, one unit per channel per pass, plus a second unit only when there
- * is something new to check against the channel's Shorts playlist (see
- * `shortsPlaylistId`). Even at two units a channel, thirty-eight channels every
- * hour costs under two thousand units a day out of ten thousand.
+ * playlist, one unit per channel per pass, plus a second unit when there is
+ * something to check against the channel's Shorts playlist and a third when
+ * there is something to fetch full details for (see `shortsPlaylistId` and
+ * `fetchVideos`) — up to three units a channel on a pass that finds something.
+ * At forty channels every fifteen minutes that is up to 11,520 units a day in
+ * the worst case, comfortably under the ten-thousand ceiling in the realistic
+ * one where most passes find nothing to do. See `lib/signal/scheduler.ts` for
+ * the actual arithmetic behind the chosen interval.
  *
  * Search is spent only when a human is looking for something, and even then
  * only when nothing cheaper will do: a handle, a URL or a raw channel id all

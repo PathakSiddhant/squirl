@@ -371,9 +371,18 @@ only on a pass where there is something new to check.
 ### It syncs itself, and cannot open a gap
 
 The background sync runs inside the Squirl process — no cron, no cloud
-scheduler, nothing to keep running when the app is not. It goes every hour,
-and also on startup, on the machine coming back online, when the last run is
-stale, and whenever you press the button.
+scheduler, nothing to keep running when the app is not. It goes every fifteen
+minutes, and also on startup, on the machine coming back online, when the last
+run is stale, and whenever you press the button. A live stream ending, or a
+new one starting, is caught within that window without anybody having to
+reopen the tab.
+
+Every pass also re-checks the small number of items still sitting unseen in
+the inbox, not only what a channel just published. YouTube's `videos.list`
+answers a request for an id it no longer has by simply leaving it out of the
+reply, with no error — so a video a creator deleted and reuploaded (routine,
+usually to fix a mistake) is detected the same way anything else is checked,
+and the stale row is removed rather than sitting in the inbox forever.
 
 Signal notices its own sync landing, too. A tab left open polls a tiny piece
 of the scheduler's own state every twenty seconds — not the database, not
@@ -397,10 +406,15 @@ and is separately capped at 100 calls a day; `channels.list`,
 `playlistItems.list` and `videos.list` cost **one unit** each for up to 50 items.
 
 So Signal never searches during monitoring. Adding a channel resolves the handle
-directly for one unit rather than searching for a hundred, and the routine
-three-hourly pass costs roughly one unit per channel. Thirty-eight channels cost
-about 38 units a pass, or a few hundred a day against an allowance of ten
-thousand.
+directly for one unit rather than searching for a hundred, and the routine pass
+costs one unit per channel, plus a second and third only on the channels that
+actually have something new or still unseen to check. Forty channels, every
+fifteen minutes, comes to roughly two thousand units a day in ordinary use —
+comfortably inside the ten-thousand allowance. An adversarial day where every
+channel triggers every extra check on every single pass would use more than
+that, and Signal's answer to actually running out is to say so and stop for the
+day rather than to fail loudly: `humanError` turns YouTube's quota response
+into "Sync will resume tomorrow," and picks back up on the next daily reset.
 
 Keys are pooled and rotated, and an exhausted one is rested until quota reset
 rather than retried into the ground.
@@ -605,7 +619,7 @@ loan. Delete `data/squirl.db` whenever you want a clean start.
 | `npm test` | Run the test suite |
 | `npm run typecheck` | Type-check without building |
 | `npm run brand:build` | Regenerate marks and icons from the artwork |
-| `SIGNAL_SYNC_INTERVAL_MS=…` | Override Signal's one-hour sync interval |
+| `SIGNAL_SYNC_INTERVAL_MS=…` | Override Signal's fifteen-minute sync interval |
 | `npm run build && npm start` | Production build |
 
 ### Where your data lives

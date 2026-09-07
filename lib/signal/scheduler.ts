@@ -12,8 +12,8 @@ import { syncAll, type SyncRun } from './sync';
  *
  * ## Never wait when there is a reason to go now
  *
- * One hour is the *idle* cadence, not a rate limit. Four things jump the
- * queue, because in each case the schedule is known to be wrong:
+ * Fifteen minutes is the *idle* cadence, not a rate limit. Four things jump
+ * the queue, because in each case the schedule is known to be wrong:
  *
  *   the process just started      the machine may have been off for a day
  *   the connection came back      time offline is exactly when things were missed
@@ -31,10 +31,27 @@ import { syncAll, type SyncRun } from './sync';
  * during it is lost, and no separate catch-up path exists to get out of step.
  */
 
-const HOURS = 3_600_000;
+const MINUTES = 60_000;
 
-/** The idle cadence. Configurable, but not exposed as a setting until it needs to be. */
-const INTERVAL = Number(process.env.SIGNAL_SYNC_INTERVAL_MS ?? 1 * HOURS);
+/**
+ * The idle cadence. Configurable, but not exposed as a setting until it needs
+ * to be.
+ *
+ * Fifteen minutes, not five. The difference is quota, and it is worth being
+ * exact about: `videos.list` is also spent on every currently-unseen item on
+ * each pass (see `refreshableIds` in `sync.ts`), so a busy inbox costs up to
+ * three units a channel rather than one. At forty channels that is up to 120
+ * units a pass. Five minutes is 288 passes a day — 34,560 units in the worst
+ * case, against a free key's 10,000-a-day ceiling — which would exhaust the
+ * quota by the early afternoon and leave Signal unable to sync *at all* for
+ * the rest of the day. That is a worse failure than the slowness this is
+ * fixing. Fifteen minutes is 96 passes a day, ~11,520 units in that same
+ * worst case and comfortably under budget in the realistic one, while still
+ * being four times faster than the hour this replaces — a live stream ending,
+ * or a new one starting, is now caught within fifteen minutes rather than up
+ * to sixty. Add more `YOUTUBE_API_KEYS` and this can safely come down further.
+ */
+const INTERVAL = Number(process.env.SIGNAL_SYNC_INTERVAL_MS ?? 15 * MINUTES);
 
 /** How soon to try again after a failure, and how far that backs off. */
 const RETRY_MIN = 60_000;
@@ -140,6 +157,7 @@ export function syncNow(): Promise<SyncRun> {
         finishedAt: Date.now(),
         channels: 0,
         added: 0,
+        removed: 0,
         errors: 1,
         offline: true,
         results: [],
