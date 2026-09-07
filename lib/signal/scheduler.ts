@@ -37,21 +37,41 @@ const MINUTES = 60_000;
  * The idle cadence. Configurable, but not exposed as a setting until it needs
  * to be.
  *
- * Fifteen minutes, not five. The difference is quota, and it is worth being
- * exact about: `videos.list` is also spent on every currently-unseen item on
- * each pass (see `refreshableIds` in `sync.ts`), so a busy inbox costs up to
- * three units a channel rather than one. At forty channels that is up to 120
- * units a pass. Five minutes is 288 passes a day — 34,560 units in the worst
- * case, against a free key's 10,000-a-day ceiling — which would exhaust the
- * quota by the early afternoon and leave Signal unable to sync *at all* for
- * the rest of the day. That is a worse failure than the slowness this is
- * fixing. Fifteen minutes is 96 passes a day, ~11,520 units in that same
- * worst case and comfortably under budget in the realistic one, while still
- * being four times faster than the hour this replaces — a live stream ending,
- * or a new one starting, is now caught within fifteen minutes rather than up
- * to sixty. Add more `YOUTUBE_API_KEYS` and this can safely come down further.
+ * ## The rule, so this number can be re-derived rather than re-guessed
+ *
+ * Each key is its own 10,000-unit-a-day project, and Signal's own worst case
+ * is bounded: `videos.list` is spent on every currently-unseen item on every
+ * pass, not only what a channel just published (see `refreshableIds` in
+ * `sync.ts`), so a channel with something pending costs up to three units —
+ * the upload check, the Shorts check, the detail fetch — rather than one.
+ * At forty channels that ceiling is 120 units for one full pass. So:
+ *
+ *     safe passes per day  ≈  (keys × 10,000 × 0.85) / (channels × 3)
+ *     safe interval        ≈  1,440 minutes / that
+ *
+ * The 0.85 is headroom held back from the passive loop for what a reader does
+ * by hand — a search costs 100 units and comes out of the same pool (see
+ * `youtube.ts`) — not a margin for error in the arithmetic itself.
+ *
+ * ## Where that puts us today
+ *
+ * Four keys, forty channels: a 40,000-unit ceiling, 34,000 of it budgeted for
+ * syncing. At five minutes that is 288 passes a day, 34,560 units in the
+ * worst case — where every channel has something pending on every single
+ * pass, which does not happen — and a few thousand in the ordinary one, where
+ * most passes find nothing new. A live stream ending, or a new one starting,
+ * is caught within five minutes.
+ *
+ * The same formula at one key recommends roughly twenty minutes; the very
+ * first version of this file shipped fifteen instead, spending more of that
+ * single key's budget than the 15% headroom above allows because there was no
+ * slack to spare it from. Five minutes at one key would have been 34,560
+ * units against a 10,000 ceiling: exhausted by early afternoon, with Signal
+ * unable to sync *at all* for the rest of the day — a worse failure than the
+ * slowness this fixes. The number must fall if a key is ever removed, not
+ * just be free to rise when one is added.
  */
-const INTERVAL = Number(process.env.SIGNAL_SYNC_INTERVAL_MS ?? 15 * MINUTES);
+const INTERVAL = Number(process.env.SIGNAL_SYNC_INTERVAL_MS ?? 5 * MINUTES);
 
 /** How soon to try again after a failure, and how far that backs off. */
 const RETRY_MIN = 60_000;

@@ -371,11 +371,11 @@ only on a pass where there is something new to check.
 ### It syncs itself, and cannot open a gap
 
 The background sync runs inside the Squirl process — no cron, no cloud
-scheduler, nothing to keep running when the app is not. It goes every fifteen
-minutes, and also on startup, on the machine coming back online, when the last
-run is stale, and whenever you press the button. A live stream ending, or a
-new one starting, is caught within that window without anybody having to
-reopen the tab.
+scheduler, nothing to keep running when the app is not. How often it goes
+depends on how many YouTube keys are configured (see below); it also runs on
+startup, on the machine coming back online, when the last run is stale, and
+whenever you press the button. A live stream ending, or a new one starting, is
+caught within that window without anybody having to reopen the tab.
 
 Every pass also re-checks the small number of items still sitting unseen in
 the inbox, not only what a channel just published. YouTube's `videos.list`
@@ -408,13 +408,21 @@ and is separately capped at 100 calls a day; `channels.list`,
 So Signal never searches during monitoring. Adding a channel resolves the handle
 directly for one unit rather than searching for a hundred, and the routine pass
 costs one unit per channel, plus a second and third only on the channels that
-actually have something new or still unseen to check. Forty channels, every
-fifteen minutes, comes to roughly two thousand units a day in ordinary use —
-comfortably inside the ten-thousand allowance. An adversarial day where every
-channel triggers every extra check on every single pass would use more than
-that, and Signal's answer to actually running out is to say so and stop for the
-day rather than to fail loudly: `humanError` turns YouTube's quota response
-into "Sync will resume tomorrow," and picks back up on the next daily reset.
+actually have something new or still unseen to check.
+
+`YOUTUBE_API_KEYS` takes a comma-separated list rather than one key, and the
+ceiling is the sum: each key is its own free 10,000-a-day project, pooled and
+rotated by `lib/squirl/keys.ts`, with an exhausted one rested rather than
+retried into the ground. **The sync interval is derived from how many there
+are, not fixed** — `lib/signal/scheduler.ts` works out the fastest cadence
+that stays inside the combined ceiling with headroom left for searches done by
+hand, and recomputing it after adding or removing a key is one read of that
+file's own worked arithmetic, not a guess. An adversarial day where every
+channel triggers every extra check on every single pass would still use more
+than the ceiling allows, and Signal's answer to actually running out is to say
+so and stop for the day rather than fail loudly: `humanError` turns YouTube's
+quota response into "Sync will resume tomorrow," and picks back up at the next
+daily reset.
 
 Keys are pooled and rotated, and an exhausted one is rested until quota reset
 rather than retried into the ground.
@@ -597,6 +605,11 @@ is already in the database. It simply cannot fetch anything new, and says so
 rather than failing quietly. Without a Gemini key the keyword heuristic files
 new channels instead.
 
+Adding a second, third or fourth YouTube key does more than remove a single
+point of failure — it also speeds up the sync itself, automatically. See
+"It syncs itself, and cannot open a gap" above for how the interval is worked
+out from the size of the pool.
+
 ### Want to look around before committing to it?
 
 ```bash
@@ -619,7 +632,7 @@ loan. Delete `data/squirl.db` whenever you want a clean start.
 | `npm test` | Run the test suite |
 | `npm run typecheck` | Type-check without building |
 | `npm run brand:build` | Regenerate marks and icons from the artwork |
-| `SIGNAL_SYNC_INTERVAL_MS=…` | Override Signal's fifteen-minute sync interval |
+| `SIGNAL_SYNC_INTERVAL_MS=…` | Override the sync interval that `lib/signal/scheduler.ts` derives from your key pool |
 | `npm run build && npm start` | Production build |
 
 ### Where your data lives

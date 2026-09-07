@@ -21,16 +21,18 @@ import { keyCount, nextKey, releaseKey, restKey } from '@/lib/squirl/keys';
  *   videos.list          1 unit   (up to 50 ids in one call)
  *   search.list        100 units  and a separate hard cap of 100 calls a day
  *
- * A search costs as much as a hundred playlist reads. That single fact decides
- * the architecture: monitoring never searches. It reads each channel's uploads
- * playlist, one unit per channel per pass, plus a second unit when there is
- * something to check against the channel's Shorts playlist and a third when
- * there is something to fetch full details for (see `shortsPlaylistId` and
- * `fetchVideos`) — up to three units a channel on a pass that finds something.
- * At forty channels every fifteen minutes that is up to 11,520 units a day in
- * the worst case, comfortably under the ten-thousand ceiling in the realistic
- * one where most passes find nothing to do. See `lib/signal/scheduler.ts` for
- * the actual arithmetic behind the chosen interval.
+ * A search costs as much as a hundred playlist reads, and it is spent from the
+ * same daily pool as everything else here — a heavy day of searching is a
+ * heavy day of quota regardless of how little the passive sync used. That
+ * single fact decides the architecture: monitoring never searches. It reads
+ * each channel's uploads playlist, one unit per channel per pass, plus a
+ * second unit when there is something to check against the channel's Shorts
+ * playlist and a third when there is something to fetch full details for (see
+ * `shortsPlaylistId` and `fetchVideos`) — up to three units a channel on a
+ * pass that finds something. See `lib/signal/scheduler.ts` for how that cost
+ * sets the sync interval, and for the arithmetic behind whatever it currently
+ * is — the number there moves with how many keys are in the pool, so it is
+ * not repeated here where it would just go stale.
  *
  * Search is spent only when a human is looking for something, and even then
  * only when nothing cheaper will do: a handle, a URL or a raw channel id all
