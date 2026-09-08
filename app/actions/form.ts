@@ -105,11 +105,22 @@ export async function addWater(ml: number, on?: string): Promise<Result> {
   return done();
 }
 
-export async function setWater(input: string, on?: string): Promise<Result> {
+/**
+ * Add a precisely-typed amount, the same way `addWater` adds a round one.
+ *
+ * The "exact" field used to call the set-absolute path — read a number, write
+ * it as the day's whole total — which was backwards for what it is next to.
+ * It sits beside "+250" and "+500", so typing 382 there should mean the same
+ * thing those buttons mean: 382 more, on top of whatever is already logged.
+ * Reading it as "the total is now 382" silently erased everything logged
+ * earlier in the day, which is the bug this replaces (§20 already made the
+ * case for `addToEntry`; this field just was not calling it).
+ */
+export async function addWaterExact(input: string, on?: string): Promise<Result> {
   const profile = await getProfile();
   const reading = parseVolume(input, profile.volumeUnit);
-  if (!reading) return failed('Try 2.5L, 2500 ml, or 8 oz.');
-  await setEntry(day(on), 'water', reading.value, await activePhaseId());
+  if (!reading) return failed('Try 250ml, 0.5L, or 8 oz.');
+  await addToEntry(day(on), 'water', reading.value, await activePhaseId());
   return done();
 }
 

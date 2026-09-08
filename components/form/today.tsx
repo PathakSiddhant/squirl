@@ -15,6 +15,7 @@ import { useState, useTransition } from 'react';
 
 import {
   addWater,
+  addWaterExact,
   markUntracked,
   removeFoodLog,
   saveWeight,
@@ -235,13 +236,18 @@ export function Today({
                 <InlineInput
                   value={null}
                   placeholder="exact"
-                  label="Set water total"
+                  label="Add a precise amount of water"
                   inputClassName="w-[8ch]"
                   preview={(raw) => {
                     const parsed = parseVolume(raw, profile.volumeUnit);
-                    return parsed ? formatVolume(parsed.value, profile.volumeUnit) : 'not an amount';
+                    if (!parsed) return 'not an amount';
+                    // The whole point of this field: show the total it adds
+                    // up to, so nobody has to add "already drunk" and "this
+                    // glass" in their head before typing the answer in.
+                    const total = (read('water') ?? 0) + parsed.value;
+                    return `→ ${formatVolume(total, profile.volumeUnit)} total`;
                   }}
-                  onSave={(raw) => setMetric('water', raw, day)}
+                  onSave={(raw) => addWaterExact(raw, day)}
                 />
               </div>
 
