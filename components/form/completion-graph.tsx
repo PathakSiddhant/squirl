@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { cn } from '@/lib/cn';
 import { formatDayLong, weekdayIndex, type DayString } from '@/lib/date';
@@ -28,18 +28,49 @@ import type { DaySummary } from '@/lib/form/log';
  * write anything down" is a different statement from "I missed everything",
  * and the graph has to be able to say the first one without implying the
  * second.
+ *
+ * ## Two instances, two jobs
+ *
+ * Today's copy is where a day gets *picked* — the small stretch of history
+ * that matters for logging something you forgot. Passing `onSelectDay` turns
+ * every cell into a real control: clicking one does not just preview it on
+ * hover, it stays lifted and drives the rest of the page onto that day, for
+ * exactly one reason someone actually has — a day does not end at midnight
+ * for everybody, and the glass of milk at 12:30 last night belongs on
+ * yesterday's log, not on a day that has not started yet by the body's own
+ * clock.
+ *
+ * Progress's copy is where a day gets *found* — the whole history, scrolled
+ * rather than picked from. It is given every column instead of the truncated
+ * handful and left to scroll, and it does not take `onSelectDay` at all:
+ * looking something up is not the same action as fixing tonight's log, and
+ * conflating them would make one control do two unrelated jobs.
  */
 
 export function CompletionGraph({
   days,
   today,
   weeks = 26,
+  selectedDay,
+  onSelectDay,
+  scrollable = false,
 }: {
   days: DaySummary[];
   today: DayString;
   weeks?: number;
+  /** The day currently being viewed/edited elsewhere on the page. */
+  selectedDay?: DayString;
+  /** Present only on the instance that lets you jump to a day. */
+  onSelectDay?: (day: DayString) => void;
+  /**
+   * Show every column and let the container scroll, rather than truncating to
+   * the last `weeks` of them. Progress wants this; Today does not — a fixed
+   * short window is the whole point of "whatever's shown is enough" there.
+   */
+  scrollable?: boolean;
 }) {
   const [hovered, setHovered] = useState<DaySummary | null>(null);
+  const scroller = useRef<HTMLDivElement>(null);
 
   // Laid out in columns of seven, Monday at the top, the way a calendar reads.
   const columns: Array<Array<DaySummary | null>> = [];
@@ -62,7 +93,13 @@ export function CompletionGraph({
     columns.push(column);
   }
 
-  const shown = columns.slice(-weeks);
+  const shown = scrollable ? columns : columns.slice(-weeks);
+
+  // A scrollable graph opens on today, the same end a fixed one always shows,
+  // rather than on the oldest week nobody asked to look at first.
+  useEffect(() => {
+    if (scrollable && scroller.current) scroller.current.scrollLeft = scroller.current.scrollWidth;
+  }, [scrollable]);
 
   return (
     <div>
@@ -81,31 +118,43 @@ export function CompletionGraph({
         90px slabs in a wide one. A day is a small square at any width.
       */}
       <div
+        ref={scroller}
         className="mt-3 grid gap-[4px] overflow-x-auto pb-1"
         style={{ gridTemplateColumns: `repeat(${shown.length}, minmax(11px, 20px))` }}
         onMouseLeave={() => setHovered(null)}
       >
         {shown.map((week, index) => (
           <div key={index} className="flex flex-col gap-[4px]">
-            {week.map((day, row) =>
-              day ? (
+            {week.map((day, row) => {
+              if (!day) return <span key={`${index}-${row}`} className="aspect-square w-full min-w-[13px]" />;
+
+              const isSelected = selectedDay === day.day;
+              const isToday = day.day === today;
+
+              return (
                 <button
                   key={day.day}
                   type="button"
                   onMouseEnter={() => setHovered(day)}
                   onFocus={() => setHovered(day)}
+                  onClick={onSelectDay ? () => onSelectDay(day.day) : undefined}
                   aria-label={describe(day)}
+                  aria-pressed={onSelectDay ? isSelected : undefined}
                   className={cn(
-                    'aspect-square w-full min-w-[13px] rounded-[4px] transition-[transform,outline-color] duration-[var(--t-state)]',
-                    'outline outline-1 -outline-offset-1 hover:scale-125 focus-visible:scale-125 focus:outline-none',
-                    day.day === today ? 'outline-ink-3' : 'outline-transparent',
+                    'aspect-square w-full min-w-[13px] rounded-[4px]',
+                    'transition-[transform,outline-color,outline-width] duration-[var(--t-state)]',
+                    'outline -outline-offset-1 focus-visible:scale-125 focus:outline-none',
+                    onSelectDay ? 'cursor-pointer hover:scale-125' : 'hover:scale-125',
+                    isSelected
+                      ? 'scale-125 outline-2 outline-[var(--app-accent)]'
+                      : isToday
+                        ? 'outline-1 outline-ink-3'
+                        : 'outline-1 outline-transparent',
                   )}
                   style={cellStyle(day.verdict)}
                 />
-              ) : (
-                <span key={`${index}-${row}`} className="aspect-square w-full min-w-[13px]" />
-              ),
-            )}
+              );
+            })}
           </div>
         ))}
       </div>
@@ -119,6 +168,7 @@ export function CompletionGraph({
         <Key style={cellStyle({ fraction: 1 })} label="everything met" />
         <Key style={cellStyle({ fraction: 0.5 })} label="some of it" />
         <Key style={cellStyle({ fraction: null })} label="nothing written down" />
+        {onSelectDay ? <span className="text-ink-3">· click a day to log or fix it</span> : null}
       </div>
     </div>
   );
