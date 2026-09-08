@@ -173,9 +173,17 @@ export function Progress({
           </div>
         </section>
 
-        {/* ----------------------------------------------------------- days */}
+        {/*
+          The days, in full, regardless of the window chosen above. Tried
+          following that selector down here too, and seven days of history
+          drawn as two lonely columns in a wide panel was worse than the
+          inconsistency it fixed — this graph is the one place meant for
+          seeing the whole phase at a glance, so it always shows the whole
+          phase; the window buttons stay a question about the averages, not
+          about how much history is on screen.
+        */}
         <section className="form-panel rounded-[1.75rem] p-5 sm:p-6">
-          <CompletionGraph days={range} today={today} weeks={span <= 30 ? 13 : 26} />
+          <CompletionGraph days={range} today={today} scrollable />
         </section>
       </div>
 
