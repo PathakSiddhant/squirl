@@ -445,7 +445,18 @@ export function Today({
             days={recent}
             today={today}
             weeks={13}
-            selectedDay={day}
+            /*
+              Lifted only once a click has actually taken you somewhere else.
+              Today is where this page opens by default, and the default
+              condition is not a selection — it is just where you already are.
+              Marking it as "selected" the moment the page loads made the
+              graph look like something had been chosen before anyone had
+              touched it. Once a different day is picked, *that* day is the
+              one visibly lifted; landing back on today (its own cell, or the
+              banner's "back to today") drops the highlight again rather than
+              moving it, because today is the resting state, not a choice.
+            */
+            selectedDay={viewingToday ? undefined : day}
             onSelectDay={selectDay}
           />
         </section>
