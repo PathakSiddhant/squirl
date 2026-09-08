@@ -519,6 +519,31 @@ and a day nobody logged is neutral rather than empty — "I did not write anythi
 down" and "I missed everything" are different statements, and the graph has to
 be able to make the first without implying the second.
 
+### A day is clicked, not just watched
+
+<img src="docs/screenshots/form-progress.webp" alt="Form's progress screen: the completion graph, scrolled through a full phase" width="820">
+
+Today's completion graph is a control, not only a picture: clicking a square
+lifts it and moves the whole logging surface — the fuel arc, the water vessel,
+protein, food, the keys — onto that day, while the phase and the graph itself
+stay anchored to the real calendar day. This exists because a calendar day is
+not the same thing as a person's day; a glass of milk at half past midnight
+belongs on the day that had not gone to sleep yet, which is exactly the day
+that has already scrolled out of reach by the time anyone opens the app. Only
+past and present days are reachable — never a day that has not happened. The
+default view highlights nothing; a square only lifts once something has
+actually been clicked.
+
+Progress's copy of the same graph does a different job: it is given the whole
+phase, up to nine months of it, and left to scroll rather than truncated to a
+fixed window — the 7/30/90-day selector above it changes the averages beside
+the graph, never how much history the graph itself shows.
+
+Water's exact-amount field adds to the day's total rather than replacing it —
+type `382` after already logging some water and the total becomes *that much
+more*, with the running total shown live as you type, so nothing has to be
+added up by hand first.
+
 ### The past keeps meaning what it meant
 
 Three separate mechanisms, all of them the same idea:
