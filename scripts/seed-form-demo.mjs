@@ -1,6 +1,6 @@
 /**
- * Three months of plausible Form history, for looking at the interface with
- * something in it.
+ * Nine months of plausible Form history, for looking at the interface with
+ * something real in it.
  *
  * This is a development aid, not a fixture the application depends on. It
  * writes only to `form_*` tables — Ledger and Signal are never touched — and
@@ -13,6 +13,14 @@
  * written down at all, and a handful of days marked explicitly unknown. That
  * mixture is the point — a screen that only ever looks good against perfect
  * data is a screen that has not been designed.
+ *
+ * Only the most recent 90 days get day-by-day entries; the two completed
+ * phases before that exist only as phase-level records, exactly the way a
+ * real history looks once a phase has closed. `getRange` fills every day in
+ * a window whether or not a row exists for it, so those older, quieter
+ * months render correctly as untracked squares rather than as a hole in the
+ * calendar — which is worth seeing for its own sake, since that is the
+ * state the completion graph is built never to read as failure.
  */
 
 import { createClient } from '@libsql/client';
@@ -145,20 +153,34 @@ async function seed() {
   const reference = new Map(KITCHEN.map((row) => [row[0], row]));
 
   // --- phases ------------------------------------------------------------
-  // A finished maintenance block, then the cut that is running now, so the
-  // history page has something in it and the graph spans a real stretch.
+  // Three phases, chained by weight so each one picks up exactly where the
+  // last left off: a maintenance block, a lean bulk that undershot its own
+  // target, and the cut that is running now — nine months end to end, so
+  // Progress's graph has a real stretch to scroll through rather than a
+  // handful of weeks padded out with nothing.
   const cutStart = dayString(todayMs - 89 * DAY);
   const cutTarget = dayString(todayMs + 93 * DAY);
-  const oldStart = dayString(todayMs - 180 * DAY);
-  const oldEnd = dayString(todayMs - 90 * DAY);
+  const bulkStart = dayString(todayMs - 180 * DAY);
+  const bulkEnd = dayString(todayMs - 90 * DAY);
+  const maintStart = dayString(todayMs - 270 * DAY);
+  const maintEnd = bulkStart;
+
+  const maintId = id('fph');
+  await db.execute({
+    sql: `INSERT INTO form_phases (id, name, kind, status, start_day, target_day, ended_day,
+            start_weight_g, target_weight_g, final_weight_g, note, created_at, updated_at)
+          VALUES (?, 'Maintenance', 'maintenance', 'completed', ?, ?, ?, 75800, 76000, 76000,
+            'Held steady through the wedding season. Worth repeating.', ?, ?)`,
+    args: [maintId, maintStart, bulkStart, maintEnd, now, now],
+  });
 
   const oldId = id('fph');
   await db.execute({
     sql: `INSERT INTO form_phases (id, name, kind, status, start_day, target_day, ended_day,
             start_weight_g, target_weight_g, final_weight_g, note, created_at, updated_at)
-          VALUES (?, 'Maintenance', 'maintenance', 'completed', ?, ?, ?, 76200, 76000, 76400,
-            'Held steady through the wedding season. Worth repeating.', ?, ?)`,
-    args: [oldId, oldStart, oldEnd, oldEnd, now, now],
+          VALUES (?, 'Lean bulk', 'lean-bulk', 'completed', ?, ?, ?, 76000, 78500, 76400,
+            'Appetite never showed up. Called it early rather than force-feeding through winter.', ?, ?)`,
+    args: [oldId, bulkStart, bulkEnd, bulkEnd, now, now],
   });
 
   const phaseId = id('fph');
@@ -314,7 +336,8 @@ async function seed() {
     [40, phaseId, 0, 'Two weeks off tracking over the trip. The scale barely moved — worth remembering next time I panic.'],
     [22, phaseId, 0, 'Paneer 100 g + 3 chapati is the lunch I never get bored of.'],
     [9, phaseId, 0, 'Plateau at 73 for nine days and then it broke on its own. Do not touch the calories next time.'],
-    [120, oldId, 0, 'Maintenance was easier than expected. Holding is a skill worth having before cutting again.'],
+    [110, oldId, 0, 'Called the bulk after six weeks of forcing food down with nothing to show for it. Not every phase has to run its full length.'],
+    [230, maintId, 0, 'Maintenance was easier than expected. Holding is a skill worth having before cutting again.'],
   ];
   for (const [back, forPhase, pinned, body] of NOTES) {
     const ms = todayMs - back * DAY;
@@ -325,7 +348,8 @@ async function seed() {
     });
   }
 
-  console.log(`seeded 90 days · ${logged} days of food · ${foodRows} food rows`);
+  console.log(`seeded 3 phases spanning 270 days · ${logged} days of food · ${foodRows} food rows`);
+  console.log(`maintenance ${maintStart} → ${maintEnd}, lean bulk ${bulkStart} → ${bulkEnd}`);
   console.log(`cut runs ${cutStart} → ${cutTarget}, now at ${(weight / 1000).toFixed(1)} kg`);
   console.log(`today is ${TODAY}`);
 }
