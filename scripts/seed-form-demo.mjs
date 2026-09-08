@@ -21,11 +21,16 @@
  * months render correctly as untracked squares rather than as a hole in the
  * calendar — which is worth seeing for its own sake, since that is the
  * state the completion graph is built never to read as failure.
+ *
+ * Points at `DATABASE_URL` exactly the way the app itself does, so this can
+ * seed a throwaway copy of the database (`DATABASE_URL=file:data/squirl-demo.db
+ * node scripts/seed-form-demo.mjs`) without ever touching real, logged data —
+ * the default with no override is the same file the app itself defaults to.
  */
 
 import { createClient } from '@libsql/client';
 
-const db = createClient({ url: 'file:data/squirl.db' });
+const db = createClient({ url: process.env.DATABASE_URL ?? 'file:./data/squirl.db' });
 const clearOnly = process.argv.includes('--clear');
 
 // ------------------------------------------------------------------ helpers
