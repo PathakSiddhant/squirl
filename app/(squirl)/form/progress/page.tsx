@@ -26,7 +26,10 @@ export default async function FormProgress() {
   const [profile, weights, range, measurements] = await Promise.all([
     getProfile(),
     getAllWeights(),
-    getRange(addDays(day, -180), day, phase, day),
+    // Just over nine months. The completion graph on this page scrolls rather
+    // than truncating, so this is the actual ceiling on how far back it goes
+    // — wide enough that "let me see the whole phase" is never cut short.
+    getRange(addDays(day, -280), day, phase, day),
     db.select().from(formMeasurements).orderBy(desc(formMeasurements.day)),
   ]);
 
