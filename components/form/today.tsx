@@ -11,6 +11,7 @@ import { Plus } from '@phosphor-icons/react/dist/csr/Plus';
 import { X } from '@phosphor-icons/react/dist/csr/X';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { useRouter } from 'next/navigation';
+import type { Route } from 'next';
 import { useState, useTransition } from 'react';
 
 import {
@@ -85,6 +86,7 @@ import { Vessel } from './vessel';
  */
 export function Today({
   day,
+  today,
   phase,
   profile,
   view,
@@ -92,8 +94,12 @@ export function Today({
   series,
   recent,
   foods,
+  latestWeightG,
 }: {
+  /** The day being viewed and logged against — not necessarily today. */
   day: DayString;
+  /** The real calendar day, IST, regardless of what is being viewed. */
+  today: DayString;
   phase: PhaseView;
   profile: Profile;
   view: DayView;
@@ -101,11 +107,27 @@ export function Today({
   series: Point[];
   recent: DaySummary[];
   foods: FoodView[];
+  /** The phase's own progress never jumps around with the day being edited. */
+  latestWeightG: number | null;
 }) {
   const router = useRouter();
   const [, start] = useTransition();
   const [adding, setAdding] = useState(false);
   const reduceMotion = useReducedMotion();
+
+  const viewingToday = day === today;
+
+  /*
+    A day is picked by navigating to it, not by holding it in client state.
+    The whole page — the fuel arc, the water vessel, the food list, every
+    server action a button here calls — is already keyed off the `day` prop
+    that came from the route, so moving the URL is what actually moves all of
+    it at once. It also means a viewed day survives a refresh and can be sent
+    to someone, for free, rather than needing its own bespoke plumbing.
+  */
+  const selectDay = (target: DayString) => {
+    router.push((target === today ? '/form' : `/form?day=${target}`) as Route);
+  };
 
   const rule = (metric: Metric) => view.rules.find((row) => row.metric === metric);
   const on = (metric: Metric) => rule(metric)?.enabled ?? false;
@@ -151,11 +173,41 @@ export function Today({
     <div className="grid gap-4 xl:grid-cols-[minmax(0,1.85fr)_minmax(22rem,1fr)] xl:items-start">
       <div className="flex flex-col gap-4 xl:col-span-2 xl:contents">
       <div className="flex flex-col gap-4">
+        {/*
+          Nothing else on the page says which day a tap on the fuel arc or the
+          water vessel is actually about to change. Silent is fine while that
+          day is today, which is the overwhelming majority of the time this
+          page is open; the moment it is not, saying so plainly is what stops
+          a forgotten glass of milk from last night landing on the wrong day
+          by accident.
+        */}
+        <AnimatePresence>
+          {!viewingToday ? (
+            <motion.div
+              initial={reduceMotion ? false : { opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[var(--app-accent)] bg-[var(--app-accent-wash)] px-4 py-3"
+            >
+              <p className="text-[0.875rem] text-ink">
+                Viewing <span className="font-medium">{dateLabel}</span>, not today.
+              </p>
+              <button
+                type="button"
+                onClick={() => selectDay(today)}
+                className="shrink-0 rounded-full bg-ink px-3.5 py-1.5 text-[0.8125rem] font-medium text-ink-invert transition-opacity duration-[var(--t-state)] hover:opacity-90"
+              >
+                Back to today
+              </button>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
+
         <PhaseCapsule
           phase={phase}
-          currentWeightG={view.weightG}
+          currentWeightG={latestWeightG}
           unit={profile.weightUnit}
-          today={day}
+          today={today}
         />
 
       <section className="form-panel rounded-[1.75rem] p-5 sm:p-7">
@@ -370,8 +422,8 @@ export function Today({
             )}
           >
             {view.nutritionUntracked
-              ? 'Today’s food is marked unknown. Undo'
-              : 'Ate out and lost track? Mark today unknown'}
+              ? `${viewingToday ? 'Today’s' : 'That day’s'} food is marked unknown. Undo`
+              : `Ate out and lost track? Mark ${viewingToday ? 'today' : 'that day'} unknown`}
           </button>
         </section>
       </div>
@@ -389,7 +441,13 @@ export function Today({
 
         {/* The days. Narrow enough for the rail at a quarter's worth. */}
         <section className="form-panel rounded-[1.75rem] p-5 sm:p-6">
-          <CompletionGraph days={recent} today={day} weeks={13} />
+          <CompletionGraph
+            days={recent}
+            today={today}
+            weeks={13}
+            selectedDay={day}
+            onSelectDay={selectDay}
+          />
         </section>
       </div>
       </div>
@@ -403,7 +461,7 @@ export function Today({
             exit={{ opacity: 0 }}
             className="rounded-2xl border border-[var(--form-met)] bg-[var(--form-met-wash)] px-5 py-3.5 text-[0.9375rem] text-ink"
           >
-            Everything this phase asked for today has been met.
+            Everything this phase asked for {viewingToday ? 'today' : 'that day'} has been met.
           </motion.p>
         ) : null}
       </AnimatePresence>
