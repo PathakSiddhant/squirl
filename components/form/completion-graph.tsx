@@ -116,11 +116,27 @@ export function CompletionGraph({
         Flexed columns simply divided the panel between them, which meant the
         same thirteen weeks drew as 13px squares in a narrow column and as
         90px slabs in a wide one. A day is a small square at any width.
+
+        The scrollable copy needs a *fixed* column width rather than the
+        `minmax` the fixed-window one uses. `minmax` lets the grid shrink
+        every column to fit whatever space is available, which is exactly
+        right for "always show these thirteen weeks" and exactly wrong for
+        "let me scroll through nine months": forty-odd columns of `minmax`
+        simply compressed themselves down to fit the panel with room to
+        spare, and a graph that always fits never needs to scroll — the
+        squares would have just kept shrinking towards unreadable as more
+        weeks were added, rather than the panel ever actually overflowing.
+        A fixed size is what makes "more weeks" mean "more to scroll through"
+        instead of "smaller squares".
       */}
       <div
         ref={scroller}
         className="mt-3 grid gap-[4px] overflow-x-auto pb-1"
-        style={{ gridTemplateColumns: `repeat(${shown.length}, minmax(11px, 20px))` }}
+        style={{
+          gridTemplateColumns: scrollable
+            ? `repeat(${shown.length}, 16px)`
+            : `repeat(${shown.length}, minmax(11px, 20px))`,
+        }}
         onMouseLeave={() => setHovered(null)}
       >
         {shown.map((week, index) => (
