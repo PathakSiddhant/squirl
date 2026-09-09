@@ -56,20 +56,35 @@ export function InlineInput({
   const field = useRef<HTMLInputElement>(null);
   const reduceMotion = useReducedMotion();
 
+  /*
+    Enter and blur both call `commit`, and that used to double-submit: pressing
+    Enter calls `commit`, which eventually calls `setEditing(false)` — and
+    unmounting an input that still has focus fires a *native* blur on its way
+    out, landing on this same handler a second time with the same draft still
+    in state. The result was every value saved through Enter being added
+    twice (382 ml typed, 764 ml added). This ref remembers a commit is already
+    in flight or done, so that trailing blur is a no-op; `open` below is what
+    clears it, for the next time this field is used.
+  */
+  const committing = useRef(false);
+
   useEffect(() => {
     if (editing) field.current?.select();
   }, [editing]);
 
   const commit = () => {
+    if (committing.current) return;
     const raw = draft.trim();
     if (!raw) {
       setEditing(false);
       setError(null);
       return;
     }
+    committing.current = true;
     start(async () => {
       const result = await onSave(raw);
       if (result.error) {
+        committing.current = false;
         setError(result.error);
         return;
       }
@@ -80,6 +95,7 @@ export function InlineInput({
 
   if (!editing) {
     const open = () => {
+      committing.current = false;
       setDraft(value ?? '');
       setEditing(true);
     };
