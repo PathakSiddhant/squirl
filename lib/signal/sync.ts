@@ -435,6 +435,62 @@ export interface SyncRun {
  * failures and marking every channel broken. One failed connection is enough
  * to know.
  */
+/**
+ * A ceiling on how long one channel is allowed to take.
+ *
+ * Every individual YouTube request already carries its own 15s abort signal
+ * (`callWith` in youtube.ts), but one channel can chain several of them — a
+ * paginated playlist scan, the Shorts playlist, one or more batches of
+ * `fetchVideos`, each retried across however many keys are configured — and
+ * a hang in any layer below that abort signal (DNS resolution is the usual
+ * suspect) never reaches it, so the chain can sit forever neither resolving
+ * nor rejecting. Because the scheduler only ever runs one pass at a time
+ * (`inFlight` in scheduler.ts), a single channel stuck like this stops every
+ * sync after it — scheduled and manual alike — since whatever is waiting on
+ * that promise never gets an answer to retry from. This is the backstop: past
+ * this many milliseconds the channel is abandoned and counted as a failure,
+ * so the pass always finishes and the scheduler always gets to try again.
+ */
+const CHANNEL_TIMEOUT_MS = 90_000;
+
+async function syncChannelWithTimeout(channel: SignalChannel): Promise<SyncResult> {
+  let timer!: NodeJS.Timeout;
+  const timedOut = new Promise<SyncResult>((resolve) => {
+    timer = setTimeout(() => {
+      resolve({
+        channelId: channel.id,
+        title: channel.title,
+        added: 0,
+        updated: 0,
+        removed: 0,
+        ok: false,
+        error: 'Timed out waiting for YouTube.',
+      });
+    }, CHANNEL_TIMEOUT_MS);
+    timer.unref?.();
+  });
+
+  try {
+    const result = await Promise.race([syncChannel(channel), timedOut]);
+    if (!result.ok && result.error === 'Timed out waiting for YouTube.') {
+      // syncChannel itself may still be running; its own eventual result is
+      // discarded, but the row is marked now so the reader is not looking at
+      // a stale "ok" from hours ago while this keeps failing.
+      await db
+        .update(signalChannels)
+        .set({
+          syncStatus: 'error',
+          lastError: result.error,
+          failureCount: channel.failureCount + 1,
+        })
+        .where(eq(signalChannels.id, channel.id));
+    }
+    return result;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export async function syncAll(): Promise<SyncRun> {
   const startedAt = Date.now();
 
@@ -461,10 +517,10 @@ export async function syncAll(): Promise<SyncRun> {
   let offline = false;
 
   for (const channel of channels) {
-    const result = await syncChannel(channel);
+    const result = await syncChannelWithTimeout(channel);
     results.push(result);
 
-    if (result.error === 'No connection to YouTube.') {
+    if (result.error === 'No connection to YouTube.' || result.error === 'Timed out waiting for YouTube.') {
       offline = true;
       break;
     }
