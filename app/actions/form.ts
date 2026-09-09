@@ -158,8 +158,10 @@ export async function setMetric(name: Metric, input: string, on?: string): Promi
 
   let value: number | null = null;
   if (parsed.data === 'sleep') value = parseDuration(text);
-  else if (parsed.data === 'water') value = parseVolume(text)?.value ?? null;
-  else if (parsed.data === 'energy') value = parseEnergy(text);
+  else if (parsed.data === 'water') {
+    const profile = await getProfile();
+    value = parseVolume(text, profile.volumeUnit)?.value ?? null;
+  } else if (parsed.data === 'energy') value = parseEnergy(text);
   else if (parsed.data === 'protein' || parsed.data === 'carbs' || parsed.data === 'fat' || parsed.data === 'fiber') {
     value = parseMacro(text);
   } else {
