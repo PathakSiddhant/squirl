@@ -1,6 +1,7 @@
 'use client';
 
 import { motion, useReducedMotion } from 'motion/react';
+import { useEffect, useRef, useState, useTransition } from 'react';
 
 import { cn } from '@/lib/cn';
 
@@ -26,6 +27,19 @@ import { cn } from '@/lib/cn';
  * cheapest convincing water there is — one wave reads as a wobbling line, two
  * out of phase read as a surface. Both stop dead under `prefers-reduced-motion`
  * rather than slowing down, because a slow wave is worse than none.
+ *
+ * ## The figure is also a correction
+ *
+ * "Exact" beside the vessel *adds* — it exists for "382 ml more", the same
+ * thing +250 and +500 mean. But a day is sometimes logged wrong outright (a
+ * slipped digit, a duplicate tap before this component's own double-submit
+ * bug — see `inline-input.tsx` — was fixed), and there was no way to say "no,
+ * the whole day's total is actually X" without knowing the day's running
+ * total by heart and doing the subtraction by hand. Clicking the figure
+ * itself opens the same kind of field, but `onSetTotal` *replaces* rather
+ * than adds — the one control on this screen that overrides instead of
+ * accumulating, which is exactly why it lives on the number being corrected
+ * rather than beside it.
  */
 export function Vessel({
   fraction,
@@ -33,6 +47,7 @@ export function Vessel({
   goal,
   height = 168,
   width = 104,
+  onSetTotal,
 }: {
   /** 0 to 1. Values over 1 are clamped for drawing; the figure still tells the truth. */
   fraction: number;
@@ -40,9 +55,37 @@ export function Vessel({
   goal?: string;
   height?: number;
   width?: number;
+  /** Present only on the instance that lets the day's whole total be corrected. */
+  onSetTotal?: (raw: string) => Promise<{ error: string | null }>;
 }) {
   const reduceMotion = useReducedMotion();
   const filled = Math.min(Math.max(fraction, 0), 1);
+
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState('');
+  const [pending, start] = useTransition();
+  const field = useRef<HTMLInputElement>(null);
+  // Same re-entrancy guard as InlineInput, and for the same reason: Enter
+  // closes the field, and unmounting a focused input fires a trailing blur.
+  const committing = useRef(false);
+
+  useEffect(() => {
+    if (editing) field.current?.select();
+  }, [editing]);
+
+  const commit = () => {
+    if (committing.current || !onSetTotal) return;
+    const raw = draft.trim();
+    if (!raw) {
+      setEditing(false);
+      return;
+    }
+    committing.current = true;
+    start(async () => {
+      await onSetTotal(raw);
+      setEditing(false);
+    });
+  };
 
   return (
     <div
@@ -114,7 +157,49 @@ export function Vessel({
 
       {/* The figure floats over the water rather than sitting beside it. */}
       <div className="absolute inset-0 flex flex-col items-center justify-center px-2 text-center">
-        <span className="form-figure text-[1.75rem] leading-none text-ink">{reading}</span>
+        {editing ? (
+          <input
+            ref={field}
+            value={draft}
+            autoFocus
+            inputMode="decimal"
+            aria-label="Correct the day's water total"
+            disabled={pending}
+            onChange={(event) => setDraft(event.target.value)}
+            onBlur={commit}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') {
+                event.preventDefault();
+                commit();
+              }
+              if (event.key === 'Escape') {
+                event.preventDefault();
+                setEditing(false);
+              }
+            }}
+            className="form-figure w-[5.5ch] rounded-lg border border-[var(--form-edge)] bg-surface px-1 text-center text-[1.75rem] leading-none text-ink outline-none"
+          />
+        ) : (
+          <button
+            type="button"
+            onClick={
+              onSetTotal
+                ? () => {
+                    committing.current = false;
+                    setDraft('');
+                    setEditing(true);
+                  }
+                : undefined
+            }
+            aria-label={onSetTotal ? "Correct the day's water total" : undefined}
+            className={cn(
+              'form-figure rounded-lg text-[1.75rem] leading-none text-ink',
+              onSetTotal && 'transition-opacity duration-[var(--t-state)] hover:opacity-60',
+            )}
+          >
+            {reading}
+          </button>
+        )}
         {goal ? <span className="mt-1.5 text-[0.6875rem] text-ink-3">of {goal}</span> : null}
       </div>
     </div>

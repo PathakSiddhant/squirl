@@ -268,6 +268,7 @@ export function Today({
                 goal={
                   target('water') ? formatVolume(target('water')!, profile.volumeUnit) : undefined
                 }
+                onSetTotal={(raw) => setMetric('water', raw, day)}
               />
 
               <div className="mt-4 flex items-center gap-1.5">
