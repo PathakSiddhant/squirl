@@ -97,6 +97,29 @@ export function releaseKey(service: 'youtube' | 'gemini', key: string): void {
   p.cooling.delete(key);
 }
 
+/**
+ * True once every configured key has reported its quota gone.
+ *
+ * `usable()` deliberately hands back the whole pool when every key is
+ * cooling, so a caller with no better option still gets a clear quota error
+ * back rather than silently doing nothing. That is right for a single
+ * request; it is wrong for a whole sync pass, which would otherwise grind
+ * through every channel retrying all seven keys in turn, all confirming the
+ * same thing, dozens of times a day until the reset actually arrives. This is
+ * what lets a caller ask the cheap version of that question first.
+ */
+export function poolExhausted(service: 'youtube' | 'gemini'): boolean {
+  const p = service === 'youtube' ? youtube() : gemini();
+  if (p.keys.length === 0) return false;
+  const now = Date.now();
+  return p.keys.every((key) => (p.cooling.get(key) ?? 0) > now);
+}
+
+/** When the daily quota resets, for a caller deciding how long to wait it out. */
+export function quotaResetAt(): number {
+  return nextPacificMidnight();
+}
+
 function nextPacificMidnight(): number {
   // Pacific is UTC-8, or UTC-7 in summer. Eight is the safe assumption: it
   // errs towards waiting slightly longer, and waiting slightly longer costs
