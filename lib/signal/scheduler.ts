@@ -159,7 +159,12 @@ export function syncNow(): Promise<SyncRun> {
       s.lastRun = run;
       s.offline = run.offline;
 
-      if (run.offline) {
+      // A quota-exhausted pass is not offline in the network sense, but it is
+      // just as much a non-success: nothing was actually learned from
+      // YouTube. Counting it as a success would tell `syncIfStale` — and
+      // anyone reading `lastSuccessAt` — that things are current when every
+      // channel was, in fact, turned away.
+      if (run.offline || run.retryAt) {
         s.failures += 1;
       } else {
         s.failures = 0;
@@ -180,6 +185,7 @@ export function syncNow(): Promise<SyncRun> {
         removed: 0,
         errors: 1,
         offline: true,
+        retryAt: null,
         results: [],
       };
       s.lastRun = run;
@@ -220,9 +226,16 @@ async function tick(): Promise<void> {
 
   // A failed pass retries in a minute, not in three hours. This is the whole
   // of the reconnect mechanism: keep asking, cheaply, until the answer changes.
-  const delay = run.offline
-    ? Math.min(RETRY_MIN * 2 ** Math.min(s.failures - 1, 4), RETRY_MAX)
-    : INTERVAL;
+  //
+  // A quota exhaustion is a different shape of "not now" — the answer really
+  // will not change until Google's own reset, so waiting for exactly that
+  // moment finds the answer the instant it changes rather than polling every
+  // five minutes, all day, against a wall that has a known reopening time.
+  const delay = run.retryAt
+    ? Math.max(run.retryAt - Date.now(), RETRY_MIN)
+    : run.offline
+      ? Math.min(RETRY_MIN * 2 ** Math.min(s.failures - 1, 4), RETRY_MAX)
+      : INTERVAL;
 
   schedule(delay);
 }
