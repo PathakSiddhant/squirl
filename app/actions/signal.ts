@@ -160,14 +160,20 @@ export async function decide(
 
 // ------------------------------------------------------------------- syncing
 
-export async function requestSync(): Promise<{ added: number; offline: boolean; error: string | null }> {
+export async function requestSync(): Promise<{
+  added: number;
+  offline: boolean;
+  /** Set when every YouTube key is out of quota; when syncing actually resumes. */
+  retryAt: number | null;
+  error: string | null;
+}> {
   try {
     const run = await syncNow();
     revalidatePath('/signal', 'layout');
-    return { added: run.added, offline: run.offline, error: null };
+    return { added: run.added, offline: run.offline, retryAt: run.retryAt, error: null };
   } catch (error) {
     console.error('[signal] manual sync failed', error);
-    return { added: 0, offline: false, error: explain(error) };
+    return { added: 0, offline: false, retryAt: null, error: explain(error) };
   }
 }
 
