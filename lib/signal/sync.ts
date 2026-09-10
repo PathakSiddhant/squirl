@@ -1,6 +1,7 @@
 import { and, eq, inArray, or, sql } from 'drizzle-orm';
 
 import { db } from '@/lib/db/client';
+import { poolExhausted, quotaResetAt } from '@/lib/squirl/keys';
 
 import { SIGNAL_EPOCH, beforeBaseline } from './epoch';
 import { newSignalId } from './id';
@@ -420,6 +421,13 @@ export interface SyncRun {
   removed: number;
   errors: number;
   offline: boolean;
+  /**
+   * Set once every configured key has confirmed its quota is gone. The
+   * scheduler waits until this exact moment instead of its normal interval —
+   * retrying every five minutes against a wall that will not move until
+   * Google's own reset is a whole day of wasted passes for nothing.
+   */
+  retryAt: number | null;
   results: SyncResult[];
 }
 
@@ -507,6 +515,7 @@ export async function syncAll(): Promise<SyncRun> {
       removed: 0,
       errors: 0,
       offline: false,
+      retryAt: null,
       results: [],
     };
   }
@@ -517,6 +526,12 @@ export async function syncAll(): Promise<SyncRun> {
   let offline = false;
 
   for (const channel of channels) {
+    // Once every key has confirmed its quota is gone, no channel after this
+    // one is going to succeed either — asking anyway would mean grinding
+    // through the rest of the pool for every remaining channel, dozens of
+    // times a day, purely to relearn a fact already known.
+    if (poolExhausted('youtube')) break;
+
     const result = await syncChannelWithTimeout(channel);
     results.push(result);
 
@@ -534,6 +549,7 @@ export async function syncAll(): Promise<SyncRun> {
     removed: results.reduce((total, r) => total + r.removed, 0),
     errors: results.filter((r) => !r.ok).length,
     offline,
+    retryAt: poolExhausted('youtube') ? quotaResetAt() : null,
     results,
   };
 }
