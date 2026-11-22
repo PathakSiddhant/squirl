@@ -6,6 +6,7 @@ import { poolExhausted, quotaResetAt } from '@/lib/squirl/keys';
 import { SIGNAL_EPOCH, beforeBaseline } from './epoch';
 import { newSignalId } from './id';
 import { signalChannels, signalContent, type SignalChannel } from './schema';
+import { isPaused } from './tracking';
 import {
   fetchChannels,
   fetchUploadsPage,
@@ -77,6 +78,10 @@ export interface SyncResult {
   removed: number;
   ok: boolean;
   error?: string;
+  /** Set when the reader paused syncing while this channel was being read. Not a
+   *  failure: nothing was written past that point and the checkpoint was left
+   *  where it was. */
+  paused?: boolean;
 }
 
 /** What the reader is told when something goes wrong. Never the raw error. */
@@ -369,6 +374,16 @@ export async function syncChannel(channel: SignalChannel): Promise<SyncResult> {
     for (let index = 0; index < wanted.length; index += 50) {
       const batch = wanted.slice(index, index + 50);
       const videos = await fetchVideos(batch);
+
+      // The reader may have paused while that request was in the air. Checked
+      // here, between the read and the write, so a pause means nothing more
+      // lands in the inbox from this moment, not merely that no new pass
+      // starts. The checkpoint is left alone: the next resume sets its own
+      // floor above it, so there is nothing for it to catch up on.
+      if (await isPaused()) {
+        return { ...base, added: 0, updated: written, removed, ok: true, paused: true };
+      }
+
       written += await upsertVideos(channel.id, videos.filter((video) => keep(video, knownShortIds)));
 
       // Anything asked for and not answered is gone from YouTube's side.
@@ -421,6 +436,12 @@ export interface SyncRun {
   removed: number;
   errors: number;
   offline: boolean;
+  /**
+   * True when syncing is paused and this pass either never started or stopped
+   * partway. Not an error and not a result: nothing was learned from YouTube,
+   * so the scheduler must not read it as a success or as a failure.
+   */
+  paused: boolean;
   /**
    * Set once every configured key has confirmed its quota is gone. The
    * scheduler waits until this exact moment instead of its normal interval —
@@ -499,6 +520,22 @@ async function syncChannelWithTimeout(channel: SignalChannel): Promise<SyncResul
   }
 }
 
+/** A pass that did nothing, and why. Never touches YouTube or the database. */
+function idleRun(startedAt: number, paused: boolean): SyncRun {
+  return {
+    startedAt,
+    finishedAt: Date.now(),
+    channels: 0,
+    added: 0,
+    removed: 0,
+    errors: 0,
+    offline: false,
+    paused,
+    retryAt: null,
+    results: [],
+  };
+}
+
 export async function syncAll(): Promise<SyncRun> {
   const startedAt = Date.now();
 
@@ -506,24 +543,19 @@ export async function syncAll(): Promise<SyncRun> {
   // skipped outright rather than spending quota to prove it. The floor in
   // collectNewUploads would return an empty list anyway; this just avoids
   // asking.
-  if (beforeBaseline(startedAt)) {
-    return {
-      startedAt,
-      finishedAt: Date.now(),
-      channels: 0,
-      added: 0,
-      removed: 0,
-      errors: 0,
-      offline: false,
-      retryAt: null,
-      results: [],
-    };
-  }
+  if (beforeBaseline(startedAt)) return idleRun(startedAt, false);
+
+  // A paused Signal does not ask YouTube anything. This is the one choke point
+  // every trigger passes through (the scheduler, the button, opening the app),
+  // so guarding it here is what makes "paused" mean paused for all of them
+  // rather than for whichever caller remembered to check.
+  if (await isPaused()) return idleRun(startedAt, true);
 
   const channels = await db.select().from(signalChannels).where(eq(signalChannels.enabled, true));
 
   const results: SyncResult[] = [];
   let offline = false;
+  let paused = false;
 
   for (const channel of channels) {
     // Once every key has confirmed its quota is gone, no channel after this
@@ -532,8 +564,21 @@ export async function syncAll(): Promise<SyncRun> {
     // times a day, purely to relearn a fact already known.
     if (poolExhausted('youtube')) break;
 
+    // The reader can pause in the middle of a pass. Looking before each channel
+    // means the rest of the shelf is not read at all, instead of being read and
+    // then discarded.
+    if (await isPaused()) {
+      paused = true;
+      break;
+    }
+
     const result = await syncChannelWithTimeout(channel);
     results.push(result);
+
+    if (result.paused) {
+      paused = true;
+      break;
+    }
 
     if (result.error === 'No connection to YouTube.' || result.error === 'Timed out waiting for YouTube.') {
       offline = true;
@@ -549,6 +594,7 @@ export async function syncAll(): Promise<SyncRun> {
     removed: results.reduce((total, r) => total + r.removed, 0),
     errors: results.filter((r) => !r.ok).length,
     offline,
+    paused,
     retryAt: poolExhausted('youtube') ? quotaResetAt() : null,
     results,
   };

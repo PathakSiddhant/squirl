@@ -4,19 +4,11 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 /**
- * A throwaway database for a test, built by the real migrations.
- *
- * The application's database client reads `DATABASE_URL` once, when it is first
- * imported, so this has to run before anything that imports `@/lib/db/client`.
- * A test file calls it first and then pulls the modules under test in with a
- * dynamic `import()`. Each file runs in its own process under `node --test`, so
- * one file's database never leaks into another's.
- *
- * Running the migrations rather than hand-writing the tables is deliberate: the
- * schema these tests exercise is the one that will actually ship, and a
- * migration that does not apply cleanly fails here instead of on somebody's
- * machine.
+ * What Signal's tests stand on: a database that is theirs alone, and a YouTube
+ * that is served from memory. Nothing in the application imports this.
  */
+
+// ---------------------------------------------------------------- database
 
 const ROOT = path.join(tmpdir(), 'squirl-test');
 
@@ -41,6 +33,20 @@ async function sweepStale(): Promise<void> {
   }
 }
 
+/**
+ * A throwaway database for a test, built by the real migrations.
+ *
+ * The application's database client reads `DATABASE_URL` once, when it is first
+ * imported, so this has to run before anything that imports `@/lib/db/client`.
+ * A test file calls it first and then pulls the modules under test in with a
+ * dynamic `import()`. Each file runs in its own process under `node --test`, so
+ * one file's database never leaks into another's.
+ *
+ * Running the migrations rather than hand-writing the tables is deliberate: the
+ * schema these tests exercise is the one that will actually ship, and a
+ * migration that does not apply cleanly fails here instead of on somebody's
+ * machine.
+ */
 export async function useTempDatabase(): Promise<{ cleanup: () => Promise<void> }> {
   await sweepStale();
 
@@ -60,4 +66,118 @@ export async function useTempDatabase(): Promise<{ cleanup: () => Promise<void> 
       });
     },
   };
+}
+
+// ------------------------------------------------------------ fake YouTube
+
+export interface FakeVideo {
+  id: string;
+  /** Epoch milliseconds. */
+  publishedAt: number;
+  title?: string;
+  /** Seconds. Defaults to ten minutes, comfortably not a Short. */
+  duration?: number;
+  broadcast?: 'none' | 'live' | 'upcoming';
+  scheduledAt?: number;
+  startedAt?: number;
+}
+
+type FakeKind = 'playlistItems' | 'videos' | 'channels';
+
+export interface FakeYouTube {
+  /** Every request made, as `kind:playlist-or-ids`, in order. */
+  calls: string[];
+  /** Replace what one uploads playlist holds. */
+  setUploads(playlistId: string, videos: FakeVideo[]): void;
+  /** Awaited at the start of every request, before it is answered. */
+  onRequest?: (kind: FakeKind) => Promise<void> | void;
+  restore(): void;
+}
+
+const iso = (ms: number) => new Date(ms).toISOString();
+
+/**
+ * YouTube, served from memory.
+ *
+ * `youtube.ts` calls the global `fetch`, so replacing that for the length of a
+ * test is enough to run the real sync engine end to end with no network and no
+ * quota. It answers the three reads Signal makes, with shapes the real parsers
+ * accept, and records every request so a test can assert on what was asked as
+ * well as on what was written.
+ *
+ * A key has to exist for the client to attempt a request at all, so this sets a
+ * dummy one if the environment has none.
+ */
+export function installFakeYouTube(initial: Record<string, FakeVideo[]> = {}): FakeYouTube {
+  process.env.YOUTUBE_API_KEYS ||= 'test-key';
+
+  const uploads = new Map(Object.entries(initial));
+  const realFetch = globalThis.fetch;
+
+  const fake: FakeYouTube = {
+    calls: [],
+    setUploads: (playlistId, videos) => void uploads.set(playlistId, videos),
+    restore: () => {
+      globalThis.fetch = realFetch;
+    },
+  };
+
+  const json = (body: unknown) =>
+    new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' } });
+
+  globalThis.fetch = (async (input: RequestInfo | URL) => {
+    const url = new URL(String(input));
+    const kind = url.pathname.split('/').pop() as FakeKind;
+    const playlistId = url.searchParams.get('playlistId');
+    const ids = url.searchParams.get('id');
+
+    fake.calls.push(`${kind}:${playlistId ?? ids ?? ''}`);
+    await fake.onRequest?.(kind);
+
+    if (kind === 'playlistItems') {
+      // Newest first, the way a real uploads playlist is read.
+      const newestFirst = [...(uploads.get(playlistId ?? '') ?? [])].sort(
+        (a, b) => b.publishedAt - a.publishedAt,
+      );
+      const start = Number(url.searchParams.get('pageToken') ?? 0);
+      const page = newestFirst.slice(start, start + 50);
+      return json({
+        items: page.map((video) => ({
+          contentDetails: { videoId: video.id, videoPublishedAt: iso(video.publishedAt) },
+        })),
+        ...(start + 50 < newestFirst.length ? { nextPageToken: String(start + 50) } : {}),
+      });
+    }
+
+    if (kind === 'videos') {
+      const wanted = new Set((ids ?? '').split(','));
+      const everything = [...uploads.values()].flat();
+      return json({
+        items: everything
+          .filter((video) => wanted.has(video.id))
+          .map((video) => ({
+            id: video.id,
+            snippet: {
+              title: video.title ?? `Video ${video.id}`,
+              description: '',
+              publishedAt: iso(video.publishedAt),
+              liveBroadcastContent: video.broadcast ?? 'none',
+              thumbnails: {},
+            },
+            contentDetails: { duration: video.broadcast === 'live' ? 'P0D' : `PT${video.duration ?? 600}S` },
+            liveStreamingDetails:
+              video.scheduledAt || video.startedAt
+                ? {
+                    ...(video.scheduledAt ? { scheduledStartTime: iso(video.scheduledAt) } : {}),
+                    ...(video.startedAt ? { actualStartTime: iso(video.startedAt) } : {}),
+                  }
+                : undefined,
+          })),
+      });
+    }
+
+    return json({ items: [] });
+  }) as typeof fetch;
+
+  return fake;
 }

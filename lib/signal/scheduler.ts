@@ -1,5 +1,6 @@
 import { beforeBaseline, untilBaseline } from './epoch';
 import { syncAll, type SyncRun } from './sync';
+import { getTracking, pauseTracking, resumeTracking, type Tracking } from './tracking';
 
 /**
  * Signal's background worker.
@@ -19,6 +20,18 @@ import { syncAll, type SyncRun } from './sync';
  *   the connection came back      time offline is exactly when things were missed
  *   the app was opened stale      the reader is looking at it right now
  *   the reader asked              they can see the button; it must do something
+ *
+ * ## Paused is not offline
+ *
+ * The reader can stop all of this from the header. That is a decision, not a
+ * fault, so it is handled differently from every failure below: a paused pass
+ * asks YouTube nothing, does not count as a failure, does not back the schedule
+ * off, and is not recorded as a run. The timer keeps ticking at the normal
+ * interval and each tick finds the pause and goes back to sleep, so resuming
+ * needs no re-arming. And resuming is not a catch-up. Everything else here is
+ * checkpoint-based so that time away loses nothing; a deliberate pause means
+ * the time away was meant to be skipped, so resuming raises a floor instead
+ * (see `tracking.ts`).
  *
  * ## Reconnection, without a connectivity API
  *
@@ -142,6 +155,24 @@ export function getStatus(): SchedulerStatus {
 }
 
 /**
+ * The scheduler's state plus the one fact it does not own.
+ *
+ * Whether syncing is paused is stored, not remembered, so it cannot be read off
+ * the in-memory scheduler the way everything else in `SchedulerStatus` can. It
+ * is joined on here rather than folded into `getStatus`, which stays a
+ * synchronous read of memory that costs nothing to call.
+ */
+export interface SyncStatus extends SchedulerStatus {
+  /** When syncing was paused, or null while it runs. */
+  pausedAt: number | null;
+}
+
+export async function getSyncStatus(): Promise<SyncStatus> {
+  const { pausedAt } = await getTracking();
+  return { ...getStatus(), pausedAt };
+}
+
+/**
  * Run a pass, or join the one already running.
  *
  * Returning the in-flight promise rather than starting a second pass is what
@@ -156,6 +187,14 @@ export function syncNow(): Promise<SyncRun> {
   s.syncing = true;
   s.inFlight = syncAll()
     .then((run) => {
+      // Paused before anything was read: nothing was learned, so none of what
+      // this process knows about the last real pass changes. Recording it as a
+      // run would overwrite a genuine "quota used up" or "offline" with a blank,
+      // and counting it as a success would claim a sync that never happened.
+      // A pass that was paused partway did read some channels, and is recorded
+      // like any other.
+      if (run.paused && run.channels === 0) return run;
+
       s.lastRun = run;
       s.offline = run.offline;
 
@@ -185,6 +224,7 @@ export function syncNow(): Promise<SyncRun> {
         removed: 0,
         errors: 1,
         offline: true,
+        paused: false,
         retryAt: null,
         results: [],
       };
@@ -266,6 +306,40 @@ export function startScheduler(): void {
   // A beat after boot, so the first page load is not competing with a sync for
   // the same event loop.
   schedule(5_000);
+}
+
+/**
+ * Stop syncing, until the reader says otherwise.
+ *
+ * Takes effect at once and for every trigger, because the sync engine itself
+ * refuses to run while this is set (see `syncAll`). The timer is deliberately
+ * left alone: a tick that finds Signal paused does a single read of one row and
+ * goes back to sleep, which is cheaper than being clever about cancelling and
+ * re-arming it, and it means a pause set from anywhere, even by editing the
+ * row by hand, is honoured without this process having been told.
+ */
+export function pauseSync(): Promise<Tracking> {
+  return pauseTracking();
+}
+
+/**
+ * Start syncing again, from this moment and no earlier.
+ *
+ * The first pass is run straight away rather than at whatever minute the
+ * interval lands on: the reader has just asked, and the floor was set an instant
+ * ago, so that pass finds only what is published from here on while it also
+ * re-anchors every channel's checkpoint to the present.
+ *
+ * Only when this click actually ended a pause. A resume that found nothing
+ * paused changed nothing (see `resumeTracking`) and so starts nothing.
+ */
+export async function resumeSync(): Promise<Tracking> {
+  const before = await getTracking();
+  const after = await resumeTracking();
+
+  if (before.pausedAt !== null && state().running) schedule(0);
+
+  return after;
 }
 
 export function stopScheduler(): void {
