@@ -30,8 +30,8 @@ import { sinceLabel } from '@/lib/signal/when';
  * reader looking at a reconnected tab is a reason to ask.
  *
  * A full quota outage gets its own state rather than folding into "nothing
- * new". Both look the same from the reader's chair — the screen does not
- * change — but they are different facts: one means a sync ran and found
+ * new". Both look the same from the reader's chair (the screen does not
+ * change), but they are different facts: one means a sync ran and found
  * nothing, the other means no sync could run at all. Saying which one stops
  * "why hasn't this updated in hours" from having no answer on screen.
  *
@@ -61,7 +61,7 @@ import { sinceLabel } from '@/lib/signal/when';
   clearly reached it.
 
   It is only the tab's opinion. Reaching the server is what actually proves a
-  connection, which is why the failed sync — not this — is the real probe.
+  connection, which is why the failed sync, not this, is the real probe.
 */
 function subscribeToNetwork(listener: () => void): () => void {
   window.addEventListener('online', listener);
@@ -95,7 +95,7 @@ export function SyncControls({ pausedAt: initialPausedAt }: { pausedAt: number |
   /*
     Set once every YouTube key is out of quota. Distinct from `offline`: the
     connection is fine, the answer just is not going to change until this
-    moment, so "nothing new" — the ordinary empty result — would say a sync
+    moment, so "nothing new" (the ordinary empty result) would say a sync
     actually ran and found nothing, when what really happened is that no
     sync could run at all. Those look identical unless this is told apart.
   */
