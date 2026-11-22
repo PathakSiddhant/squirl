@@ -247,6 +247,41 @@ export const signalContent = sqliteTable(
   ],
 );
 
+// --------------------------------------------------------------- tracking
+
+/**
+ * Whether Signal is collecting at all, and from which moment.
+ *
+ * One row, because there is exactly one answer to either question: this is a
+ * single-reader product with a single baseline. The `check` is what makes "one
+ * row" a property of the database rather than a hope held by whatever code
+ * happens to write it, and a row that does not exist yet simply means nothing
+ * has ever been paused.
+ *
+ * `pausedAt` is the whole of "paused". It is a timestamp rather than a boolean
+ * because "paused since Saturday" is the useful thing to say, and one stored
+ * fact cannot disagree with itself the way a flag and a date beside it can.
+ *
+ * `trackingFrom` is `SIGNAL_EPOCH` made movable. The epoch is the day tracking
+ * first began and cannot change; this is the moment the reader last said "carry
+ * on from here", and it only ever moves forward. Nothing published before the
+ * later of the two is collected, which is how a week away stops being a
+ * week-long backlog. It lives in the database rather than in memory because a
+ * restart in the middle of a pause must not quietly un-pause.
+ */
+export const signalTracking = sqliteTable(
+  'signal_tracking',
+  {
+    id: integer('id').primaryKey(),
+    /** Set while syncing is paused, null while it runs. */
+    pausedAt: integer('paused_at'),
+    /** Nothing published before this instant is collected. Null until a resume. */
+    trackingFrom: integer('tracking_from'),
+    updatedAt: integer('updated_at').notNull().$defaultFn(now),
+  },
+  (t) => [check('signal_tracking_one_row', sql`${t.id} = 1`)],
+);
+
 // ------------------------------------------------------------------ types
 
 export type SignalChannel = typeof signalChannels.$inferSelect;

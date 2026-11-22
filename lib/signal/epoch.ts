@@ -25,6 +25,19 @@
  */
 export const SIGNAL_EPOCH = Date.UTC(2026, 8, 5, 18, 30, 0);
 
+/**
+ * The moment before which nothing is collected right now.
+ *
+ * The epoch is where tracking began and never moves. `trackingFrom` is where
+ * the reader last said "carry on from here" (see `signalTracking`), and it only
+ * moves forward, so the later of the two is always the floor. With no resume on
+ * record it is the epoch, which is exactly what the sync engine used before a
+ * resume existed.
+ */
+export function collectionFloor(trackingFrom: number | null): number {
+  return Math.max(SIGNAL_EPOCH, trackingFrom ?? 0);
+}
+
 /** True while the baseline is still in the future and there is nothing to sync yet. */
 export function beforeBaseline(now: number = Date.now()): boolean {
   return now < SIGNAL_EPOCH;
