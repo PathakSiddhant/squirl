@@ -12,6 +12,23 @@ import path from 'node:path';
 
 const ROOT = path.join(tmpdir(), 'squirl-test');
 
+/*
+  Pointed at a throwaway file the moment this module is imported, not when a
+  test asks for it. The application's database client reads `DATABASE_URL` once,
+  when it is first imported, and falls back to the real `data/squirl.db` when it
+  is unset. A test file that imported anything touching the client before it
+  called a setup function would therefore be talking to the reader's actual data,
+  and the first version of this did exactly that: it ran a migration against the
+  live database, which failed harmlessly only because that database happened to
+  be already ahead. Importing this file first, as every test does, makes the safe
+  path the only path.
+*/
+mkdirSync(ROOT, { recursive: true });
+const DIR = mkdtempSync(path.join(ROOT, 'db-'));
+// Forward slashes: a Windows drive path with backslashes is not a valid file URL.
+const TEST_URL = `file:${path.join(DIR, 'test.db').split(path.sep).join('/')}`;
+process.env.DATABASE_URL = TEST_URL;
+
 /**
  * Remove what earlier runs could not.
  *
@@ -22,7 +39,6 @@ const ROOT = path.join(tmpdir(), 'squirl-test');
  * the folders other test files in this same run are using right now.
  */
 async function sweepStale(): Promise<void> {
-  mkdirSync(ROOT, { recursive: true });
   for (const entry of readdirSync(ROOT)) {
     const full = path.join(ROOT, entry);
     try {
@@ -34,34 +50,34 @@ async function sweepStale(): Promise<void> {
 }
 
 /**
- * A throwaway database for a test, built by the real migrations.
- *
- * The application's database client reads `DATABASE_URL` once, when it is first
- * imported, so this has to run before anything that imports `@/lib/db/client`.
- * A test file calls it first and then pulls the modules under test in with a
- * dynamic `import()`. Each file runs in its own process under `node --test`, so
- * one file's database never leaks into another's.
+ * Build the throwaway database from the real migrations.
  *
  * Running the migrations rather than hand-writing the tables is deliberate: the
  * schema these tests exercise is the one that will actually ship, and a
  * migration that does not apply cleanly fails here instead of on somebody's
- * machine.
+ * machine. Call it once per test file, from a `before`, and import the modules
+ * under test with a dynamic `import()` after it.
  */
 export async function useTempDatabase(): Promise<{ cleanup: () => Promise<void> }> {
   await sweepStale();
 
-  const dir = mkdtempSync(path.join(ROOT, 'db-'));
-  // Forward slashes: a Windows drive path with backslashes is not a valid file URL.
-  process.env.DATABASE_URL = `file:${path.join(dir, 'test.db').replaceAll('\\', '/')}`;
+  const { db, DATABASE_URL } = await import('@/lib/db/client');
+  if (DATABASE_URL !== TEST_URL) {
+    // Nothing has been run yet, so refusing here costs nothing. Carrying on would
+    // mean running migrations against whatever this points at.
+    throw new Error(
+      `The database client is pointed at ${DATABASE_URL}, not the test database. ` +
+        'Import ./testing before anything that touches the database.',
+    );
+  }
 
-  const { db } = await import('@/lib/db/client');
   const { migrate } = await import('drizzle-orm/libsql/migrator');
   await migrate(db, { migrationsFolder: path.resolve(process.cwd(), 'lib/db/migrations') });
 
   return {
     cleanup: async () => {
       globalThis.__squirlClient?.close();
-      await rm(dir, { recursive: true, force: true }).catch(() => {
+      await rm(DIR, { recursive: true, force: true }).catch(() => {
         // Locked until this process exits. See `sweepStale`.
       });
     },
