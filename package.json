@@ -15,6 +15,7 @@
     "db:demo": "tsx lib/db/seed.ts --demo",
     "db:reset": "tsx lib/db/reset.ts",
     "db:studio": "drizzle-kit studio",
+    "signal:trim": "tsx scripts/trim-signal.ts",
     "brand:build": "node scripts/make-icons.mjs",
     "setup": "npm run db:generate && npm run db:migrate && npm run db:seed"
   },

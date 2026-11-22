@@ -240,7 +240,9 @@ export interface DayGroup {
  * by when it is due, and an ordinary upload by when it was published, which for
  * an upload is the same instant anyway.
  */
-export function happenedAt(item: QueueItem): number {
+export function happenedAt(
+  item: Pick<QueueItem, 'kind' | 'scheduledAt' | 'publishedAt' | 'startedAt'>,
+): number {
   if (item.kind === 'upcoming') return item.scheduledAt ?? item.publishedAt;
   return item.startedAt ?? item.publishedAt;
 }
