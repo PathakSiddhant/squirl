@@ -3,10 +3,10 @@ import { and, eq, inArray, or, sql } from 'drizzle-orm';
 import { db } from '@/lib/db/client';
 import { poolExhausted, quotaResetAt } from '@/lib/squirl/keys';
 
-import { SIGNAL_EPOCH, beforeBaseline } from './epoch';
+import { SIGNAL_EPOCH, beforeBaseline, collectionFloor } from './epoch';
 import { newSignalId } from './id';
 import { signalChannels, signalContent, type SignalChannel } from './schema';
-import { isPaused } from './tracking';
+import { getTracking, isPaused } from './tracking';
 import {
   fetchChannels,
   fetchUploadsPage,
@@ -33,6 +33,17 @@ import {
  * and the second one silently loses everything published in between. The
  * checkpoint is what makes time offline harmless.
  *
+ * ## Catch-up, except after a pause
+ *
+ * A pause is the one absence that must not be forgiven. Somebody who stopped
+ * Signal for a week chose not to be told about that week, and a catch-up on
+ * resume would hand it all back at once. So resuming raises a collection floor
+ * to the moment of the click (see `tracking.ts`) and nothing published before it
+ * is taken, even a minute before. The floor sits above the checkpoints rather
+ * than rewriting them, and it only ever decides what is *discovered*: a row we
+ * already hold is refreshed whatever its date, because a stream that was live
+ * before the pause still has to be found ended after it.
+ *
  * ## Idempotency
  *
  * Every write is an upsert keyed on YouTube's own video id, which carries a
@@ -57,13 +68,13 @@ const FIRST_SYNC_DAYS = 30;
 const MAX_PAGES = 6;
 
 /**
- * How far behind the baseline to keep looking, for broadcasts only.
+ * How far behind the collection floor to keep looking, for broadcasts only.
  *
  * A scheduled stream's placeholder is published when the creator sets it up,
  * which is routinely days before the thing itself. Judging it by that date
  * throws away a stream that has not happened yet, which is precisely the item
  * a reader most wants to be told about. So collection reaches back further than
- * the baseline, and the baseline is then applied to what was actually found:
+ * the floor, and the floor is then applied to what was actually found:
  * ordinary uploads by their publication date, broadcasts by whether they are
  * still ahead of you.
  */
@@ -113,7 +124,11 @@ function humanError(error: unknown): { message: string; offline: boolean } {
  * hole: the last-seen id fails if that video was deleted, and the timestamp
  * fails if a channel back-dates or re-publishes. Together they terminate.
  */
-async function collectNewUploads(channel: SignalChannel, playlistId: string): Promise<UploadRef[]> {
+async function collectNewUploads(
+  channel: SignalChannel,
+  playlistId: string,
+  collectFrom: number,
+): Promise<UploadRef[]> {
   const window =
     channel.lastSyncedAt === null
       ? Date.now() - FIRST_SYNC_DAYS * 86_400_000
@@ -122,14 +137,14 @@ async function collectNewUploads(channel: SignalChannel, playlistId: string): Pr
         // already have costs nothing because the upsert makes it a no-op.
         channel.lastSyncedAt - 86_400_000;
 
-  // The baseline wins over both. Whatever the checkpoint says, nothing from
-  // before the moment tracking began is ever collected, so the first sync
-  // after the baseline starts genuinely empty rather than importing whatever
-  // the thirty-day window happened to reach back into.
+  // The collection floor wins over both. Whatever the checkpoint says, nothing
+  // from before the moment tracking began, or the last time the reader resumed,
+  // is ever collected, so the first sync after either starts genuinely empty
+  // rather than importing whatever the window happened to reach back into.
   // The floor for *reading* the playlist. Deliberately looser than the
-  // baseline, so a stream scheduled for tonight but announced last week is
-  // still seen; what is kept is decided after the details come back.
-  const floor = Math.max(window, SIGNAL_EPOCH - BROADCAST_LOOKBACK);
+  // collection floor, so a stream scheduled for tonight but announced last week
+  // is still seen; what is kept is decided after the details come back.
+  const floor = Math.max(window, collectFrom - BROADCAST_LOOKBACK);
 
   const found: UploadRef[] = [];
   let pageToken: string | undefined;
@@ -276,20 +291,50 @@ async function collectKnownShortIds(channel: SignalChannel): Promise<Set<string>
  * worse than the near-zero chance of wrongly excluding a genuine one-minute
  * upload.
  *
- * The baseline is applied by relevance rather than by publication date. An
- * ordinary upload counts if it was published after tracking began. A broadcast
- * counts if it is happening now or still to come, whenever its placeholder
- * happened to be created, because a stream starting in four hours is not old
- * news for having been announced on Tuesday.
+ * The collection floor is applied by relevance rather than by publication
+ * date. An ordinary upload counts if it was published at or after the floor,
+ * which is the later of the day tracking began and the last time the reader
+ * resumed. A broadcast counts if it is happening now or still to come, whenever
+ * its placeholder happened to be created, because a stream starting in four
+ * hours is not old news for having been announced on Tuesday, and neither is
+ * one that is on the air at the moment of a resume.
+ *
+ * This decides what is new to us. A video we already hold never reaches it with
+ * a floor that could drop it: see `heldIds`.
  */
-function keep(video: YouTubeVideo, knownShortIds: Set<string>): boolean {
+export function keep(
+  video: YouTubeVideo,
+  knownShortIds: Set<string>,
+  floor: number,
+  now: number = Date.now(),
+): boolean {
   if (video.kind === 'short' || knownShortIds.has(video.youtubeId)) return false;
   if (video.kind === 'live') return true;
   if (video.kind === 'upcoming') {
     // Still ahead, with an hour of grace for one that has just begun.
-    return (video.scheduledAt ?? video.publishedAt) >= Date.now() - 3_600_000;
+    return (video.scheduledAt ?? video.publishedAt) >= now - 3_600_000;
   }
-  return video.publishedAt >= SIGNAL_EPOCH;
+  return video.publishedAt >= floor;
+}
+
+/**
+ * Which of these ids are already rows here, in any state.
+ *
+ * The collection floor is a rule about what is *new*. Applied to a row we
+ * already hold it would do harm: a stream that was live before a pause and has
+ * since ended comes back from YouTube as an ordinary video published before the
+ * floor, and dropping it would leave the row saying "live" for ever. Held rows
+ * are therefore refreshed under the epoch alone, exactly as they were before a
+ * floor existed, and only the unfamiliar ones have to clear it.
+ */
+async function heldIds(ids: string[]): Promise<Set<string>> {
+  if (ids.length === 0) return new Set();
+
+  const rows = await db
+    .select({ youtubeId: signalContent.youtubeId })
+    .from(signalContent)
+    .where(inArray(signalContent.youtubeId, ids));
+  return new Set(rows.map((row) => row.youtubeId));
 }
 
 /** Write videos in, without ever touching what the reader decided. */
@@ -357,7 +402,11 @@ export async function syncChannel(channel: SignalChannel): Promise<SyncResult> {
         .where(eq(signalChannels.id, channel.id));
     }
 
-    const fresh = await collectNewUploads(channel, playlistId);
+    // Read now only to bound how far back the playlist is scanned. What is
+    // actually kept is decided again, with the floor in force at that moment,
+    // after the details come back.
+    const { trackingFrom } = await getTracking();
+    const fresh = await collectNewUploads(channel, playlistId, collectionFloor(trackingFrom));
     const stale = await refreshableIds(channel.id);
 
     // One list, deduplicated: a live stream that is also new should be fetched
@@ -369,7 +418,8 @@ export async function syncChannel(channel: SignalChannel): Promise<SyncResult> {
     // unit spent to learn the empty set.
     const knownShortIds = wanted.length > 0 ? await collectKnownShortIds(channel) : new Set<string>();
 
-    let written = 0;
+    let added = 0;
+    let updated = 0;
     let removed = 0;
     for (let index = 0; index < wanted.length; index += 50) {
       const batch = wanted.slice(index, index + 50);
@@ -380,11 +430,31 @@ export async function syncChannel(channel: SignalChannel): Promise<SyncResult> {
       // lands in the inbox from this moment, not merely that no new pass
       // starts. The checkpoint is left alone: the next resume sets its own
       // floor above it, so there is nothing for it to catch up on.
-      if (await isPaused()) {
-        return { ...base, added: 0, updated: written, removed, ok: true, paused: true };
+      //
+      // The floor is read at the same moment, not at the start of the pass. A
+      // pause and a resume can both land while a request is in the air, and the
+      // videos in hand were published before the resume, so they have to meet
+      // the floor the resume set rather than the one the pass began with.
+      const tracking = await getTracking();
+      if (tracking.pausedAt !== null) {
+        return { ...base, added, updated, removed, ok: true, paused: true };
       }
+      const floor = collectionFloor(tracking.trackingFrom);
 
-      written += await upsertVideos(channel.id, videos.filter((video) => keep(video, knownShortIds)));
+      // Rows already held are refreshed under the epoch alone; only what is new
+      // to us has to clear the floor. See `heldIds`.
+      const held = await heldIds(batch);
+      const admitted = videos.filter((video) =>
+        keep(video, knownShortIds, held.has(video.youtubeId) ? SIGNAL_EPOCH : floor),
+      );
+      await upsertVideos(channel.id, admitted);
+
+      // Counted from what was really written. The playlist scan also finds
+      // items that are then refused (a Short, or anything older than the
+      // floor), and counting those would report "40 new" after a resume that
+      // brought in nothing.
+      added += admitted.filter((video) => !held.has(video.youtubeId)).length;
+      updated += admitted.filter((video) => held.has(video.youtubeId)).length;
 
       // Anything asked for and not answered is gone from YouTube's side.
       // Checked against every id in the batch, not only the ones already in
@@ -411,7 +481,7 @@ export async function syncChannel(channel: SignalChannel): Promise<SyncResult> {
       })
       .where(eq(signalChannels.id, channel.id));
 
-    return { ...base, added: fresh.length, updated: written - fresh.length, removed, ok: true };
+    return { ...base, added, updated, removed, ok: true };
   } catch (error) {
     const { message } = humanError(error);
 
