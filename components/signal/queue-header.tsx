@@ -1,9 +1,11 @@
 'use client';
 
 import { Broadcast } from '@phosphor-icons/react/dist/csr/Broadcast';
+import { Pause } from '@phosphor-icons/react/dist/csr/Pause';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 
 import { cn } from '@/lib/cn';
+import { sinceLabel } from '@/lib/signal/when';
 
 /**
  * The top of the inbox: how much is waiting, and nothing else.
@@ -41,12 +43,15 @@ export function QueueHeader({
   lens,
   counts,
   onLens,
+  pausedAt,
 }: {
   waiting: number;
   live: number;
   lens: Lens;
   counts: LensCounts;
   onLens: (next: Lens) => void;
+  /** When syncing was paused, or null while it runs. */
+  pausedAt: number | null;
 }) {
   const reduceMotion = useReducedMotion();
 
@@ -70,7 +75,19 @@ export function QueueHeader({
               {live} live right now
             </span>
           ) : null}
-          {live === 0 ? <span>Nothing live right now. This is the whole list.</span> : null}
+          {/* While paused, "this is the whole list" would be a claim about a
+              list that has stopped growing, so the line says why it has. Ink
+              rather than the warm colour: nothing is wrong, the reader chose
+              this. The time can differ by a character of punctuation between
+              the server's formatter and the browser's. */}
+          {pausedAt !== null ? (
+            <span className="flex items-center gap-1.5 text-ink-2" suppressHydrationWarning>
+              <Pause size={13} weight="fill" />
+              Paused since {sinceLabel(pausedAt)}. Videos published meanwhile are skipped for good.
+            </span>
+          ) : live === 0 ? (
+            <span>Nothing live right now. This is the whole list.</span>
+          ) : null}
         </p>
       </div>
 

@@ -12,7 +12,7 @@ import {
   type ChannelCandidate,
 } from '@/lib/signal/channels';
 import { dismiss, markDone, restore } from '@/lib/signal/queue';
-import { getStatus, syncNow, type SchedulerStatus } from '@/lib/signal/scheduler';
+import { getSyncStatus, pauseSync, resumeSync, syncNow, type SyncStatus } from '@/lib/signal/scheduler';
 import { YouTubeError } from '@/lib/signal/youtube';
 
 /**
@@ -165,15 +165,23 @@ export async function requestSync(): Promise<{
   offline: boolean;
   /** Set when every YouTube key is out of quota; when syncing actually resumes. */
   retryAt: number | null;
+  /** True when syncing is paused and nothing was asked of YouTube. */
+  paused: boolean;
   error: string | null;
 }> {
   try {
     const run = await syncNow();
     revalidatePath('/signal', 'layout');
-    return { added: run.added, offline: run.offline, retryAt: run.retryAt, error: null };
+    return {
+      added: run.added,
+      offline: run.offline,
+      retryAt: run.retryAt,
+      paused: run.paused,
+      error: null,
+    };
   } catch (error) {
     console.error('[signal] manual sync failed', error);
-    return { added: 0, offline: false, retryAt: null, error: explain(error) };
+    return { added: 0, offline: false, retryAt: null, paused: false, error: explain(error) };
   }
 }
 
@@ -181,13 +189,64 @@ export async function requestSync(): Promise<{
  * The scheduler's own state, for a page that wants to notice a sync landing
  * without the reader having to reload it.
  *
- * Reading this costs nothing: the scheduler keeps its state on `globalThis`
- * in this same process, so this is a read of memory that happens to cross a
- * server-action boundary, not a query or a call to YouTube. Safe to poll from
- * the browser far more often than a sync itself could ever run.
+ * Costs next to nothing: the scheduler keeps its state on `globalThis` in this
+ * same process, so most of this is a read of memory that happens to cross a
+ * server-action boundary, and the one stored fact, whether syncing is paused,
+ * is a single-row read from the local database. Neither is a call to YouTube,
+ * so it is safe to poll from the browser far more often than a sync itself
+ * could ever run.
  */
-export async function syncStatus(): Promise<SchedulerStatus> {
-  return getStatus();
+export async function syncStatus(): Promise<SyncStatus> {
+  return getSyncStatus();
+}
+
+// ------------------------------------------------------------- pause, resume
+
+/*
+  Neither of these calls `revalidatePath`, unlike every other action here, and
+  that is deliberate. Revalidating makes the action's own response carry a full
+  re-render of the page, so it cannot answer until the inbox has been queried
+  again, which takes seconds while a sync pass is writing. The only caller is
+  `SyncControls`, which refreshes the router itself straight afterwards and
+  needs these to come back at once so a second click is not held up behind the
+  first.
+*/
+
+/**
+ * Stop collecting, from this moment.
+ *
+ * Answers with the stored `pausedAt` rather than leaving the browser to assume
+ * what it asked for: a second tab may already have paused, and the moment that
+ * counts is the first one, not this click. A failure carries no state at all,
+ * so the screen keeps showing whatever was true before it.
+ */
+export async function pauseSyncing(): Promise<
+  { ok: true; pausedAt: number } | { ok: false; error: string }
+> {
+  try {
+    const { pausedAt } = await pauseSync();
+    if (pausedAt === null) throw new Error('pause was not recorded');
+    return { ok: true, pausedAt };
+  } catch (error) {
+    console.error('[signal] pause failed', error);
+    return { ok: false, error: 'Could not pause syncing. Nothing was changed.' };
+  }
+}
+
+/**
+ * Start collecting again, from this moment and no earlier.
+ *
+ * Anything published while paused is skipped for good, which is the point of
+ * pausing; see `resumeTracking`.
+ */
+export async function resumeSyncing(): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    await resumeSync();
+    return { ok: true };
+  } catch (error) {
+    console.error('[signal] resume failed', error);
+    return { ok: false, error: 'Could not resume syncing. It is still paused.' };
+  }
 }
 
 // ---------------------------------------------------------------- categories

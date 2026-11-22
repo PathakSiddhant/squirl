@@ -4,7 +4,14 @@ import Link from 'next/link';
 import { AppMark, SignalWordmark } from '@/components/brand/logo';
 import { AutoRefresh } from '@/components/signal/auto-refresh';
 import { SignalNav } from '@/components/signal/signal-nav';
-import { SyncButton } from '@/components/signal/sync-button';
+import { SyncControls } from '@/components/signal/sync-controls';
+import { getTracking } from '@/lib/signal/tracking';
+
+// This shell now reads the database: whether syncing is paused is stored, and a
+// bar that said "running" because it was built before the reader paused would
+// be wrong in exactly the way that matters. Dynamic here covers every screen
+// nested under it, not only the ones that already declared it.
+export const dynamic = 'force-dynamic';
 
 /**
  * Signal's own shell.
@@ -25,7 +32,9 @@ import { SyncButton } from '@/components/signal/sync-button';
  * window's centre line regardless of how wide the nav on the left happens to
  * be, which a `justify-between` row cannot promise.
  */
-export default function SignalLayout({ children }: { children: React.ReactNode }) {
+export default async function SignalLayout({ children }: { children: React.ReactNode }) {
+  const { pausedAt } = await getTracking();
+
   return (
     <div className="app-signal flex min-h-dvh flex-col">
       <AutoRefresh />
@@ -55,7 +64,7 @@ export default function SignalLayout({ children }: { children: React.ReactNode }
           </Link>
 
           <div className="flex items-center justify-end">
-            <SyncButton />
+            <SyncControls pausedAt={pausedAt} />
           </div>
         </div>
       </header>

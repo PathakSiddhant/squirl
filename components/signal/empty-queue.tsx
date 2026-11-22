@@ -2,29 +2,48 @@
 
 import { Check } from '@phosphor-icons/react/dist/csr/Check';
 import { Clock } from '@phosphor-icons/react/dist/csr/Clock';
+import { Pause } from '@phosphor-icons/react/dist/csr/Pause';
 import { Plus } from '@phosphor-icons/react/dist/csr/Plus';
 import type { Route } from 'next';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
 import { IST_TIME_ZONE } from '@/lib/date';
+import { sinceLabel } from '@/lib/signal/when';
 
 /**
  * Nothing waiting, and why.
  *
- * Three different nothings, and conflating them is how an empty screen becomes
+ * Four different nothings, and conflating them is how an empty screen becomes
  * confusing: a product with no channels yet, a product whose baseline has not
- * arrived, and a queue you have genuinely finished. Only the last is an
- * achievement, and even that is stated rather than celebrated. There is no
- * confetti here. Being finished is the normal state of a thing that works.
+ * arrived, a Signal the reader has paused, and a queue you have genuinely
+ * finished. Only the last is an achievement, and even that is stated rather
+ * than celebrated. There is no confetti here. Being finished is the normal
+ * state of a thing that works.
+ *
+ * The paused one needs its own words because "you are caught up" is a promise
+ * that new things will appear, and a paused Signal is not making it.
  */
 export function EmptyQueue({
   kind,
   baselineAt,
+  pausedAt,
 }: {
-  kind: 'no-channels' | 'before-baseline' | 'caught-up';
+  kind: 'no-channels' | 'before-baseline' | 'paused' | 'caught-up';
   baselineAt: number | null;
+  /** When syncing was paused, or null while it runs. */
+  pausedAt: number | null;
 }) {
+  if (kind === 'paused' && pausedAt !== null) {
+    return (
+      <Shell
+        icon={<Pause size={18} weight="fill" />}
+        title="Syncing is paused."
+        body={`Paused since ${sinceLabel(pausedAt)}. Nothing new arrives until you resume, and videos published meanwhile are skipped for good. Use Resume at the top right when you are back.`}
+      />
+    );
+  }
+
   if (kind === 'no-channels') {
     return (
       <Shell
@@ -143,7 +162,14 @@ function Shell({
       <h2 className="mt-5 font-serif text-[1.375rem] font-normal tracking-[-0.015em] text-ink">
         {title}
       </h2>
-      <p className="mt-2.5 max-w-[26rem] text-[0.875rem] leading-relaxed text-ink-3">{body}</p>
+      {/* A time inside the body can differ by a character of punctuation between
+          the server's formatter and the browser's. */}
+      <p
+        className="mt-2.5 max-w-[26rem] text-[0.875rem] leading-relaxed text-ink-3"
+        suppressHydrationWarning
+      >
+        {body}
+      </p>
 
       {children}
 

@@ -43,11 +43,14 @@ export function Inbox({
   live,
   channelCount,
   baselineAt,
+  pausedAt,
 }: {
   groups: DayGroup[];
   live: QueueItem[];
   channelCount: number;
   baselineAt: number | null;
+  /** When syncing was paused, or null while it runs. */
+  pausedAt: number | null;
 }) {
   const router = useRouter();
   const reduceMotion = useReducedMotion();
@@ -82,11 +85,15 @@ export function Inbox({
   }, []);
 
   if (channelCount === 0) {
-    return <EmptyQueue kind="no-channels" baselineAt={baselineAt} />;
+    return <EmptyQueue kind="no-channels" baselineAt={baselineAt} pausedAt={pausedAt} />;
   }
 
   if (flat.length === 0) {
-    return <EmptyQueue kind={baselineAt ? 'before-baseline' : 'caught-up'} baselineAt={baselineAt} />;
+    // A finished queue and a paused one look the same from here, and only one
+    // of them is true: "caught up" promises that new things will appear, which
+    // a paused Signal does not.
+    const kind = baselineAt ? 'before-baseline' : pausedAt !== null ? 'paused' : 'caught-up';
+    return <EmptyQueue kind={kind} baselineAt={baselineAt} pausedAt={pausedAt} />;
   }
 
   const showing = flat.filter((item) => through(item, lens));
@@ -99,6 +106,7 @@ export function Inbox({
         lens={lens}
         counts={counts}
         onLens={setLens}
+        pausedAt={pausedAt}
       />
 
       {/* Live sits above the dated list, because "happening now" is not a date

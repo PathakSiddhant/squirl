@@ -1,6 +1,7 @@
 import { listChannels } from '@/lib/signal/channels';
 import { SIGNAL_EPOCH, beforeBaseline } from '@/lib/signal/epoch';
 import { getQueue, groupByDay, orderByShelf } from '@/lib/signal/queue';
+import { getTracking } from '@/lib/signal/tracking';
 import { Inbox } from '@/components/signal/inbox';
 
 export const metadata = { title: 'Signal' };
@@ -19,7 +20,7 @@ export const dynamic = 'force-dynamic';
  * nothing about the page's ability to draw itself.
  */
 export default async function SignalInbox() {
-  const [items, channels] = await Promise.all([getQueue(), listChannels()]);
+  const [items, channels, tracking] = await Promise.all([getQueue(), listChannels(), getTracking()]);
 
   const groups = groupByDay(items);
   const live = orderByShelf(items.filter((item) => item.kind === 'live'));
@@ -30,6 +31,7 @@ export default async function SignalInbox() {
       live={live}
       channelCount={channels.filter((channel) => channel.enabled).length}
       baselineAt={beforeBaseline() ? SIGNAL_EPOCH : null}
+      pausedAt={tracking.pausedAt}
     />
   );
 }
