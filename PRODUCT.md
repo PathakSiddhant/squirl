@@ -149,6 +149,12 @@ whatever it is labelled.
    either back.
 8. **Offline is a normal state.** The inbox renders in full from disk. Sync is
    checkpoint-based, so time spent disconnected cannot open a gap.
+9. **A pause is a decision, and coming back is not a catch-up.** Pausing stops
+   everything, immediately and across restarts. Resuming moves the baseline to
+   the moment of the click: whatever was published in between, even a minute
+   before, is skipped for good. Being offline is something that happens to you
+   and is forgiven; being away on purpose is something you chose, and handing
+   the gap back would undo the choice.
 
 ### Why there is no "watch later"
 
@@ -163,8 +169,9 @@ is that the list gets shorter should not ship the one control that lets it grow.
 
 **In scope:** explicit channels by handle or link, groups you arrange yourself,
 an inbox grouped by day, live and upcoming broadcasts, background sync inside
-the local process, a quota-aware fetch path, optional model-assisted filing of
-new channels.
+the local process, pausing it and resuming from now, cutting a long inbox back
+to the last few days, a quota-aware fetch path, optional model-assisted filing
+of new channels.
 
 **Out of scope:** any YouTube sign-in, recommendations, watch history, comments,
 playback inside Signal, Shorts, community posts, cloud sync, notifications,

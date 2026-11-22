@@ -303,6 +303,26 @@ picker to build, and no way for a group to end up with a hue nobody chose.
 The rule it does not break: those hues never touch a number, a status or a
 control. They tint a 3px spine and a count chip, and nothing else.
 
+### Signal's pause, and why it is not drawn as a warning
+
+Signal's header carries two controls on the right: Pause and Sync now. The
+offline and quota states borrow the warm `i-owe` text colour, because something
+is wrong and the reader may want to act. A pause is the reader acting, and
+nothing is wrong, so it is carried by ink.
+
+Paused, the Pause control becomes the one solid ink button in the bar, labelled
+Resume (icon only on a phone), because it is the one thing on the screen that is
+waiting for you. Sync now goes quiet beside it. This is the product button rule
+applied as written: primary buttons are solid ink.
+
+Pause and Resume are one button whose face changes, not two buttons swapped in
+turn, so keyboard focus is still on it after the press. The state flips on the
+click and the server confirms it afterwards; a failed write puts it back and says
+so. The words next to the count change with it ("Paused since 12:51 pm. Videos
+published meanwhile are skipped for good.") and an empty inbox says Syncing is
+paused instead of "You are caught up", which would promise that new things will
+appear.
+
 ## The threshold
 
 The lock screen is the one surface in Squirl that is a picture rather than a

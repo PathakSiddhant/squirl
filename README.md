@@ -350,7 +350,8 @@ any sync, ever. It is a floor inside the sync engine and not a filter on a
 screen — the rows are never written down at all — so "how far back does this
 go" is a fact about the data rather than a habit of whichever query you
 happened to write. A queue that opens with four hundred unread items is the
-exact thing this exists to prevent.
+exact thing this exists to prevent. Pausing and resuming moves that floor
+forward; see below.
 
 Livestreams are filed by when they **started**, not when they were published.
 YouTube stamps a broadcast as published the moment it *ends*, so a show that ran
@@ -398,6 +399,47 @@ a failure is automatically the catch-up because it resumes from the checkpoint
 rather than from the clock. Running it twice writes nothing twice: the YouTube
 id is unique, and the upsert has **no permission** to write the state column, so
 no sync can ever resurrect something you already dealt with.
+
+### You can pause it, and coming back does not hand you the gap
+
+A **Pause** button sits beside Sync now. While paused, Signal asks YouTube
+nothing at all, whether the request comes from the background loop, the button
+or the app being opened, and that includes a pass that is already part way
+through: nothing more is written from the moment of the click. The pause is
+stored in the database rather than remembered, so a restart or a reboot in the
+middle of it does not quietly start syncing again.
+
+Everything else in Signal is checkpoint-based so that time away loses nothing,
+which is right for a dropped connection and wrong for a decision. Somebody who
+paused for a week chose not to be told about that week, so **Resume is a fresh
+start, not a catch-up**. It raises a collection floor to the moment of the
+click, and nothing published before it is ever taken, even a minute before.
+Three details keep that honest:
+
+- A video the inbox already holds is still refreshed whatever its date. A
+  stream that was live before the pause and ended during it has to be found
+  ended afterwards, or its row would say "live" for ever.
+- A stream still to come, or on the air at the moment of resuming, is still
+  taken whatever day it was announced. Neither is old news.
+- The floor is read again when a video is written, not when the pass began, so
+  a pause and a resume that both land mid-request are judged against the resume.
+
+While paused the header says since when, the inbox says why it has stopped
+growing, and an empty inbox says Syncing is paused rather than "You are caught
+up", which would promise that new things will appear.
+
+Coming back to a long list is a different problem, and has its own command:
+
+```bash
+npm run signal:trim                  # preview: keep today and yesterday
+npm run signal:trim -- --since 2026-11-21
+npm run signal:trim -- --yes         # do it
+```
+
+It cuts what is waiting down to the last few days (IST calendar days, filed
+under the same day the inbox shows). Trimmed items are marked dismissed rather
+than deleted, so no later sync can bring them back, and a stream that is live or
+still to come is never treated as history.
 
 ### The quota is a design constraint, not an afterthought
 
@@ -651,6 +693,8 @@ loan. Delete `data/squirl.db` whenever you want a clean start.
 |---|---|
 | `npm run dev` | Start the app |
 | `npm run setup` | Migrate and seed. The one-time first run. |
+| `npm run db:migrate` | Apply new migrations after pulling an update |
+| `npm run signal:trim` | Preview cutting Signal's inbox back to the last two days; add `-- --yes` to do it |
 | `npm run db:demo` | Add four months of sample data |
 | `npx tsx lib/db/reset.ts --yes` | Empty every table, keep the schema |
 | `npm run db:studio` | Browse the raw database |
@@ -770,13 +814,15 @@ lib/
     achievements.ts     milestones, evaluated from real position
   signal/               the second application's domain
     youtube.ts          the only file that talks to YouTube. Zod at the edge.
-    sync.ts             checkpoint-based, idempotent, baseline-floored
-    scheduler.ts        the three-hour loop, living in this process only
+    sync.ts             checkpoint-based, idempotent, floored, stops when paused
+    scheduler.ts        the interval loop, living in this process only
+    tracking.ts         paused or not, and the floor a resume sets. Stored.
+    trim.ts             cutting the inbox back to the last few days
     queue.ts            what is waiting, and the ways it can end
     channels.ts         the shelf, and filing new arrivals
     intelligence.ts     Gemini, when there is a key. Optional by design.
     keys.ts             key pools, round-robin, rest an exhausted one
-    epoch.ts            the baseline. Nothing before it is ever imported.
+    epoch.ts            the baseline, and the later floor a resume sets
   db/                   schema, migrations, seed, demo data
   queries/              read models composed from the pure engines above
 

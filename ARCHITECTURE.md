@@ -95,10 +95,14 @@ before the second use exists. If Form later needs its own timer, the two get
 compared and the shared thing gets written then, from two real cases instead of
 one and a guess.
 
-The loop is deliberately dumb. It has no queue, no retry table and no
-persistence: an interval, an exponential backoff on failure, and a checkpoint
-per channel in the application's own table. Everything it would otherwise need
-to remember is already durable in the data it syncs.
+The loop is deliberately dumb. It has no queue and no retry table: an
+interval, an exponential backoff on failure, and a checkpoint per channel in the
+application's own table. Everything it would otherwise need to remember is
+already durable in the data it syncs, with one exception: whether the reader has
+paused it, and the moment they last resumed, live in a single-row
+`signal_tracking` table. A decision has to outlive a restart, and the sync
+engine is the one place that enforces it, so every trigger is covered by one
+guard rather than by each caller remembering to check.
 
 ### The launcher has no rail and no corners
 
@@ -162,7 +166,7 @@ shared abstraction invented before the second domain exists would be fiction.
 `data/squirl.db` holds everything, because one file is one thing to back up and
 one thing to own. Applications never share tables. A table belongs to exactly
 one application, and the application prefix in migrations makes that visible.
-Signal's five tables are all `signal_*` and Form's twelve are all `form_*`; Ledger has never heard of either.
+Signal's six tables are all `signal_*` and Form's twelve are all `form_*`; Ledger has never heard of either.
 
 **4. An application must be removable.**
 Deleting `app/(squirl)/ledger/` and its tables must leave Squirl running. If
@@ -291,7 +295,10 @@ a bug rather than a style:
   that palette encodes meaning specific to money, not because it is decorative.
   Signal uses colour for two things only, a live broadcast and telling one group
   of channels from another, and derives the second from the group's own name so
-  it is never a decision anyone has to store or maintain.
+  it is never a decision anyone has to store or maintain. A paused Signal is
+  drawn in ink as well: nothing is wrong when the reader chose it, so the warm
+  colour the offline and quota states borrow is not used, and the Resume button
+  is the one solid ink button in the bar.
 
 Signal is where this contract stopped being theory. It restates `--font-sans`
 to Space Grotesk and `--font-mono` to IBM Plex Mono inside its own
